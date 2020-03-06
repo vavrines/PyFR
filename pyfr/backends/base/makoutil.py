@@ -66,7 +66,10 @@ def _locals(body):
     # A statement can define multiple variables, so split by ','
     decls = it.chain.from_iterable(d.split(',') for d in decls)
 
-    return [re.match(r'\s*(\w+)', v).group(1) for v in decls]
+    naughty = {'if', 'for', 'where', 'do'}
+    
+    candidates = [re.match(r'\s*(\w+)', v).group(1) for v in decls]
+    return [x for x in candidates if x not in naughty]
 
 
 @supports_caller
