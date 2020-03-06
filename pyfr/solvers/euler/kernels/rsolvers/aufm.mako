@@ -2,6 +2,7 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 <%include file='pyfr.solvers.euler.kernels.flux'/>
 
+// AUFM vector Splitting Approach (SW dU with HLL s2)
 <%pyfr:macro name='rsolve' params='ul, ur, n, nf'>
     fpdtype_t fl[${ndims}][${nvars}], fr[${ndims}][${nvars}];
     fpdtype_t psl[${nvars}], psr[${nvars}], du[${nvars}];
