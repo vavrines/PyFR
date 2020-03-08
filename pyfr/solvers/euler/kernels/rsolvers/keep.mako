@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
-<%include file='pyfr.solvers.euler.kernels.flux1d'/>
 
 <%pyfr:macro name='v_and_p' params='u,v,p'>
     fpdtype_t invrho = 1./u[0];
@@ -25,9 +24,15 @@
 
     nf[0] = rb*ub;
 % for i in range(ndims):
+% if i == 0:
+    nf[${i+1}] = 0.5*(rb*ub*(vl[${i}] + vr[${i}]) + (pl + pr));
+% else:
     nf[${i+1}] = 0.5*rb*ub*(vl[${i}] + vr[${i}]);
+% endif
 % endfor
    nf[${nvars-1}] = 0.5*ub*(rb*(${pyfr.dot('vl[{i}]', 'vr[{i}]', i=ndims)} +
                                     ${rgm}*(pl/ul[0] + pr/ur[0])) + (pl + pr));
 
 </%pyfr:macro>
+
+<%include file='pyfr.solvers.euler.kernels.rsolvers.transformed'/>
