@@ -14,8 +14,9 @@
 <% gamma = c['gamma'] %>
 
 // Initial guess for pressure
-<%pyfr:macro name='init_p' params='rl,ul,pl,cl,rr,ur,pr,cr,p0'>
-    fpdtype_t bpv = max(0.,0.5*(pl + pr) + 0.125*(ul - ur)*(rl + rr)*(cl + cr));
+<%pyfr:macro name='init_p' params='rl,vl,pl,cl,rr,vr,pr,cr,p0'>
+    fpdtype_t bpv = 0.5*(pl + pr) + 0.125*(vl[0] - vr[0])*(rl + rr)*(cl + cr);
+    bpv = max(0.,bpv);
     fpdtype_t pmin = min(pl,pr);
     fpdtype_t pmax = max(pl,pr);
     fpdtype_t rpmax = pmax/pmin;
@@ -26,10 +27,10 @@
     else if (bpv < pmin){
         // Two-rarefaction Riemann solve
         fpdtype_t pre = pow(pl/pr,${gmrtg});
-        fpdtype_t um  = (pre*ul/cl + ur/cr + ${trgm}*(pq - 1.0))/(pre/cl + 1.0/cr);
+        fpdtype_t um  = (pre*vl[0]/cl + vr[0]/cr + ${trgm}*(pre - 1.0))/(pre/cl + 1./cr);
 
-        fpdtype_t ptl = 1.0 + ${hgm}*(um - ul)/cl;
-        fpdtype_t ptr = 1.0 + ${hgm}*(um - ur)/cr;
+        fpdtype_t ptl = 1. - ${hgm}*(um - vl[0])/cl;
+        fpdtype_t ptr = 1. + ${hgm}*(um - vr[0])/cr;
 
         p0 = 0.5*(pl*pow(ptl,${tgrgm}) + pr*pow(ptr,${tgrgm}));
     }
@@ -37,7 +38,7 @@
         // Two-shock Riemann solve
         fpdtype_t gl = sqrt((${trgp}/rl)/(${gmrgp}*pl + bpv));
         fpdtype_t gr = sqrt((${trgp}/rr)/(${gmrgp}*pr + bpv));
-        p0 = (gl*pl + gr*pr - (ur - ul))/(gt + gr);
+        p0 = (gl*pl + gr*pr - (vr[0] - vl[0]))/(gl + gr);
     }
 </%pyfr:macro>
 
@@ -51,15 +52,16 @@
     else{
        fpdtype_t as = ${trgp}/rs;
        fpdtype_t bs = ${gmrgp}*ps;
-       fpdtype_t sapb = sqrt(as/(p+bs));
+       fpdtype_t sapb = sqrt(as/(p + bs));
        f  = (p - ps)*sapb;
        fd = (1. - 0.5*(p - ps)/(p + bs))*sapb;
     }
-</%pyfr macro>
+</%pyfr:macro>
 
 // Primitive to inviscid flux
+// w = [density, v_1,..., v_ndims, p]^T
 <%pyfr:macro name='primitive_1dflux' params='w, f'>
-    fpdtype_t invrho = 1.0/w[0], E;
+    fpdtype_t invrho = 1.0/w[0];
 
     // Compute the velocities
     fpdtype_t rhov[${ndims}];
@@ -68,25 +70,20 @@
 % endfor
 
     // Compute the Energy
-    E = w[${nvars-1}]*${rgm} + 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)});
+    fpdtype_t E = w[${nvars-1}]*${rgm} + 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)});
 
     // Density and energy fluxes
     f[0] = rhov[0];
     f[${nvars - 1}] = (E + w[${nvars-1}])*w[1];
 
     // Momentum fluxes
-% for i in pyfr.ndrange(ndims):
-    f[${i}]= rhov[0]*w[${i}]${' + w[${nvars-1}]' if i == 0 else ''};
+% for i in range(ndims):
+% if i == 0:
+    f[${i+1}]= rhov[0]*w[${i+1}] + w[${nvars-1}];
+% else:
+    f[${i+1}]= rhov[0]*w[${i+1}];
+% endif
 % endfor
-</%pyfr:macro>
-
-// Reconstruct primitive vector
-<%pyfr:macro name='recprim' params='r,v,p,w'>
-    w[0] = r;
-%for i in range(ndims):
-    w[${i+1}] = v[${i}];
-% endfor
-    w[${nvars-1}] = p;
 </%pyfr:macro>
 
 
@@ -95,17 +92,23 @@
 <%pyfr:macro name='riemann_decision' params='rl,vl,pl,cl,rr,vr,pr,cr,us,p0,w0'>
 
     if (${switch} <= us){
-        ${pyfr.expand('recprim', 'rl','vl','pl','w0')};
+% for i in range(ndims-1):
+        w0[${i+2}] = vl[${i+1}];
+% endfor
         if (p0 <= pl){
-            fpdtype_t ll = vl[0] - cl;
-            if (${switch} > ll){
+            if (${switch} <= (vl[0] - cl)){
+                w0[0] = rl;
+                w0[1] = vl[0];
+                w0[${nvars-1}] = pl;
+            }
+            else {
                 fpdtype_t cml = cl*pow(p0/pl,${gmrtg});
                 if (${switch} > (us - cml)){
-                    w0[0] = rl*pow(p0/pl, 1./${gamma});
+                    w0[0] = rl*pow(p0/pl, ${1./gamma});
                     w0[1] = us;
                     w0[${nvars-1}] = p0;
                 }
-                else{
+                else {
                     fpdtype_t c = ${trgp}*(cl + ${hgm}*(vl[0] - ${switch}));
                     w0[0] = rl*pow(c/cl,${trgm});
                     w0[1] = ${trgp}*(cl + ${hgm}*vl[0] + ${switch});
@@ -113,47 +116,68 @@
                 }
             }
         }
-        else if (${switch} > sl){
+        else{
             fpdtype_t p0p = p0/pl;
             fpdtype_t sl = vl[0] - cl*sqrt(${gprtg}*p0p + ${gmrtg});
-            w0[0] = rl*(p0p + ${gmrgp})/(p0p*${gmrgp} + 1.);
-            w0[1] = us;
-            w0[${nvars-1}] = p0;
+            if (${switch} <= sl){
+                w0[0] = rl;
+                w0[1] = vl[0];
+                w0[${nvars-1}] = pl;
+            }
+            else {
+                w0[0] = rl*(p0p + ${gmrgp})/(p0p*${gmrgp} + 1.);
+                w0[1] = us;
+                w0[${nvars-1}] = p0;
+            }
         }
     }
     else{
-        ${pyfr.expand('recprim', 'rr','vr','pr','w0')};
+% for i in range(ndims-1):
+        w0[${i+2}] = vr[${i+1}];
+% endfor
         if (p0 > pr){
             fpdtype_t p0p = p0/pr;
             fpdtype_t sr = vr[0] + cr*sqrt(${gprtg}*p0p + ${gmrtg});
-            if (${switch} < sr){
+            if (${switch} >= sr){
+                w0[0] = rr;
+                w0[1] = vr[0];
+                w0[${nvars-1}] = pr;
+            }
+            else {
                 w0[0] = rr*(p0p + ${gmrgp})/(p0p*${gmrgp} + 1.);
                 w0[1] = us;
                 w0[${nvars-1}] = p0;
             }
         }
-        else if (${switch} < (vr[0] + cr)){
-            fpdtype_t cmr = cr*pow(p0/pr,${gmrtg});
-            if (${switch} <= (us + cmr)){
-                w0[0] = rr*pow(p0/pr, 1./${gamma});
-                w0[1] = us;
-                w0[${nvars-1}] = p0;
+        else {
+            if (${switch} >= (vr[0] + cr)){
+                w0[0] = rr;
+                w0[1] = vr[0];
+                w0[${nvars-1}] = pr;
             }
-            else{
-                fpdtype_t c = ${trgp}*(cr - ${hgm}*(vr[0] - ${switch}));
-                w0[0] = rr*pow(c/cr,${trgm});
-                w0[1] = ${trgp}*(-cr + ${hgm}*vr[0] + ${switch});
-                w0[${nvars-1}] = pr*pow(c/cr,${tgrgm});
+            else {
+                fpdtype_t p0p = p0/pr;
+                fpdtype_t cmr = cr*pow(p0p,${gmrtg});
+                if (${switch} <= (us + cmr)){
+                    w0[0] = rr*pow(p0p, ${1./gamma});
+                    w0[1] = us;
+                    w0[${nvars-1}] = p0;
+                }
+                else{
+                    fpdtype_t c = ${trgp}*(cr - ${hgm}*(vr[0] - ${switch}));
+                    w0[0] = rr*pow(c/cr,${trgm});
+                    w0[1] = ${trgp}*(-cr + ${hgm}*vr[0] + ${switch});
+                    w0[${nvars-1}] = pr*pow(c/cr,${tgrgm});
+                }
             }
         }
     }
 
 </%pyfr:macro>
 
-
 // Godunov exact Riemann solver
-<% kmax = 5 %>
-<% tol = 1e-6 %>
+<% kmax = 3 %>
+<% pmin = 0.00001 %>
 <%pyfr:macro name='rsolve_t1d' params='ul, ur, nf'>
     // Compute the left and right fluxes + velocities and pressures
     fpdtype_t fl[${nvars}],fr[${nvars}];
@@ -170,22 +194,25 @@
     fpdtype_t cr = sqrt(${c['gamma']}*pr/ur[0]);
 
     // Inital pressure guess
-    ${pyfr.expand('init_p','ul[0]','vl[0]','pl','cl',
-                           'ur[0]','vr[0]','pr','cr','p0')};
+    fpdtype_t rl = ul[0];
+    fpdtype_t rr = ur[0];
+    ${pyfr.expand('init_p','rl','vl','pl','cl',
+                           'rr','vr','pr','cr','p0')};
     fpdtype_t ud = vr[0] - vl[0];
 
     // Newton Iterations
 %for k in range(kmax):
-    ${pyfr.expand('star_flux','p0','pl','ul[0]','cl','fsl','fdl')};
-    ${pyfr.expand('star_flux','p0','pr','ur[0]','cr','fsr','fdr')};
+    ${pyfr.expand('star_flux','p0','pl','rl','cl','fsl','fdl')};
+    ${pyfr.expand('star_flux','p0','pr','rr','cr','fsr','fdr')};
     p1 = p0 - (fsl + fsr + ud)/(fdl + fdr);
-    p0 = (p1 < 0.) ? tol : p1;
+    p0 = (p1 < 0.) ? ${pmin} : p1;
 % endfor
     fpdtype_t us = 0.5*(vl[0] + vr[0] + fsr - fsl);
 
     // Go through Riemann solve decision tree
-    ${pyfr.expand('riemann_decision','ul[0]','vl','pl','cl',
-                                     'ur[0]','vr','pr','cr','us','p0','w0')};
+    ${pyfr.expand('riemann_decision','rl','vl','pl','cl',
+                                     'rr','vr','pr','cr','us','p0','w0')};
+    //printf("rs : %E, rl: %E, rr: %E \n",w0[0],rl,rr);
     ${pyfr.expand('primitive_1dflux','w0','nf')};
 
 </%pyfr:macro>
