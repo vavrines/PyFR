@@ -17,7 +17,8 @@ class CUDAKernelProvider(BaseKernelProvider):
     @memoize
     def _build_kernel(self, name, src, argtypes):
         # Compile the source code and retrieve the kernel
-        fun = compiler.SourceModule(source=src,options=["--ftz=true"]).get_function(name)
+        opts = ['-Xcudafe', '--diag_suppress=declared_but_not_referenced', '--ftz=true']
+        fun = compiler.SourceModule(src,options=opts).get_function(name)
 
         # Prepare the kernel for execution
         fun.prepare(argtypes)
