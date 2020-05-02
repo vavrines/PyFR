@@ -51,7 +51,8 @@ fpdtype_t l_scale = 0;
 % endif
 
 // Calculate variable fk and assume fw = 1/fk
-fk = ${c['C_PANS']}*pow(dx_max/l_min, 2.0/3.0);
+fpdtype_t fk_tar = ${c['C_PANS']}*pow(dx_max/l_min, 2.0/3.0);
+fk = fk + ${c['fktdc']}*(fk_tar - fk);
 
 
 </%pyfr:kernel>
