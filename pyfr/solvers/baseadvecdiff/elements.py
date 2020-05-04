@@ -2,7 +2,8 @@
 
 from pyfr.backends.base.kernels import ComputeMetaKernel
 from pyfr.solvers.baseadvec import BaseAdvectionElements
-
+from pyfr.quadrules import get_quadrule
+import numpy as np
 
 class BaseAdvectionDiffusionElements(BaseAdvectionElements):
     @property
@@ -19,6 +20,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 bufs |= {'scal_qpts_cpy'}
             else:
                 bufs |= {'scal_upts_cpy'}
+
+        bufs |= {'scal_fpts_cpy'}
 
         return bufs
 
@@ -92,28 +95,99 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             # Obtain the degrees of the polynomial modes in the basis
             ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
 
+            adjmat = self.adj_mat(self.basis.upts, self.basis.fpts)
+            weights = self.get_weights(self.basis.upts)
+            lambdatype = self.cfg.get('solver', 'lambda_type', 'davis')
+
             # Template arguments
             tplargs = dict(
-                nvars=self.nvars, nupts=self.nupts, svar=shockvar,
-                c=self.cfg.items_as('solver-artificial-viscosity', float),
+                nvars=self.nvars, nupts=self.nupts, ndims=self.ndims, svar=shockvar,
+                cav=self.cfg.items_as('solver-artificial-viscosity', float),
+                c=self.cfg.items_as('constants', float),
                 order=self.basis.order, ubdegs=ubdegs,
-                invvdm=self.basis.ubasis.invvdm.T
+                invvdm=self.basis.ubasis.invvdm.T,
+                adjmat=adjmat, lambda_type=lambdatype,
+                weights=weights
             )
 
             # Allocate space for the artificial viscosity vector
-            self.artvisc = backend.matrix((1, self.neles),
+            self.artvisc = backend.matrix((self.nupts, self.nvars, self.neles),
                                           extent=nonce + 'artvisc', tags=tags)
+
 
             # Apply the sensor to estimate the required artificial viscosity
             self.kernels['shocksensor'] = lambda: backend.kernel(
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
-                u=self.scal_upts_inb, artvisc=self.artvisc
+                u=self.scal_upts_inb, uf=self._scal_fpts, 
+                plocu=self.ploc_at('upts'), plocf=self.ploc_at('fpts'),
+                artvisc=self.artvisc, rcpdjac=self.rcpdjac_at('upts')
             )
+
         elif shock_capturing == 'none':
             self.artvisc = None
         else:
             raise ValueError('Invalid shock capturing scheme')
 
-    def get_artvisc_fpts_for_inter(self, eidx, fidx):
+    def get_artvisc_fpts_for_inter(self, eidx, fidx):        
         nfp = self.nfacefpts[fidx]
-        return (self.artvisc.mid,)*nfp, (0,)*nfp, (eidx,)*nfp
+        rmap = self._srtd_face_fpts[fidx][eidx]
+        cmap = (eidx,)*nfp
+
+        return (self.artvisc.mid,)*nfp, rmap, cmap
+
+    def adj_mat(self, upts, fpts):
+        p = self.basis.order
+        nupts = len(upts)
+
+        uidx = lambda xidx, yidx, zidx: xidx + yidx*(p+1) + zidx*((p+1)**2)
+        cartidx = lambda pidx: (pidx%(p+1), (pidx%(p+1)**2)//(p+1), pidx//((p+1)**2))
+
+        def findidx(xidx, yidx, zidx):
+            face = None
+            if xidx == -1:
+                face = 4
+            elif xidx == p+1:
+                face = 2
+            if yidx == -1:
+                face = 1
+            elif yidx == p+1:
+                face = 3
+            if zidx == -1:
+                face = 0
+            elif zidx == p+1:
+                face = 5
+
+            if face == None:
+                return uidx(xidx, yidx, zidx)
+
+            if face == 4 or face == 2:
+                return (face*(p+1)**2 + yidx + zidx*(p+1)) + nupts
+
+            if face == 1 or face == 3:
+                return (face*(p+1)**2 + xidx + zidx*(p+1)) + nupts
+
+            if face == 0 or face == 5:
+                return (face*(p+1)**2 + xidx + yidx*(p+1)) + nupts
+
+
+        M = np.zeros((nupts, 6))
+        # [-x, +x, -y, +y, -z, +z] neighbors
+        for pidx in range(nupts):
+            (xidx, yidx, zidx) = cartidx(pidx)
+            M[pidx,0] = findidx(xidx-1, yidx, zidx)
+            M[pidx,1] = findidx(xidx+1, yidx, zidx)
+            M[pidx,2] = findidx(xidx, yidx-1, zidx)
+            M[pidx,3] = findidx(xidx, yidx+1, zidx)
+            M[pidx,4] = findidx(xidx, yidx, zidx-1)
+            M[pidx,5] = findidx(xidx, yidx, zidx+1)
+
+        return M.astype('i4')
+
+    def get_weights(self, upts):
+        p = self.basis.order
+        nupts = len(upts)
+        eletype = 'hex'
+        rule = self.cfg.get('solver-elements-hex', 'soln-pts', 'gauss-legendre')
+
+        rule = get_quadrule(eletype, rule=None, npts=nupts, qdeg=p, flags=None)
+        return rule.wts
