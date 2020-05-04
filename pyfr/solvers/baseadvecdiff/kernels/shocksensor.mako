@@ -3,8 +3,6 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 <%include file='pyfr.solvers.euler.kernels.rsolvers.lambda'/>
 
-<% se0 = math.log10(cav['s0']) %>
-
 <%pyfr:kernel name='shocksensor' ndim='1'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               uf='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
@@ -13,38 +11,17 @@
               artvisc='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
               rcpdjac='out fpdtype_t[${str(nupts)}]'
               >
-    // Smoothness indicator
-    fpdtype_t totEn = 0.0, pnEn = 1e-15, tmp;
-
-% for i, deg in enumerate(ubdegs):
-    tmp = ${' + '.join('{jx}*u[{j}][{svar}]'.format(j=j, jx=jx, svar=svar)
-                       for j, jx in enumerate(invvdm[i]) if jx != 0)};
-
-    totEn += tmp*tmp;
-% if deg >= order:
-    pnEn += tmp*tmp;
-% endif
-% endfor
-
-fpdtype_t se  = ${1/math.log(10)}*log(pnEn/totEn);
-
-// Compute cell-wise artificial viscosity
-//fpdtype_t mu = (se < ${se0 - cav['kappa']})
-//             ? 0.0
-//             : ${0.5*cav['max-artvisc']}*(1.0 + sin(${0.5*math.pi/cav['kappa']}*(se - ${se0})));
-//mu = (se < ${se0 + cav['kappa']}) ? mu : ${cav['max-artvisc']};
-
 
 fpdtype_t ui[${nvars}], uj[${nvars}], uti[${nvars}], utj[${nvars}]; // Current point, adjacent point, transformed current point, transformed adjacent point
 fpdtype_t n[${ndims}], nmag, s; // Normal direction, magnitude, max wave speed
 
 % for i in range(nupts):
 	% for k in range(nvars):
-		artvisc[${i}][${k}] = 0;
+		artvisc[${i}][${k}] = 0.0;
 	% endfor
 	% for j in range(6):
 		// If adjacent point is a flux point
-		% if adjmat[i][j] > nupts:  
+		% if adjmat[i][j] >= nupts:  
 			% for k in range(nvars):
 				ui[${k}] = u[${i}][${k}];
 				uj[${k}] = uf[${adjmat[i][j] - nupts}][${k}];
@@ -95,7 +72,7 @@ fpdtype_t n[${ndims}], nmag, s; // Normal direction, magnitude, max wave speed
     	${pyfr.expand('lambda_max','uti', 'utj', 's')}
 
 		% for k in range(nvars):
-			artvisc[${i}][${k}] += ${weights[i]}*s*(uj[${k}] - ui[${k}])*nmag/rcpdjac[${i}];
+			artvisc[${i}][${k}] += 100*s*(uj[${k}] - ui[${k}])*nmag; 	//*pow(rcpdjac[${i}],0.3333)
 		% endfor
 
     %endfor

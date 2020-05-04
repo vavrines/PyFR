@@ -22,7 +22,7 @@
 
 
 % for i, j in pyfr.ndrange(ndims, nvars):
-    f[${i}][${j}] = ${' + '.join('smats[{0}][{1}]*ftemp[{1}][{2}] - artvisc[{2}]'
+    f[${i}][${j}] = ${' + '.join('smats[{0}][{1}]*ftemp[{1}][{2}]'
                                  .format(i, k, j)
                                  for k in range(ndims))};
 % endfor
