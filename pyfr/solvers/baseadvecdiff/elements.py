@@ -4,6 +4,7 @@ from pyfr.backends.base.kernels import ComputeMetaKernel
 from pyfr.solvers.baseadvec import BaseAdvectionElements
 from pyfr.quadrules import get_quadrule
 import numpy as np
+from scipy import interpolate
 
 class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 	@property
@@ -97,17 +98,22 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 
 			adjmat = self.adj_mat(self.basis.upts, self.basis.fpts)
 			weights = self.get_weights(self.basis.upts)
-			lambdatype = self.cfg.get('solver', 'lambda_type', 'davis')
+			lambdatype = self.cfg.get('artificial-viscosity', 'lambda_type', 'davis')
+			gradmat = self.grad_matrices(self.basis.upts, self.basis.fpts, adjmat)
+			ffaces = self.flux_faces() # Face index corresponding to flux point
+			prefac = self.calc_prefactor()
+
 
 			# Template arguments
 			tplargs = dict(
-				nvars=self.nvars, nupts=self.nupts, ndims=self.ndims, svar=shockvar,
+				nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts, ndims=self.ndims,
 				cav=self.cfg.items_as('solver-artificial-viscosity', float),
 				c=self.cfg.items_as('constants', float),
 				order=self.basis.order, ubdegs=ubdegs,
 				invvdm=self.basis.ubasis.invvdm.T,
 				adjmat=adjmat, lambda_type=lambdatype,
-				weights=weights
+				weights=weights, gradmat=gradmat, ffaces=ffaces,
+				prefac=prefac
 			)
 
 
@@ -121,9 +127,14 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 			self.kernels['shocksensor'] = lambda: backend.kernel(
 				'shocksensor', tplargs=tplargs, dims=[self.neles],
 				u=self.scal_upts_inb, uf=self._scal_fpts, 
-				plocu=self.ploc_at('upts'), plocf=self.ploc_at('fpts'),
-				artvisc=self.artvisc, rcpdjac=self.rcpdjac_at('upts')
+				artvisc=self.artvisc, rcpdjac=self.rcpdjac_at('upts'),
+				rcpusmats=self.rcp_ele_smat_at('upts'), fsmats=self.ele_smat_at('fpts')
 			)
+
+			# ELE_SMATS FORMAT:
+	        # [0] = dxi/dx,   [1] = dxi/dy,   [2] = dxi/dz
+	        # [3] = deta/dx,  [4] = deta/dy,  [5] = deta/dz
+	        # [6] = dzeta/dx, [7] = dzeta/dy, [8] = dzeta/dz
 
 			# Add as source term in negdivconf
 			backend.pointwise.register('pyfr.solvers.baseadvecdiff.kernels.negdivconfav')
@@ -211,7 +222,125 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 		p = self.basis.order
 		nupts = len(upts)
 		eletype = 'hex'
-		rule = self.cfg.get('solver-elements-hex', 'soln-pts', 'gauss-legendre')
+		#rule = self.cfg.get('solver-elements-hex', 'soln-pts', 'gauss-legendre')
+		rule = 'gauss-legendre'
 
-		rule = get_quadrule(eletype, rule=None, npts=nupts, qdeg=p, flags=None)
-		return rule.wts
+		qrule = get_quadrule(eletype, rule=rule, npts=nupts, qdeg=p, flags=None)
+		return qrule.wts
+
+
+
+	def grad_matrices(self, upts3d, fpts3d, adj_mat):		
+
+		p = self.basis.order
+		upts1d = get_quadrule('line', rule='gauss-legendre', npts=(p+1), qdeg=p, flags=None).pts
+		nupts = len(upts3d)
+		nfpts = len(fpts3d)
+
+		GM = np.zeros((nupts, 6, 3))
+
+		def Lag1d(pts, idx):
+			vals = np.zeros(len(pts))
+			vals[idx] = 1.
+			return interpolate.lagrange(pts, vals)
+
+		derivLags1d = []
+		for idx in range(len(upts1d)):
+			lag1d = Lag1d(upts1d, idx)
+			derivLags1d.append(lag1d.deriv())
+
+		# Returns the gradient of the j-th (jx, jy, jz) interpolating polynomial (in 3D space) at point (x,y,z)
+		def gradLag(upts1d, jx, jy, jz, x,y,z):
+			dLx = derivLags1d[jx]
+			dLy = derivLags1d[jy]
+			dLz = derivLags1d[jz]
+			grad = [dLx(x), dLy(y), dLz(z)]
+			return np.array(grad)
+
+		# Returns the gradient of the correction function at the interface (in 1D)
+		def gradCorrFunc(p, deltaxi):
+			c = np.zeros(p+2)
+			c[p] = 0.5
+			c[p+1] = 0.5
+			L = np.polynomial.legendre.Legendre(c)
+			Ld = L.deriv()
+			if deltaxi < 0. or deltaxi > 1.:
+				raise ValueError('Deltaxi out of bounds [0,1]:', dletaxi)
+			return Ld(1.0 - deltaxi)
+
+
+
+
+		cartidx = lambda pidx: (pidx%(p+1), (pidx%(p+1)**2)//(p+1), pidx//((p+1)**2)) # Global solution idx (pidx) to xidx, yidx, zidx
+		face    = lambda fidx: fidx//((p+1)**2) # Face number from fpts idx
+
+		# Calculate distance from flux point to solution point in computational space (kind of a hack)
+		deltaxi = 1.0 - max(upts1d)
+
+		# HEX FACE ORDERING:
+		# 0 -> z = -1
+		# 1 -> y = -1
+		# 2 -> x =  1
+		# 3 -> y =  1
+		# 4 -> x = -1
+		# 5 -> z =  1
+		def gradFluxPoint(fidx, deltaxi):		
+			dcorr = gradCorrFunc(p, deltaxi)
+			grads = [[0,     0,     -dcorr],  # z = -1
+					 [0,     -dcorr,0     ],  # y = -1
+					 [dcorr, 0,     0     ],  # x =  1
+					 [0,     dcorr, 0     ],  # y =  1
+					 [-dcorr,0,     0     ],  # x = -1
+					 [0,     0,     dcorr ],] # z =  1
+
+			return grads[face(fidx)]
+
+
+		for pidx in range(nupts):
+			for j in range(6):
+				adjidx = adj_mat[pidx][j]
+
+				# If adjacent point is a solution point
+				if adjidx < nupts:
+					# Get tensor product position indices
+					(jx, jy, jz) = cartidx(adjidx)			
+					# Evaluate at solution point pidx
+					[x,y,z] = upts3d[pidx]
+					grad = gradLag(upts1d, jx, jy, jz, x,y,z)
+
+				else:
+					fidx = adjidx - nupts
+					grad = gradFluxPoint(fidx, deltaxi)
+				GM[pidx, j, :] = grad	
+		return GM
+
+	def flux_faces(self):	# Face index corresponding to flux point
+		# HEX FACE ORDERING:
+		# 0 -> z = -1
+		# 1 -> y = -1
+		# 2 -> x =  1
+		# 3 -> y =  1
+		# 4 -> x = -1
+		# 5 -> z =  1
+		p = self.basis.order
+		nfpts = self.nfpts
+		ffaces = np.zeros(nfpts, dtype=int)
+		for fidx in range(nfpts):
+			ffaces[fidx] = int(fidx//((p+1)**2))
+		return ffaces
+
+	def calc_prefactor(self): 
+		# prefactor = 0.5*phi_i(x_j)*w_j'/w_i evaluated on flux point x_j for solution basis function phi_i if using only adjacent points (so Phi_i is first/last GL point)
+		# Weights correspond to 2d (w') and 3d (w) quad weights
+		p = self.basis.order
+		upts1d = get_quadrule('line', rule='gauss-legendre', npts=(p+1), qdeg=p, flags=None).pts
+		w1d = get_quadrule('line', rule='gauss-legendre', npts=(p+1), qdeg=p, flags=None).wts		
+		vals = np.zeros(len(upts1d))
+		vals[0] = 1.
+		L = interpolate.lagrange(upts1d, vals)
+
+		phi_val = L(-1.0)
+		w = w1d[0] # Since w_j' = 2D weight and w_i is 3D weight along the same 2d indices, just one point off in 3d
+		return 0.5*phi_val/w
+
+

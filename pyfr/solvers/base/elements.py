@@ -207,6 +207,47 @@ class BaseElements(object, metaclass=ABCMeta):
         return self._be.const_matrix(self.smat_at_np(name), tags={'align'})
 
     @memoize
+    def ele_smat_at(self, name):
+        smats_mpts, _ = self._smats_djacs_mpts
+
+        # Interpolation matrix to pts
+        m0 = self.basis.mbasis.nodal_basis_at(getattr(self.basis, name))
+
+        # Interpolate the smats
+        smats = np.array([np.dot(m0, smat) for smat in smats_mpts])
+        ret = smats.reshape(self.ndims, -1, self.ndims, self.neles)
+        ret = ret.swapaxes(0, 1)
+        ret = ret.reshape(-1, self.ndims**2, self.neles)
+
+        #FORMAT:
+        # [0] = dx/dxi,   [1] = dy/dxi,   [2] = dz/dxi
+        # [3] = dx/deta,  [4] = dy/deta,  [5] = dz/deta
+        # [6] = dx/dzeta, [7] = dy/dzeta, [8] = dz/dzeta  
+
+        return self._be.const_matrix(ret, tags={'align'})
+
+    def rcp_ele_smat_at(self, name):
+        smats_mpts, _ = self._smats_djacs_mpts
+
+        # Interpolation matrix to pts
+        m0 = self.basis.mbasis.nodal_basis_at(getattr(self.basis, name))
+
+        # Interpolate the smats
+        smats = np.array([np.dot(m0, smat) for smat in smats_mpts])
+        ret = smats.reshape(self.ndims, -1, self.ndims, self.neles)
+        ret = ret.swapaxes(0, 1)
+        ret = ret.reshape(-1, self.ndims**2, self.neles)
+
+        # Invert smats that are not equal to 0 else keep 0
+        ret = np.reciprocal(ret, out=np.zeros_like(ret), where=(np.abs(ret) > 1e-6))
+      
+        #FORMAT:
+        # [0] = dxi/dx,   [1] = dxi/dy,   [2] = dxi/dz
+        # [3] = deta/dx,  [4] = deta/dy,  [5] = deta/dz
+        # [6] = dzeta/dx, [7] = dzeta/dy, [8] = dzeta/dz
+        return self._be.const_matrix(ret, tags={'align'})
+
+    @memoize
     def rcpdjac_at_np(self, name):
         _, djacs_mpts = self._smats_djacs_mpts
 
