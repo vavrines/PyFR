@@ -127,8 +127,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 			self.kernels['shocksensor'] = lambda: backend.kernel(
 				'shocksensor', tplargs=tplargs, dims=[self.neles],
 				u=self.scal_upts_inb, uf=self._scal_fpts, 
-				artvisc=self.artvisc, rcpdjac=self.rcpdjac_at('upts'),
-				rcpusmats=self.rcp_ele_smat_at('upts'), fsmats=self.ele_smat_at('fpts')
+				artvisc=self.artvisc, urcpdjac=self.rcpdjac_at('upts'), frcpdjac=self.rcpdjac_at('fpts'),
+				usmats=self.ele_smat_at('upts'), rcpfsmats=self.rcp_ele_smat_at('fpts')
 			)
 
 			# ELE_SMATS FORMAT:

@@ -219,10 +219,11 @@ class BaseElements(object, metaclass=ABCMeta):
         ret = ret.swapaxes(0, 1)
         ret = ret.reshape(-1, self.ndims**2, self.neles)
 
-        #FORMAT:
-        # [0] = dx/dxi,   [1] = dy/dxi,   [2] = dz/dxi
-        # [3] = dx/deta,  [4] = dy/deta,  [5] = dz/deta
-        # [6] = dx/dzeta, [7] = dy/dzeta, [8] = dz/dzeta  
+        #FORMAT: DIVIDED BY |J|
+        # [0] = dxi/dx,   [1] = dxi/dy,   [2] = dxi/dz
+        # [3] = deta/dx,  [4] = deta/dy,  [5] = deta/dz
+        # [6] = dzeta/dx, [7] = dzeta/dy, [8] = dzeta/dz
+
 
         return self._be.const_matrix(ret, tags={'align'})
 
@@ -241,10 +242,10 @@ class BaseElements(object, metaclass=ABCMeta):
         # Invert smats that are not equal to 0 else keep 0
         ret = np.reciprocal(ret, out=np.zeros_like(ret), where=(np.abs(ret) > 1e-6))
       
-        #FORMAT:
-        # [0] = dxi/dx,   [1] = dxi/dy,   [2] = dxi/dz
-        # [3] = deta/dx,  [4] = deta/dy,  [5] = deta/dz
-        # [6] = dzeta/dx, [7] = dzeta/dy, [8] = dzeta/dz
+        #FORMAT: MULTIPLIED BY |J|
+        # [0] = dx/dxi,   [1] = dy/dxi,   [2] = dz/dxi
+        # [3] = dx/deta,  [4] = dy/deta,  [5] = dz/deta
+        # [6] = dx/dzeta, [7] = dy/dzeta, [8] = dz/dzeta  
         return self._be.const_matrix(ret, tags={'align'})
 
     @memoize
