@@ -25,7 +25,6 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         if ('eles', 'shocksensor') in kernels:
             q1 << kernels['eles', 'shocksensor']()
             q1 << kernels['mpiint', 'artvisc_fpts_pack']()
-        q1 << kernels['eles', 'adaptivefk']()
         q1 << kernels['eles', 'tgradpcoru_upts']()
         q2 << kernels['mpiint', 'scal_fpts_send']()
         q2 << kernels['mpiint', 'scal_fpts_recv']()

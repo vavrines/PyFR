@@ -4,6 +4,9 @@ import numpy as np
 from pyfr.solvers.baseadvecdiff import BaseAdvectionDiffusionElements
 from pyfr.solvers.euler.elements import BaseFluidElements
 
+from scipy import interpolate
+from io import BytesIO
+import pkgutil
 
 class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
     # Use the density field for shock sensing
@@ -46,9 +49,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self.ku_src = self._be.matrix((self.nupts, self.neles), tags={'align'})
         self.wu_src = self._be.matrix((self.nupts, self.neles), tags={'align'})
         self.F1     = self._be.matrix((self.nupts, self.neles), tags={'align'}, extent= nonce + 'F1')
-        #fk_ini = self.cfg.items_as('constants', float)['min_fk']
-        #self.fk     = self._be.matrix((1, self.neles), tags={'align'}, extent= nonce + 'fk', initval=np.full((1, self.neles), fk_ini))
-        self.fk     = self._be.matrix((1, self.neles), tags={'align'}, extent= nonce + 'fk')
+        self.fk     = self.calculateFK(nonce)
+        
 
         ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
 
@@ -57,21 +59,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
             c=self.cfg.items_as('constants', float),
             order=self.basis.order, ubdegs=ubdegs,
-            invvdm=self.basis.ubasis.invvdm.T,
-            adpans=self.cfg.get('solver', 'adpans')
-        )
-
-        adpans = self.cfg.get('solver', 'adpans')
-        if (adpans != 'dzanic' and adpans != 'girimaji' and adpans != 'hybrid'):
-        	raise ValueError('{0} is not a valid adaptive fk method.'.format(adpans))
-        # Apply the sensor to estimate the required artificial viscosity
-        #adpansarg = 'adaptivefk' + adpans
-        #print(adpansarg)
-
-        self.kernels['adaptivefk'] = lambda: backend.kernel(
-            'adaptivefk', tplargs=tplargs, dims=[self.neles],
-            u=self.scal_upts_inb, fk=self.fk,
-            rcpdjac=self.rcpdjac_at('upts')
+            invvdm=self.basis.ubasis.invvdm.T
         )
 
 
@@ -153,5 +141,42 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
     def get_fk_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
-        return (self.fk.mid,)*nfp, (0,)*nfp, (eidx,)*nfp
 
+        rmap = self._srtd_face_fpts[fidx][eidx]
+        cmap = (eidx,)*nfp
+        
+        return (self.fk.mid,)*nfp, rmap, cmap
+
+    def calculateFK(self, nonce):
+        cpans = float(self.cfg.get('constants', 'C_PANS'))
+        maxfk = float(self.cfg.get('constants', 'max_fk'))
+        minfk = float(self.cfg.get('constants', 'min_fk'))
+        intmethod = self.cfg.get('solver', 'interpmethod')
+
+        path = 'fkfields/' + self.cfg.get('solver', 'fkfile').split('.npy')[0] + '.npy'
+        fkfield = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+
+        path = 'fkfields/' + self.cfg.get('solver', 'xfile').split('.npy')[0] + '.npy'
+        X = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+
+        path = 'fkfields/' + self.cfg.get('solver', 'yfile').split('.npy')[0] + '.npy'
+        Y = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+
+        # interp2d only needs 1d data, not meshgrid
+        X = X[0,:]
+        Y = Y[:,0]
+
+        fkinterp = interpolate.interp2d(X, Y, fkfield, kind=intmethod)
+
+        fk = np.zeros((self.nupts, self.neles))
+        coords = self.ploc_at_np('upts').swapaxes(0, 1)
+
+        #(ndims, nupts, nelems) = np.shape(coords)
+
+        for i in range(self.nupts):
+            for j in range(self.neles):
+                [x,y,z] = coords[:,i,j]
+                fk[i,j] = max(minfk, min(maxfk, cpans*fkinterp(x,y)[0]))
+
+        fk  = self._be.matrix((self.nupts, self.neles), tags={'align'}, extent= nonce + 'fk', initval=fk)
+        return fk

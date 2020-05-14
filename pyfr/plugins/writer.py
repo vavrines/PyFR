@@ -74,7 +74,6 @@ class WriterPlugin(BasePlugin):
             out = []
             f1 = intg.system.ele_map[elekeys[i]].F1._get()
             fk = intg.system.ele_map[elekeys[i]].fk._get()
-            fk = self.expandVarAcrossElem(fk, np.shape(f1))
             out.append(self.copyStructure(f1, soln[0]))
             out.append(self.copyStructure(fk, soln[0]))
             out = np.moveaxis(np.array(out),0,1)
