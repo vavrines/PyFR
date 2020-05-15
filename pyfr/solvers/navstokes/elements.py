@@ -166,17 +166,27 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         X = X[0,:]
         Y = Y[:,0]
 
-        fkinterp = interpolate.interp2d(X, Y, fkfield, kind=intmethod)
+        fkinterp = interpolate.RegularGridInterpolator((X,Y), fkfield.T, method=intmethod)
+        #if intmethod == 'nearest':
+            #print(np.shape((X,Y)))
+            #print(np.shape(fkfield))
+            #print(method)
+            #fkinterp = interpolate.RegularGridInterpolator((X,Y), fkfield, method=intmethod)
+        #else:        
+            #fkinterp = interpolate.interp2d(X, Y, fkfield, kind=intmethod)
 
         fk = np.zeros((self.nupts, self.neles))
         coords = self.ploc_at_np('upts').swapaxes(0, 1)
 
         #(ndims, nupts, nelems) = np.shape(coords)
 
-        for i in range(self.nupts):
-            for j in range(self.neles):
+        for j in range(self.neles):
+            avgfk = 0.0
+            for i in range(self.nupts):
                 [x,y,z] = coords[:,i,j]
-                fk[i,j] = max(minfk, min(maxfk, cpans*fkinterp(x,y)[0]))
+                avgfk += cpans*fkinterp((x,y))/self.nupts
+
+            fk[:,j] = max(minfk, min(maxfk, avgfk))
 
         fk  = self._be.matrix((self.nupts, self.neles), tags={'align'}, extent= nonce + 'fk', initval=fk)
         return fk
