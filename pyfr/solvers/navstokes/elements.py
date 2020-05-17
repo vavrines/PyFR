@@ -84,7 +84,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             'nvars' :    self.nvars,
             'srcex' :    self._src_exprs,
             'c'     :    self.cfg.items_as('constants', float),
-            'geo'   :    self.cfg.get('solver', 'geometry')
+            'geo'   :    self.cfg.get('solver', 'geometry'),
+            'dt'    :    self.cfg.get('solver-time-integrator', 'dt')
         }
 
 

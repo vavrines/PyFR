@@ -27,5 +27,9 @@
 tdivtconf[${1}] += rhouforce;
 tdivtconf[${nvars-3}] += rhouforce*u[${1}];
 
+if (u[${nvars-2}] < ${c['min_ku']}){
+	tdivtconf[${nvars-2}] = (${c['min_ku']} - u[${nvars-2}])/${dt};
+}
+
 
 </%pyfr:kernel>
