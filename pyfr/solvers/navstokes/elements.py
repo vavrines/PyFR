@@ -4,6 +4,7 @@ import numpy as np
 from pyfr.solvers.baseadvecdiff import BaseAdvectionDiffusionElements
 from pyfr.solvers.euler.elements import BaseFluidElements
 
+
 from scipy import interpolate
 from io import BytesIO
 import pkgutil
@@ -46,10 +47,10 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         backend.pointwise.register('pyfr.solvers.navstokes.kernels.adaptivefk')
         
         
-        self.ku_src = self._be.matrix((self.nupts, self.neles), tags={'align'})
-        self.wu_src = self._be.matrix((self.nupts, self.neles), tags={'align'})
-        self.F1     = self._be.matrix((self.nupts, self.neles), tags={'align'}, extent= nonce + 'F1')
-        self.fk     = self.calculateFK(nonce)
+        self.ku_src    = self._be.matrix((self.nupts, self.neles), tags={'align'})
+        self.wu_src    = self._be.matrix((self.nupts, self.neles), tags={'align'})
+        self.walldist  = walldist_at_ploc(self, self.ploc_at_np('upts'), 'elems')
+        self.fk        = fk_at_ploc(self, self.ploc_at_np('upts'), 'elems')
         
 
         ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
@@ -68,14 +69,14 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 'tflux', tplargs=tplargs, dims=[self.nqpts, self.neles],
                 u=self._scal_qpts, smats=self.smat_at('qpts'),
                 f=self._vect_qpts, artvisc=self.artvisc,
-                F1=self.F1, fk=self.fk
+                walldist=self.walldist, fk=self.fk
             )
         else:
             self.kernels['tdisf'] = lambda: backend.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, self.neles],
                 u=self.scal_upts_inb, smats=self.smat_at('upts'),
                 f=self._vect_upts, artvisc=self.artvisc,
-                F1=self.F1, fk=self.fk
+                walldist=self.walldist, fk=self.fk
             )
 
 
@@ -96,7 +97,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
              dims=[self.nupts, self.neles], smats=self.smat_at('upts'),
              rcpdjac=self.rcpdjac_at('upts'), gradu=self._vect_upts,
              u=self.scal_upts_inb, ku_src=self.ku_src, wu_src=self.wu_src,
-             ploc=self.ploc_at('upts'), F1=self.F1, fk=self.fk
+             ploc=self.ploc_at('upts'), walldist=self.walldist, fk=self.fk
         )
 
         # ----- NEGDIVCONF KERNELS -----
@@ -130,63 +131,60 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 ku_src=self.ku_src, wu_src=self.wu_src
             )
 
+def fk_at_ploc(self, ploc, nonce):
+    cpans = float(self.cfg.get('constants', 'C_PANS'))
+    maxfk = float(self.cfg.get('constants', 'max_fk'))
+    minfk = float(self.cfg.get('constants', 'min_fk'))
+    intmethod = self.cfg.get('solver', 'interpmethod')
 
-    def get_F1_fpts_for_inter(self, eidx, fidx):
-        nfp = self.nfacefpts[fidx]
+    path = '/fkfields/' + self.cfg.get('solver', 'fkfile').split('.npy')[0] + '.npy'
+    fkfield = np.load(BytesIO(pkgutil.get_data(__name__, path)))
 
-        rmap = self._srtd_face_fpts[fidx][eidx]
-        cmap = (eidx,)*nfp
+    path = '/fkfields/' + self.cfg.get('solver', 'xfile').split('.npy')[0] + '.npy'
+    X = np.load(BytesIO(pkgutil.get_data(__name__, path)))
 
-        return (self.F1.mid,)*nfp, rmap, cmap
+    path = '/fkfields/' + self.cfg.get('solver', 'yfile').split('.npy')[0] + '.npy'
+    Y = np.load(BytesIO(pkgutil.get_data(__name__, path)))
 
-    def get_fk_fpts_for_inter(self, eidx, fidx):
-        nfp = self.nfacefpts[fidx]
 
-        rmap = self._srtd_face_fpts[fidx][eidx]
-        cmap = (eidx,)*nfp
-        
-        return (self.fk.mid,)*nfp, rmap, cmap
+    # interp2d only needs 1d data, not meshgrid
+    X = X[0,:]
+    Y = Y[:,0]
+    fk = np.zeros_like(ploc)
+    (nupts, ndims, nelems) = np.shape(ploc)
 
-    def calculateFK(self, nonce):
-        cpans = float(self.cfg.get('constants', 'C_PANS'))
-        maxfk = float(self.cfg.get('constants', 'max_fk'))
-        minfk = float(self.cfg.get('constants', 'min_fk'))
-        intmethod = self.cfg.get('solver', 'interpmethod')
+    fkinterp = interpolate.RegularGridInterpolator((X,Y), fkfield.T, method=intmethod)
 
-        path = 'fkfields/' + self.cfg.get('solver', 'fkfile').split('.npy')[0] + '.npy'
-        fkfield = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+    for i in range(nupts):
+        for j in range(nelems):
+            [x,y,z] = ploc[i,:,j]
+            fk[i,:,j] = max(minfk, min(maxfk, cpans*fkinterp((x,y)))) # we set fk constant across x,y,z
 
-        path = 'fkfields/' + self.cfg.get('solver', 'xfile').split('.npy')[0] + '.npy'
-        X = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+    fk  = self._be.matrix(np.shape(ploc), tags={'align'}, extent= 'fk' + nonce, initval=fk)
+    return fk
 
-        path = 'fkfields/' + self.cfg.get('solver', 'yfile').split('.npy')[0] + '.npy'
-        Y = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+def walldist_at_ploc(self, ploc, nonce):
+    geo = self.cfg.get('solver', 'geometry')
+    walldist = np.zeros_like(ploc)
+    (nupts, ndims, nelems) = np.shape(ploc)
+    
+    for i in range(nupts):
+        for j in range(nelems):
+            [x,y,z] = ploc[i,:,j]
+            if geo == 'cylinder':
+                d = np.sqrt(x**2 + y**2) - 0.5
+            elif geo == 'tandsphere':
+                d = min(np.sqrt(x**2 + y**2), (x-10.)**2 + y**2) - 0.5
+            elif geo == 'cube':
+                d1 = max(0., np.abs(x) - 0.5)
+                d2 = max(0., np.abs(y) - 0.5)
+                d3 = max(0., np.abs(z) - 0.5)
+                d = np.sqrt(d1**2 + d2**2 + d3**2)
+                d = min(d, y)
+            elif geo == 'TGV':
+                d = 100000000
 
-        # interp2d only needs 1d data, not meshgrid
-        X = X[0,:]
-        Y = Y[:,0]
+            walldist[i,:,j] = d
 
-        fkinterp = interpolate.RegularGridInterpolator((X,Y), fkfield.T, method=intmethod)
-        #if intmethod == 'nearest':
-            #print(np.shape((X,Y)))
-            #print(np.shape(fkfield))
-            #print(method)
-            #fkinterp = interpolate.RegularGridInterpolator((X,Y), fkfield, method=intmethod)
-        #else:        
-            #fkinterp = interpolate.interp2d(X, Y, fkfield, kind=intmethod)
-
-        fk = np.zeros((self.nupts, self.neles))
-        coords = self.ploc_at_np('upts').swapaxes(0, 1)
-
-        #(ndims, nupts, nelems) = np.shape(coords)
-
-        for j in range(self.neles):
-            avgfk = 0.0
-            for i in range(self.nupts):
-                [x,y,z] = coords[:,i,j]
-                avgfk += cpans*fkinterp((x,y))/self.nupts
-
-            fk[:,j] = max(minfk, min(maxfk, avgfk))
-
-        fk  = self._be.matrix((self.nupts, self.neles), tags={'align'}, extent= nonce + 'fk', initval=fk)
-        return fk
+    walldist  = self._be.matrix(np.shape(ploc), tags={'align'}, extent= 'walldist' + nonce, initval=walldist)
+    return walldist

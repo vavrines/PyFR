@@ -7,6 +7,9 @@ from pyfr.solvers.baseadvecdiff import (BaseAdvectionDiffusionBCInters,
                                         BaseAdvectionDiffusionIntInters,
                                         BaseAdvectionDiffusionMPIInters)
 
+from scipy import interpolate
+from io import BytesIO
+import pkgutil
 
 class NavierStokesIntInters(BaseAdvectionDiffusionIntInters):
     def __init__(self, be, lhs, rhs, elemap, cfg):
@@ -24,9 +27,9 @@ class NavierStokesIntInters(BaseAdvectionDiffusionIntInters):
         be.pointwise.register('pyfr.solvers.navstokes.kernels.intconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.intcflux')
 
+        self.fk = fk_at_ploc(self, self._ploc, 'intinters')
+        self.walldist = walldist_at_ploc(self, self._ploc, 'intinters')
 
-        self.F1v = self._view(lhs, 'get_F1_fpts_for_inter') 
-        self.fkv = self._view(lhs, 'get_fk_fpts_for_inter') 
 
         if abs(self._tpl_c['ldg-beta']) == 0.5:
             self.kernels['copy_fpts'] = lambda: ComputeMetaKernel(
@@ -44,7 +47,7 @@ class NavierStokesIntInters(BaseAdvectionDiffusionIntInters):
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
-            F1=self.F1v, fk=self.fkv
+            walldist=self.walldist, fk=self.fk
         )
 
 
@@ -63,8 +66,9 @@ class NavierStokesMPIInters(BaseAdvectionDiffusionMPIInters):
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpiconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux')
 
-        self.F1v = self._xchg_view(lhs, 'get_F1_fpts_for_inter') 
-        self.fkv = self._xchg_view(lhs, 'get_fk_fpts_for_inter') 
+        self.fk = fk_at_ploc(self, self._ploc, 'intinters')
+        self.walldist = walldist_at_ploc(self, self._ploc, 'intinters')
+
 
         self.kernels['con_u'] = lambda: be.kernel(
             'mpiconu', tplargs=tplargs, dims=[self.ninterfpts],
@@ -76,21 +80,9 @@ class NavierStokesMPIInters(BaseAdvectionDiffusionMPIInters):
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
-            F1=self.F1v, fk=self.fkv
+            walldist=self.walldist, fk=self.fk
         )
 
-        # Take fk and F1 from lhs
-        # Do not need to send fk or F1 to rhs
-        #self.kernels['F1_fpts_pack'] = null_comp_kern
-        #self.kernels['fk_fpts_pack'] = null_comp_kern
-        #self.kernels['F1_fpts_send'] = null_mpi_kern
-        #self.kernels['fk_fpts_send'] = null_mpi_kern
-
-        # Do not need to receive fk or F1 from rhs
-        #self.kernels['F1_fpts_recv'] = null_mpi_kern
-        #self.kernels['fk_fpts_recv'] = null_mpi_kern
-        #self.kernels['F1_fpts_unpack'] = null_comp_kern
-        #self.kernels['fk_fpts_unpack'] = null_comp_kern
 
 
 class NavierStokesBaseBCInters(BaseAdvectionDiffusionBCInters):
@@ -111,8 +103,8 @@ class NavierStokesBaseBCInters(BaseAdvectionDiffusionBCInters):
         be.pointwise.register('pyfr.solvers.navstokes.kernels.bcconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.bccflux')
 
-        self.F1v = self._view(lhs, 'get_F1_fpts_for_inter') 
-        self.fkv = self._view(lhs, 'get_fk_fpts_for_inter') 
+        self.fk = fk_at_ploc(self, self._ploc, 'intinters')
+        self.walldist = walldist_at_ploc(self, self._ploc, 'intinters')
 
         self.kernels['con_u'] = lambda: be.kernel(
             'bcconu', tplargs=tplargs, dims=[self.ninterfpts],
@@ -124,7 +116,7 @@ class NavierStokesBaseBCInters(BaseAdvectionDiffusionBCInters):
             ul=self._scal_lhs, gradul=self._vect_lhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
             ploc=self._ploc, artviscl=self._artvisc_lhs,
-            F1=self.F1v, fk=self.fkv
+            walldist=self.walldist, fk=self.fk
         )
 
 
@@ -237,3 +229,61 @@ class NavierStokesSubOutflowBCInters(NavierStokesBaseBCInters):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
         self._tpl_c.update(self._exp_opts(['p'], lhs))
+
+def fk_at_ploc(self, ploc, nonce):
+    cpans = float(self.cfg.get('constants', 'C_PANS'))
+    maxfk = float(self.cfg.get('constants', 'max_fk'))
+    minfk = float(self.cfg.get('constants', 'min_fk'))
+    intmethod = self.cfg.get('solver', 'interpmethod')
+
+    path = '/fkfields/' + self.cfg.get('solver', 'fkfile').split('.npy')[0] + '.npy'
+    fkfield = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+
+    path = '/fkfields/' + self.cfg.get('solver', 'xfile').split('.npy')[0] + '.npy'
+    X = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+
+    path = '/fkfields/' + self.cfg.get('solver', 'yfile').split('.npy')[0] + '.npy'
+    Y = np.load(BytesIO(pkgutil.get_data(__name__, path)))
+
+
+    # interp2d only needs 1d data, not meshgrid
+    X = X[0,:]
+    Y = Y[:,0]
+    fk = np.zeros_like(ploc.data)
+    coords = ploc.data.swapaxes(0, 1)
+    npts = len(coords[:,0]) # shape of coords x vector to get # pts
+
+    fkinterp = interpolate.RegularGridInterpolator((X,Y), fkfield.T, method=intmethod)
+
+    for i in range(npts):
+        [x,y,z] = coords[i,:]
+        fk[:,i] = max(minfk, min(maxfk, cpans*fkinterp((x,y)))) # we set fk constant across x,y,z
+
+    fk  = self._be.matrix(np.shape(ploc.data), tags={'align'}, extent= 'fk' + nonce, initval=fk)
+    return fk
+
+def walldist_at_ploc(self, ploc, nonce):
+    geo = self.cfg.get('solver', 'geometry')
+    walldist = np.zeros_like(ploc.data)
+    coords = ploc.data.swapaxes(0, 1)
+    npts = len(coords[:,0]) # shape of coords x vector to get # pts
+    for i in range(npts):
+        [x,y,z] = coords[i,:]
+        if geo == 'cylinder':
+            d = np.sqrt(x**2 + y**2) - 0.5
+        elif geo == 'tandsphere':
+            d = min(np.sqrt(x**2 + y**2), (x-10.)**2 + y**2) - 0.5
+        elif geo == 'cube':
+            d1 = max(0., np.abs(x) - 0.5)
+            d2 = max(0., np.abs(y) - 0.5)
+            d3 = max(0., np.abs(z) - 0.5)
+            d = np.sqrt(d1**2 + d2**2 + d3**2)
+            d = min(d, y)
+        elif geo == 'TGV':
+            d = 100000000
+
+        walldist[:,i] = d
+
+    walldist  = self._be.matrix(np.shape(ploc.data), tags={'align'}, extent= 'walldist' + nonce, initval=walldist)
+    return walldist
+

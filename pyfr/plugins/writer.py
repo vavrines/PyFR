@@ -72,9 +72,8 @@ class WriterPlugin(BasePlugin):
         for i in range(np.shape(intg.soln)[0]):
             soln = np.moveaxis(intg.soln[i],0,1)
             out = []
-            f1 = intg.system.ele_map[elekeys[i]].F1._get()
             fk = intg.system.ele_map[elekeys[i]].fk._get()
-            out.append(self.copyStructure(f1, soln[0]))
+            fk = fk[:,0,:] # Get first index of ndims (copied 3x)
             out.append(self.copyStructure(fk, soln[0]))
             out = np.moveaxis(np.array(out),0,1)
             outsoln.append(out)

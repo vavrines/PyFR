@@ -11,8 +11,8 @@
               wu_src='inout fpdtype_t'
               t = 'scalar fpdtype_t'
               ploc = 'in fpdtype_t[${str(ndims)}]'
-              F1='inout fpdtype_t'
-              fk='in fpdtype_t'>
+              walldist='in fpdtype_t[${str(ndims)}]'
+              fk='in fpdtype_t[${str(ndims)}]'>
 
 fpdtype_t tmpgradu[${ndims}];
 
@@ -89,9 +89,9 @@ fpdtype_t ku_temp = (ku < ${c['min_ku']}) ? ${c['min_ku']} : ku;
 
 fpdtype_t fk_temp;
 % if c['BLS'] > 0.5:
-	fk_temp = (1 - F1)*fk; // Boundary layer shielding
+	fk_temp = (1 - F1)*fk[0]; // Boundary layer shielding
 % else:
-	fk_temp = fk;
+	fk_temp = fk[0];
 % endif
 
 fk_temp = min(${c['max_fk']}, max(${c['min_fk']}, fk_temp));
@@ -108,34 +108,12 @@ fpdtype_t prod_u = fk_temp*prod + ${c['betastar']}*ku_temp*wu*(1.0 - 1.0/fw);
 // Calculate damping term CDkw
 fpdtype_t CDkw = max(2*rho*${c['sig_w2']}*dkdw_dxi/wu, pow(10.0,-10));
 
-// d = sqrt(x**2 + y**2) - 0.5 for cylinder of diameter 1
-fpdtype_t d;
-% if geo == 'cylinder':
-	d = pow(pow(ploc[0], 2) + pow(ploc[1], 2), 0.5) - 0.5; // Cylinder
-% elif geo == 'tandsphere':
-	d = min(pow(pow(ploc[0], 2) + pow(ploc[1], 2), 0.5) - 0.5, pow(pow(ploc[0]-10, 2) + pow(ploc[1], 2), 0.5) - 0.5); // Tandem spheres
-% elif geo == 'bfstep':
-	if (ploc[0] > 0.0 && ploc[0] < 1.0 && ploc[1] > 1.0){
-		d = pow(pow(ploc[0], 2) + pow(ploc[1]-1, 2), 0.5);
-	}
-	else {
-		d = (ploc[0] <= 0.0) ? ploc[1] - 1.0 : ploc[1];
-	}
-% elif geo == 'cube':
-	fpdtype_t d1 = max(0.0, abs(ploc[0]) - 0.5);
-	fpdtype_t d2 = max(0.0, abs(ploc[1]) - 1.0);
-	fpdtype_t d3 = max(0.0, abs(ploc[2]) - 0.5);
-	d = pow(pow(d1,2) + pow(d2,2) + pow(d3,2), 0.5);
-	d = min(d, ploc[1]);
-% elif geo == 'TGV':
-	d = 1000000;
-% endif
-
 // Calculate blending term F1
+fpdtype_t d = walldist[0];
 fpdtype_t g1 = max(pow(ku_temp, 0.5)/(${c['betastar']}*wu*d), 500*${c['mu']}/(d*d*rho*wu));
 fpdtype_t g2 = min(g1, 4*rho*sig_w2u*ku_temp/(CDkw*d*d));
 fpdtype_t g3 = pow(g2, 4);
-F1 = tanh(g3);
+fpdtype_t F1 = tanh(g3);
 
 // Calculate blended constants
 fpdtype_t alpha = F1*${c['alpha1']} + (1 - F1)*${c['alpha2']};
