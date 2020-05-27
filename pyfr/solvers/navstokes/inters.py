@@ -249,10 +249,10 @@ def fk_at_ploc(self, ploc, nonce):
     # interp2d only needs 1d data, not meshgrid
     X = X[0,:]
     Y = Y[:,0]
-    if isinstance(ploc.data, int):
-        return minfk
-    fk = np.zeros_like(ploc.data)
-    coords = ploc.data.swapaxes(0, 1)
+
+    plocdata = ploc.get()
+    fk = np.zeros_like(plocdata)
+    coords = plocdata.swapaxes(0, 1)
     npts = len(coords[:,0]) # shape of coords x vector to get # pts
 
     fkinterp = interpolate.RegularGridInterpolator((X,Y), fkfield.T, method=intmethod)
@@ -261,13 +261,15 @@ def fk_at_ploc(self, ploc, nonce):
         [x,y,z] = coords[i,:]
         fk[:,i] = max(minfk, min(maxfk, cpans*fkinterp((x,y)))) # we set fk constant across x,y,z
 
-    fk  = self._be.matrix(np.shape(ploc.data), tags={'align'}, extent= 'fk' + nonce, initval=fk)
+    fk  = self._be.matrix(np.shape(plocdata), tags={'align'}, extent= 'fk' + nonce, initval=fk)
     return fk
 
 def walldist_at_ploc(self, ploc, nonce):
     geo = self.cfg.get('solver', 'geometry')
-    walldist = np.zeros_like(ploc.data)
-    coords = ploc.data.swapaxes(0, 1)
+    plocdata = ploc.get()
+    walldist = np.zeros_like(plocdata)    
+
+    coords = plocdata.swapaxes(0, 1)
     npts = len(coords[:,0]) # shape of coords x vector to get # pts
     for i in range(npts):
         [x,y,z] = coords[i,:]
@@ -286,6 +288,6 @@ def walldist_at_ploc(self, ploc, nonce):
 
         walldist[:,i] = d
 
-    walldist  = self._be.matrix(np.shape(ploc.data), tags={'align'}, extent= 'walldist' + nonce, initval=walldist)
+    walldist  = self._be.matrix(np.shape(plocdata), tags={'align'}, extent= 'walldist' + nonce, initval=walldist)
     return walldist
 
