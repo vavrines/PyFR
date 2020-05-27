@@ -249,6 +249,8 @@ def fk_at_ploc(self, ploc, nonce):
     # interp2d only needs 1d data, not meshgrid
     X = X[0,:]
     Y = Y[:,0]
+    if isinstance(ploc.data, int):
+        return minfk
     fk = np.zeros_like(ploc.data)
     coords = ploc.data.swapaxes(0, 1)
     npts = len(coords[:,0]) # shape of coords x vector to get # pts
