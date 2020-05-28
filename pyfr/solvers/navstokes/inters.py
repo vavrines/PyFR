@@ -24,8 +24,7 @@ class NavierStokesIntInters(BaseAdvectionDiffusionIntInters):
         be.pointwise.register('pyfr.solvers.navstokes.kernels.intconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.intcflux')
 
-
-        self.F1 = self._view(lhs, 'get_F1_fpts_for_inter') 
+        self.walldist = walldist_at_ploc(self, self._ploc, 'intinters')
 
         if abs(self._tpl_c['ldg-beta']) == 0.5:
             self.kernels['copy_fpts'] = lambda: ComputeMetaKernel(
@@ -43,7 +42,7 @@ class NavierStokesIntInters(BaseAdvectionDiffusionIntInters):
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
-            F1=self.F1
+            walldist=self.walldist
         )
 
 
@@ -62,7 +61,7 @@ class NavierStokesMPIInters(BaseAdvectionDiffusionMPIInters):
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpiconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux')
 
-        self.F1 = self._xchg_view(lhs, 'get_F1_fpts_for_inter') 
+        self.walldist = walldist_at_ploc(self, self._ploc, 'intinters')
 
         self.kernels['con_u'] = lambda: be.kernel(
             'mpiconu', tplargs=tplargs, dims=[self.ninterfpts],
@@ -74,7 +73,7 @@ class NavierStokesMPIInters(BaseAdvectionDiffusionMPIInters):
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
-            F1=self.F1
+            walldist=self.walldist
         )
 
 
@@ -96,7 +95,7 @@ class NavierStokesBaseBCInters(BaseAdvectionDiffusionBCInters):
         be.pointwise.register('pyfr.solvers.navstokes.kernels.bcconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.bccflux')
 
-        self.F1 = self._view(lhs, 'get_F1_fpts_for_inter') 
+        self.walldist = walldist_at_ploc(self, self._ploc, 'intinters')
 
         self.kernels['con_u'] = lambda: be.kernel(
             'bcconu', tplargs=tplargs, dims=[self.ninterfpts],
@@ -108,7 +107,7 @@ class NavierStokesBaseBCInters(BaseAdvectionDiffusionBCInters):
             ul=self._scal_lhs, gradul=self._vect_lhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
             ploc=self._ploc, artviscl=self._artvisc_lhs,
-            F1=self.F1
+            walldist=self.walldist
         )
 
 
@@ -221,3 +220,34 @@ class NavierStokesSubOutflowBCInters(NavierStokesBaseBCInters):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
         self._tpl_c.update(self._exp_opts(['p'], lhs))
+
+def walldist_at_ploc(self, ploc, nonce):
+    geo = self.cfg.get('solver', 'geometry')
+    plocdata = ploc.get()
+    walldist = np.zeros_like(plocdata)    
+
+    coords = plocdata.swapaxes(0, 1)
+    npts = len(coords[:,0]) # shape of coords x vector to get # pts
+    for i in range(npts):
+        [x,y,z] = coords[i,:]
+        if geo == 'cylinder':
+            d = np.sqrt(x**2 + y**2) - 0.5
+        elif geo == 'squarecylinder':
+            d1 = max(0., abs(x) - 0.5)
+            d2 = max(0., abs(y) - 0.5) 
+            d = np.sqrt(d1**2 + d2**2)
+        elif geo == 'tandsphere':
+            d = min(np.sqrt(x**2 + y**2), (x-10.)**2 + y**2) - 0.5
+        elif geo == 'cube':
+            d1 = max(0., np.abs(x) - 0.5)
+            d2 = max(0., np.abs(y) - 0.5)
+            d3 = max(0., np.abs(z) - 0.5)
+            d = np.sqrt(d1**2 + d2**2 + d3**2)
+            d = min(d, y)
+        elif geo == 'TGV':
+            d = 100000000
+
+        walldist[:,i] = d
+
+    walldist  = self._be.matrix(np.shape(plocdata), tags={'align'}, extent= 'walldist' + nonce, initval=walldist)
+    return walldist

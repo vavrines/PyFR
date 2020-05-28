@@ -11,7 +11,7 @@
               wu_src='inout fpdtype_t'
               t = 'scalar fpdtype_t'
               ploc = 'in fpdtype_t[${str(ndims)}]'
-              F1='inout fpdtype_t'>
+              walldist='in fpdtype_t[${str(ndims)}]'>
 
 
 fpdtype_t tmpgradu[${ndims}];
@@ -99,35 +99,13 @@ fpdtype_t prod_u = ${c['fk']}*prod + ${c['betastar']}*ku_temp*wu*(1.0 - 1.0/${c[
 // Calculate damping term CDkw
 fpdtype_t CDkw = max(2*rho*sig_w2u*dkdw_dxi/wu, pow(10.0,-10));
 
-// Wall distance
-fpdtype_t d;
-% if geo == 'cylinder':
-	d = pow(pow(ploc[0], 2) + pow(ploc[1], 2), 0.5) - 0.5; // Cylinder
-% elif geo == 'tandsphere':
-	d = min(pow(pow(ploc[0], 2) + pow(ploc[1], 2), 0.5) - 0.5, pow(pow(ploc[0]-10, 2) + pow(ploc[1], 2), 0.5) - 0.5); // Tandem spheres
-% elif geo == 'bfstep':
-	if (ploc[0] > 0.0 && ploc[0] < 1.0 && ploc[1] > 1.0){
-		d = pow(pow(ploc[0], 2) + pow(ploc[1]-1, 2), 0.5);
-	}
-	else {
-		d = (ploc[0] <= 0.0) ? ploc[1] - 1.0 : ploc[1];
-	}
-% elif geo == 'cube':
-	fpdtype_t d1 = max(0.0, abs(ploc[0]) - 0.5);
-	fpdtype_t d2 = max(0.0, abs(ploc[1]) - 1.0);
-	fpdtype_t d3 = max(0.0, abs(ploc[2]) - 0.5);
-	d = pow(pow(d1,2) + pow(d2,2) + pow(d3,2), 0.5);
-	d = min(d, ploc[1]);
-% elif geo == 'TGV':
-	d = 100000;
-% endif
-
 
 // Calculate blending term F1
+fpdtype_t d = walldist[0];
 fpdtype_t g1 = max(pow(ku_temp, 0.5)/(${c['betastar']}*wu*d), 500*${c['mu']}/(d*d*rho*wu));
 fpdtype_t g2 = min(g1, 4*rho*sig_w2u*ku_temp/(CDkw*d*d));
 fpdtype_t g3 = pow(g2, 4);
-F1 = tanh(g3);
+fpdtype_t F1 = tanh(g3);
 
 // Calculate blended constants
 fpdtype_t alpha = F1*${c['alpha1']} + (1 - F1)*${c['alpha2']};

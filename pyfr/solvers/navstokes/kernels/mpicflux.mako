@@ -18,20 +18,20 @@
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'
        		  t = 'scalar fpdtype_t'
-              F1='in view fpdtype_t'>
+              walldist='in fpdtype_t[${str(ndims)}]'>
     // Perform the Riemann solve
     fpdtype_t ficomm[${nvars}], fvcomm;
     ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'ficomm')};
 
 % if beta != -0.5:
     fpdtype_t fvl[${ndims}][${nvars}] = {{0}};
-    ${pyfr.expand('viscous_flux_add', 'ul', 'gradul', 'fvl', 't', 'F1')};
+    ${pyfr.expand('viscous_flux_add', 'ul', 'gradul', 'fvl', 't', 'walldist')};
     ${pyfr.expand('artificial_viscosity_add', 'gradul', 'fvl', 'artviscl')};
 % endif
 
 % if beta != 0.5:
     fpdtype_t fvr[${ndims}][${nvars}] = {{0}};
-    ${pyfr.expand('viscous_flux_add', 'ur', 'gradur', 'fvr', 't', 'F1')};
+    ${pyfr.expand('viscous_flux_add', 'ur', 'gradur', 'fvr', 't', 'walldist')};
     ${pyfr.expand('artificial_viscosity_add', 'gradur', 'fvr', 'artviscr')};
 % endif
 

@@ -22,6 +22,7 @@ class BaseAdvectionIntInters(BaseInters):
         # Generate the constant matrices
         self._mag_pnorm_lhs = const_mat(lhs, 'get_mag_pnorms_for_inter')
         self._norm_pnorm_lhs = const_mat(lhs, 'get_norm_pnorms_for_inter')
+        self._ploc = self._const_mat(lhs, 'get_ploc_for_inter')
 
     def _gen_perm(self, lhs, rhs):
         # Arbitrarily, take the permutation which results in an optimal
@@ -62,6 +63,8 @@ class BaseAdvectionMPIInters(BaseInters):
             'unpack', self._scal_rhs
         )
 
+        self._ploc = self._const_mat(lhs, 'get_ploc_for_inter')
+
 
 class BaseAdvectionBCInters(BaseInters):
     type = None
@@ -81,7 +84,7 @@ class BaseAdvectionBCInters(BaseInters):
         self._scal_lhs = self._scal_view(lhs, 'get_scal_fpts_for_inter')
         self._mag_pnorm_lhs = const_mat(lhs, 'get_mag_pnorms_for_inter')
         self._norm_pnorm_lhs = const_mat(lhs, 'get_norm_pnorms_for_inter')
-        self._ploc = None
+        self._ploc = self._const_mat(lhs, 'get_ploc_for_inter')
 
     def _eval_opts(self, opts, default=None):
         # Boundary conditions, much like initial conditions, can be
@@ -110,8 +113,5 @@ class BaseAdvectionBCInters(BaseInters):
                 exprs[k] = cfg.getexpr(sect, k, default[k], subs=subs)
             else:
                 exprs[k] = cfg.getexpr(sect, k, subs=subs)
-
-        if any('ploc' in ex for ex in exprs.values()) and not self._ploc:
-            self._ploc = self._const_mat(lhs, 'get_ploc_for_inter')
 
         return exprs

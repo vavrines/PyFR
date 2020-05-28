@@ -3,7 +3,7 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
 % if ndims == 2:
-<%pyfr:macro name='viscous_flux_add' params='uin, grad_uin, fout, t, F1'>
+<%pyfr:macro name='viscous_flux_add' params='uin, grad_uin, fout, t, walldist'>
     fpdtype_t rho = uin[0], rhou = uin[1], rhov = uin[2], E = uin[3];
 
     fpdtype_t rcprho = 1.0/rho;
@@ -32,8 +32,8 @@
 % endif
 
     // Turbulence model variables and turbulent viscosity
-    fpdtype_t ku = (uin[4] > ${c['min_ku']}) ? uin[4] : ${c['min_ku']};
-    //fpdtype_t wu = (uin[5] > ${c['min_wu']}) ? uin[5] : ${c['min_wu']};
+    fpdtype_t ku = uin[4];
+    fpdtype_t ku_temp = (ku > ${c['min_ku']}) ? ku : ${c['min_ku']};
     fpdtype_t wu = exp(uin[5]);
 
 	fpdtype_t mu_t = (rho*ku/wu < 0.0) ? 0.0 : rho*ku/wu;
@@ -59,6 +59,24 @@
     fpdtype_t ku_x = grad_uin[0][4];    fpdtype_t ku_y = grad_uin[1][4];
     fpdtype_t wu_x = grad_uin[0][5];    fpdtype_t wu_y = grad_uin[1][5];
 
+	fpdtype_t sig_w2u = ${c['sig_w2']}*${c['fw']/c['fk']};
+    fpdtype_t dk_dx, dw_dx, dkdw_dxi = 0;
+	% for i in range(ndims): 
+		dk_dx = rcprho*(grad_uin[${i}][${nvars-2}] - grad_uin[${i}][0]*uin[${nvars-2}]); 
+		dw_dx = rcprho*(grad_uin[${i}][${nvars-1}] - grad_uin[${i}][0]*uin[${nvars-1}]); 
+		dkdw_dxi += dk_dx*dw_dx;
+	% endfor
+
+	// Calculate damping term CDkw
+	fpdtype_t CDkw = max(2*rho*${c['sig_w2']}*dkdw_dxi/wu, pow(10.0,-10));
+
+	// Calculate blending term F1
+	fpdtype_t d = walldist[0];
+	fpdtype_t g1 = max(pow(ku_temp, 0.5)/(${c['betastar']}*wu*d), 500*${c['mu']}/(d*d*rho*wu));
+	fpdtype_t g2 = min(g1, 4*rho*sig_w2u*ku_temp/(CDkw*d*d));
+	fpdtype_t g3 = pow(g2, 4);
+	fpdtype_t F1 = tanh(g3);
+
     fpdtype_t sig_ku = ${c['fw']/c['fk']}*(F1*${c['sig_k1']} + (1-F1)*${c['sig_k2']});
     fpdtype_t sig_wu = ${c['fw']/c['fk']}*(F1*${c['sig_w1']} + (1-F1)*${c['sig_w2']});
 
@@ -69,7 +87,7 @@
 
 </%pyfr:macro>
 % elif ndims == 3:
-<%pyfr:macro name='viscous_flux_add' params='uin, grad_uin, fout, t, F1'>
+<%pyfr:macro name='viscous_flux_add' params='uin, grad_uin, fout, t, walldist'>
     fpdtype_t rho  = uin[0];
     fpdtype_t rhou = uin[1], rhov = uin[2], rhow = uin[3];
     fpdtype_t E    = uin[4];
@@ -106,8 +124,8 @@
     fpdtype_t mu_c = ${c['mu']};
 % endif
 
-    fpdtype_t ku = (uin[5] > ${c['min_ku']}) ? uin[5] : ${c['min_ku']};
-    //fpdtype_t wu = (uin[5] > ${c['min_wu']}) ? uin[5] : ${c['min_wu']};
+    fpdtype_t ku = uin[5];
+    fpdtype_t ku_temp = (ku > ${c['min_ku']}) ? ku : ${c['min_ku']};
     fpdtype_t wu = exp(uin[5]);
 
 	fpdtype_t mu_t = (rho*ku/wu < 0.0) ? 0.0 : rho*ku/wu;
@@ -138,6 +156,24 @@
     // Turbulence model gradients 
     fpdtype_t ku_x = grad_uin[0][5];    fpdtype_t ku_y = grad_uin[1][5];    fpdtype_t ku_z = grad_uin[2][5];
     fpdtype_t wu_x = grad_uin[0][6];    fpdtype_t wu_y = grad_uin[1][6];    fpdtype_t wu_z = grad_uin[2][6];
+
+	fpdtype_t sig_w2u = ${c['sig_w2']}*${c['fw']/c['fk']};
+    fpdtype_t dk_dx, dw_dx, dkdw_dxi = 0;
+	% for i in range(ndims): 
+		dk_dx = rcprho*(grad_uin[${i}][${nvars-2}] - grad_uin[${i}][0]*uin[${nvars-2}]); 
+		dw_dx = rcprho*(grad_uin[${i}][${nvars-1}] - grad_uin[${i}][0]*uin[${nvars-1}]); 
+		dkdw_dxi += dk_dx*dw_dx;
+	% endfor
+
+	// Calculate damping term CDkw
+	fpdtype_t CDkw = max(2*rho*${c['sig_w2']}*dkdw_dxi/wu, pow(10.0,-10));
+
+	// Calculate blending term F1
+	fpdtype_t d = walldist[0];
+	fpdtype_t g1 = max(pow(ku_temp, 0.5)/(${c['betastar']}*wu*d), 500*${c['mu']}/(d*d*rho*wu));
+	fpdtype_t g2 = min(g1, 4*rho*sig_w2u*ku_temp/(CDkw*d*d));
+	fpdtype_t g3 = pow(g2, 4);
+	fpdtype_t F1 = tanh(g3);
 
     fpdtype_t sig_ku = ${c['fw']/c['fk']}*(F1*${c['sig_k1']} + (1-F1)*${c['sig_k2']});
     fpdtype_t sig_wu = ${c['fw']/c['fk']}*(F1*${c['sig_w1']} + (1-F1)*${c['sig_w2']});

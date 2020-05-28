@@ -42,21 +42,21 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         
         self.ku_src = self._be.matrix((self.nupts, self.neles), tags={'align'})
         self.wu_src = self._be.matrix((self.nupts, self.neles), tags={'align'})
-        self.F1     = self._be.matrix((self.nupts, self.neles), tags={'align'}, extent= nonce + 'F1')
+        self.walldist  = walldist_at_ploc(self, self.ploc_at_np('upts'), 'elems')
 
         if 'flux' in self.antialias:
             self.kernels['tdisf'] = lambda: backend.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nqpts, self.neles],
                 u=self._scal_qpts, smats=self.smat_at('qpts'),
                 f=self._vect_qpts, artvisc=self.artvisc,
-                F1=self.F1
+                walldist=self.walldist
             )
         else:
             self.kernels['tdisf'] = lambda: backend.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, self.neles],
                 u=self.scal_upts_inb, smats=self.smat_at('upts'),
                 f=self._vect_upts, artvisc=self.artvisc,
-                F1=self.F1
+                walldist=self.walldist
             )
 
 
@@ -78,7 +78,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
              dims=[self.nupts, self.neles], smats=self.smat_at('upts'),
              rcpdjac=self.rcpdjac_at('upts'), gradu=self._vect_upts,
              u=self.scal_upts_inb, ku_src=self.ku_src, wu_src=self.wu_src,
-             ploc=self.ploc_at('upts'), F1=self.F1
+             ploc=self.ploc_at('upts'), walldist=self.walldist
         )
 
         # ----- NEGDIVCONF KERNELS -----
@@ -113,11 +113,32 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             )
 
 
-    def get_F1_fpts_for_inter(self, eidx, fidx):
-        nfp = self.nfacefpts[fidx]
+def walldist_at_ploc(self, ploc, nonce):
+    geo = self.cfg.get('solver', 'geometry')
+    walldist = np.zeros_like(ploc)
+    (nupts, ndims, nelems) = np.shape(ploc)
+    
+    for i in range(nupts):
+        for j in range(nelems):
+            [x,y,z] = ploc[i,:,j]
+            if geo == 'cylinder':
+                d = np.sqrt(x**2 + y**2) - 0.5
+            elif geo == 'squarecylinder':
+                d1 = max(0., abs(x) - 0.5)
+                d2 = max(0., abs(y) - 0.5) 
+                d = np.sqrt(d1**2 + d2**2)
+            elif geo == 'tandsphere':
+                d = min(np.sqrt(x**2 + y**2), (x-10.)**2 + y**2) - 0.5
+            elif geo == 'cube':
+                d1 = max(0., np.abs(x) - 0.5)
+                d2 = max(0., np.abs(y) - 0.5)
+                d3 = max(0., np.abs(z) - 0.5)
+                d = np.sqrt(d1**2 + d2**2 + d3**2)
+                d = min(d, y)
+            elif geo == 'TGV':
+                d = 100000000
 
-        rmap = self._srtd_face_fpts[fidx][eidx]
-        cmap = (eidx,)*nfp
+            walldist[i,:,j] = d
 
-        return (self.F1.mid,)*nfp, rmap, cmap
-
+    walldist  = self._be.matrix(np.shape(ploc), tags={'align'}, extent= 'walldist' + nonce, initval=walldist)
+    return walldist

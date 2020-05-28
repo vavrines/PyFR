@@ -6,14 +6,14 @@
 
 <% tau = c['ldg-tau'] %>
 
-<%pyfr:macro name='bc_common_flux_state' params='ul, gradul, artviscl, nl, magnl, ploc, t, F1'>
+<%pyfr:macro name='bc_common_flux_state' params='ul, gradul, artviscl, nl, magnl, ploc, t, walldist'>
     // Viscous states
     fpdtype_t ur[${nvars}], gradur[${ndims}][${nvars}];
     ${pyfr.expand('bc_ldg_state', 'ul', 'nl', 'ur', 'ploc', 't')};
     ${pyfr.expand('bc_ldg_grad_state', 'ul', 'nl', 'gradul', 'gradur')};
 
     fpdtype_t fvr[${ndims}][${nvars}] = {{0}};
-    ${pyfr.expand('viscous_flux_add', 'ur', 'gradur', 'fvr', 't', 'F1')};
+    ${pyfr.expand('viscous_flux_add', 'ur', 'gradur', 'fvr', 't', 'walldist')};
     ${pyfr.expand('artificial_viscosity_add', 'gradur', 'fvr', 'artviscl')};
 
     // Inviscid (Riemann solve) state
