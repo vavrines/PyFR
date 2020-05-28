@@ -2,7 +2,7 @@
 
 from pyfr.solvers.baseadvecdiff import BaseAdvectionDiffusionElements
 from pyfr.solvers.euler.elements import BaseFluidElements
-
+import numpy as np
 
 class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
     # Use the density field for shock sensing
