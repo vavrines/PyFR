@@ -42,9 +42,9 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         
         self.ku_src = self._be.matrix((self.nupts, self.neles), tags={'align'})
         self.wu_src = self._be.matrix((self.nupts, self.neles), tags={'align'})
-        self.walldist  = walldist_at_ploc(self, self.ploc_at_np('upts'), 'elems')
 
         if 'flux' in self.antialias:
+            self.walldist  = walldist_at_ploc(self, self.ploc_at_np('qpts'), 'elems')
             self.kernels['tdisf'] = lambda: backend.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nqpts, self.neles],
                 u=self._scal_qpts, smats=self.smat_at('qpts'),
@@ -52,6 +52,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 walldist=self.walldist
             )
         else:
+            self.walldist  = walldist_at_ploc(self, self.ploc_at_np('upts'), 'elems')
             self.kernels['tdisf'] = lambda: backend.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, self.neles],
                 u=self.scal_upts_inb, smats=self.smat_at('upts'),
