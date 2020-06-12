@@ -51,6 +51,7 @@ if (shockcell == 1){
 		// Compute filtercoeffs = pointwise filter coefficients
 		filtercoeffs[0] = 1.0; // Leave mean mode unfiltered
 		% for i in range(nupts-1):
+			if (magratios[${i}] > 1.0){
 				filtercoeffs[${i+1}] = fmax(0.0, 1.0/magratios[${i}]);
 			}
 			else {
