@@ -47,16 +47,35 @@ if (shockcell == 1){
 		magratios[${i}] = pow(solpredmodes[${i+1}][${svar}]/solpredmodes[0][${svar}], 2.0)/targetratio;
 	% endfor
 
-	// Compute filtercoeffs = pointwise filter coefficients
-	filtercoeffs[0] = 1.0; // Leave mean mode unfiltered
-	% for i in range(nupts-1):
-		if (magratios[${i}] > 1.0){
-			filtercoeffs[${i+1}] = fmax(0.0, 1.0/magratios[${i}]);
-		}
-		else {
-			filtercoeffs[${i+1}] = 1.0;
-		}
-	% endfor
+	% if filtermethod == 'pointwise':
+		// Compute filtercoeffs = pointwise filter coefficients
+		filtercoeffs[0] = 1.0; // Leave mean mode unfiltered
+		% for i in range(nupts-1):
+				filtercoeffs[${i+1}] = fmax(0.0, 1.0/magratios[${i}]);
+			}
+			else {
+				filtercoeffs[${i+1}] = 1.0;
+			}
+		% endfor
+
+	% elif filtermethod == 'linear':
+		// Compute filtercoeffs = pointwise filter coefficients
+		fpdtype_t maxslope = 0.0, slope;
+		% for i in range(nupts-1):			
+			if (magratios[${i}] > 1.0){
+				slope = fmax(0.0, 1.0 - 1.0/magratios[${i}])/${ubdegs[i+1]};
+				if (slope > maxslope){ 
+					maxslope = slope;
+				}
+			}
+		% endfor
+
+		filtercoeffs[0] = 1.0; // Leave mean mode unfiltered
+		% for i in range(nupts-1):
+			filtercoeffs[${i+1}] = fmax(0.0, 1.0 - maxslope*${ubdegs[i+1]});
+		% endfor
+
+	% endif
 
 	//printf("%f\n", magratios[2]);
 	// Compute filteredsolmodes = filtered solution modes

@@ -48,7 +48,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 nvars=self.nvars, ndims=self.ndims, nupts=self.nupts, svar=shockvar,
                 c=self.cfg.items_as('solver-modal-filtering', float),
                 order=self.basis.order, ubdegs=ubdegs, srcex=self._src_exprs,
-                vdm=vdm, invvdm=invvdm, dt=dt, kexp=self.cfg.get('solver-modal-filtering', 'exponent')
+                vdm=vdm, invvdm=invvdm, dt=dt, kexp=self.cfg.get('solver-modal-filtering', 'exponent'),
+                filtermethod=self.cfg.get('solver-modal-filtering', 'filter-method')
             )
 
 
