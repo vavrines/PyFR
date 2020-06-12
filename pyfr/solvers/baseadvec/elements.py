@@ -15,11 +15,14 @@ class BaseAdvectionElements(BaseElements):
             bufs = {'scal_fpts', 'vect_upts'}
 
         if self._soln_in_src_exprs:
-            if 'div-flux' in self.antialias:
-                bufs |= {'scal_qpts_cpy'}
-            else:
-                bufs |= {'scal_upts_cpy'}
+	        if 'div-flux' in self.antialias:
+	            bufs |= {'scal_qpts_cpy'}
+	        else:
+	            bufs |= {'scal_upts_cpy'}
 
+        if self.cfg.get('solver', 'shock-capturing', 'none') == 'modal-filtering':
+            bufs |= {'scal_upts_cpy'}
+            
         return bufs
 
     def set_backend(self, *args, **kwargs):
