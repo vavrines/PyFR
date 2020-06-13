@@ -40,16 +40,17 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             # Get time step
             dt = self.cfg.get('solver-time-integrator', 'dt')
 
-            #[vdm, invvdm] = self.makeLegendreMats()
-            [vdm, invvdm] = [self.basis.ubasis.vdm.T, self.basis.ubasis.invvdm.T]            
-
-
+            # If using Legendre modes
+            [vdm, invvdm] = self.makeLegendreMats()
+            # If using Jacobi modes
+            #[vdm, invvdm] = [self.basis.ubasis.vdm.T, self.basis.ubasis.invvdm.T]            
+            
             sftplargs = dict(
                 nvars=self.nvars, ndims=self.ndims, nupts=self.nupts, svar=shockvar,
                 c=self.cfg.items_as('solver-modal-filtering', float),
                 order=self.basis.order, ubdegs=ubdegs, srcex=self._src_exprs,
-                vdm=vdm, invvdm=invvdm, dt=dt, kexp=self.cfg.get('solver-modal-filtering', 'exponent'),
-                filtermethod=self.cfg.get('solver-modal-filtering', 'filter-method')
+                vdm=vdm, invvdm=invvdm, dt=dt, kexp=self.cfg.get('solver-modal-filtering', 'exponent', '-4'),
+                filtermethod=self.cfg.get('solver-modal-filtering', 'filter-method', 'pointwise')
             )
 
 
@@ -89,10 +90,11 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
 
     def makeLegendreMats(self):
-        xi   = self.basis.upts[:,0]
-        eta  = self.basis.upts[:,1]
-        zeta = self.basis.upts[:,2]
-        vdm  = np.polynomial.legendre.legvander3d(xi, eta, zeta, [self.basis.order]*3)
+        upts =  self.basis.upts
+        if self.ndims == 2:
+            vdm  = np.polynomial.legendre.legvander2d(upts[:,0], upts[:,1], [self.basis.order]*2)
+        elif self.ndims == 3:
+            vdm  = np.polynomial.legendre.legvander3d(upts[:,0], upts[:,1], upts[:,2], [self.basis.order]*3)
         invvdm = np.linalg.inv(vdm)
         invvdm[np.abs(invvdm) < 1e-7] = 0.0
         return [vdm, invvdm]
