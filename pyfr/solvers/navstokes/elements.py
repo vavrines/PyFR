@@ -40,10 +40,29 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             # Get time step
             dt = self.cfg.get('solver-time-integrator', 'dt')
 
-            # If using Legendre modes
-            [vdm, invvdm] = self.makeLegendreMats()
-            # If using Jacobi modes
-            #[vdm, invvdm] = [self.basis.ubasis.vdm.T, self.basis.ubasis.invvdm.T]            
+            tensorprodelem = self.basis.nupts == (self.basis.order+1)**self.ndims
+            # # If tensor product element, use Legendre modes
+            if tensorprodelem:
+                [vdm, invvdm] = self.makeLegendreMats()
+            # Else use Jacobi modes
+            else:
+                [vdm, invvdm] = [self.basis.ubasis.vdm.T, self.basis.ubasis.invvdm.T]  
+
+            # DEBUG CODE
+            # [vdml, invvdml] = self.makeLegendreMats()  
+            # [vdmj, invvdmj] = [self.basis.ubasis.vdm.T, self.basis.ubasis.invvdm.T]      
+            # x = self.basis.upts[:,0]  
+            # y = self.basis.upts[:,1]
+            # f = x
+            # q = np.matmul(invvdml, f)
+            # q[np.abs(q) < 1e-10] = 0.0
+            # q = np.reshape(q, (self.basis.order+1, self.basis.order+1))
+            # print(q)
+            # q = np.matmul(invvdmj, f)
+            # q[np.abs(q) < 1e-10] = 0.0
+            # q = np.reshape(q, (self.basis.order+1, self.basis.order+1))
+            # print(q)
+            # input()
             
             sftplargs = dict(
                 nvars=self.nvars, ndims=self.ndims, nupts=self.nupts, svar=shockvar,

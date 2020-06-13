@@ -64,7 +64,7 @@ if (shockcell == 1){
 		fpdtype_t maxslope = 0.0, slope;
 		% for i in range(nupts-1):			
 			if (magratios[${i}] > 1.0){
-				slope = fmax(0.0, 1.0 - 1.0/magratios[${i}])/${ubdegs[i+1]};
+				slope = (magratios[${i}] - 1.0)/${ubdegs[i+1]};
 				if (slope > maxslope){ 
 					maxslope = slope;
 				}
@@ -73,7 +73,24 @@ if (shockcell == 1){
 
 		filtercoeffs[0] = 1.0; // Leave mean mode unfiltered
 		% for i in range(nupts-1):
-			filtercoeffs[${i+1}] = fmax(0.0, 1.0 - maxslope*${ubdegs[i+1]});
+			filtercoeffs[${i+1}] = fmax(0.0, 1.0/(1.0 + maxslope*${ubdegs[i+1]}));
+		% endfor
+
+	% elif filtermethod == 'exponential':
+		// Compute filtercoeffs = pointwise filter coefficients
+		fpdtype_t maxalpha = 0.0, alpha, diff;
+		% for i in range(nupts-1):			
+			if (magratios[${i}] > 1.0){
+				slope = (magratios[${i}] - 1.0)/${ubdegs[i+1]};
+				if (slope > maxslope){ 
+					maxslope = slope;
+				}
+			}
+		% endfor
+
+		filtercoeffs[0] = 1.0; // Leave mean mode unfiltered
+		% for i in range(nupts-1):
+			filtercoeffs[${i+1}] = fmax(0.0, 1.0/(1.0 + maxslope*${ubdegs[i+1]}));
 		% endfor
 
 	% endif
