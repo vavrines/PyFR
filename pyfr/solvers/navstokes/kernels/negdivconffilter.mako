@@ -12,7 +12,7 @@
 
 fpdtype_t solpred[${nupts}][${nvars}],      magratios[${nupts-1}];
 fpdtype_t solpredmodes[${nupts}][${nvars}], filteredsolmodes[${nupts}][${nvars}], filtercoeffs[${nupts}];
-fpdtype_t tmp, targetratio, maxslope = 0.0, slope;
+fpdtype_t tmp, targetratio, maxslope = 0.0, maxalpha = 0.0, slope, alpha;
 
 // Calculate transformed divF
 % for i in range(nupts):
@@ -41,7 +41,7 @@ if (shockcell == 1){
 		// ubdegs = total order term (index offset + 1 since ignoring mean mode)
 		// Target ratio = k^-4, value starts at 2 since mode ratios start at 1
 		% for i in range(nupts-1):
-			targetratio = pow(${ubdegs[i+1] + 1.0}, ${kexp});
+			targetratio = pow(${ubdegs[i+1] + 1.0}, ${pexp});
 			magratios[${i}] = pow(solpredmodes[${i+1}][${svar}]/solpredmodes[0][${svar}], 2.0)/targetratio;
 		% endfor
 
@@ -71,6 +71,22 @@ if (shockcell == 1){
 			filtercoeffs[0] = 1.0; // Leave mean mode unfiltered
 			% for i in range(nupts-1):
 				filtercoeffs[${i+1}] = fmax(0.0, 1.0/(1.0 + maxslope*${ubdegs[i+1]}));
+			% endfor
+		% elif filtermethod == 'exponential':
+			// Compute filtercoeffs = pointwise filter coefficients
+			maxalpha = 0.0;
+			% for i in range(nupts-1):			
+				if (magratios[${i}] > 1.0){
+					alpha = log(1.0/magratios[${i}])/(-pow(${(i+1.)/max(ubdegs)}, ${kexp}));
+					if (alpha > maxalpha){ 
+						maxalpha = alpha;
+					}
+				}
+			% endfor
+
+			filtercoeffs[0] = 1.0; // Leave mean mode unfiltered
+			% for i in range(nupts-1):
+				filtercoeffs[${i+1}] = exp(-maxalpha*pow(${(i+1.)/max(ubdegs)}, ${kexp}));
 			% endfor
 		% endif
 
