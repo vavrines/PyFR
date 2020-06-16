@@ -63,14 +63,16 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             # q = np.reshape(q, (self.basis.order+1, self.basis.order+1))
             # print(q)
             # input()
-            
             sftplargs = dict(
                 nvars=self.nvars, ndims=self.ndims, nupts=self.nupts, svar=shockvar,
                 c=self.cfg.items_as('solver-modal-filtering', float),
                 order=self.basis.order, ubdegs=ubdegs, srcex=self._src_exprs,
-                vdm=vdm, invvdm=invvdm, dt=dt, pexp=self.cfg.get('solver-modal-filtering', 'p-exponent', '-4'),
+                vdm=vdm, invvdm=invvdm, dt=dt, 
+                pexp=self.cfg.get('solver-modal-filtering', 'p-exponent', '-4'),
                 kexp=self.cfg.get('solver-modal-filtering', 'k-exponent', '4'),
-                filtermethod=self.cfg.get('solver-modal-filtering', 'filter-method', 'pointwise')
+                decay=self.cfg.get('solver-modal-filtering', 'decay', 'exponential'),
+                decexp=self.cfg.get('solver-modal-filtering', 'decay-exponent', '2.0'),
+                filtermethod=self.cfg.get('solver-modal-filtering', 'filter-method', 'exponential')
             )
 
 

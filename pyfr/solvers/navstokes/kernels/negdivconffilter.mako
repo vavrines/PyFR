@@ -41,7 +41,11 @@ if (shockcell == 1){
 		// ubdegs = total order term (index offset + 1 since ignoring mean mode)
 		// Target ratio = k^-4, value starts at 2 since mode ratios start at 1
 		% for i in range(nupts-1):
-			targetratio = pow(${ubdegs[i+1] + 1.0}, ${pexp});
+			% if decay == 'power':
+				targetratio = pow(${ubdegs[i+1] + 1.0}, ${pexp});
+			% elif decay == 'exponential':
+				targetratio = exp(-${decexp}*${(ubdegs[i+1] + 1.0)});
+			% endif
 			magratios[${i}] = pow(solpredmodes[${i+1}][${svar}]/solpredmodes[0][${svar}], 2.0)/targetratio;
 		% endfor
 
