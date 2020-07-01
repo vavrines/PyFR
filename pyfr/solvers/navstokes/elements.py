@@ -58,7 +58,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             if decay == 'exponential':
             	decayfactor = self.cfg.getfloat('solver-modal-filtering', 'decay-factor', 2.0)
             	kexp = self.cfg.getfloat('solver-modal-filtering', 'filter-exponent', 2.0)
-            	targetratios = np.exp(-decayfactor*(ubdegs[1:]+1.))
+            	targetratios = np.exp(-decayfactor*(ubdegs[1:]))
             # Power law rates assume c_0 continuity with a decay rate of 4.0 (since modes are squared)
             elif decay == 'power':
             	decayfactor = self.cfg.getfloat('solver-modal-filtering', 'decay-factor', 4.0)
