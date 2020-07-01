@@ -20,6 +20,9 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             else:
                 bufs |= {'scal_upts_cpy'}
 
+        if self.cfg.get('solver', 'shock-capturing', 'none') == 'modal-filtering':
+            bufs |= {'scal_upts_cpy'}
+
         return bufs
 
     def set_backend(self, backend, nscalupts, nonce, intoff):
@@ -118,10 +121,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
                 u=self.scal_upts_inb, artvisc=self.artvisc
             )
-        elif shock_capturing == 'none':
-            self.artvisc = None
         else:
-            raise ValueError('Invalid shock capturing scheme')
+            self.artvisc = None
 
     def get_artvisc_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
