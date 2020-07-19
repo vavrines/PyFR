@@ -138,6 +138,8 @@ def walldist_at_ploc(self, ploc, nonce):
                 d = min(d, y)
             elif geo == 'TGV':
                 d = 100000000
+            elif geo == 'channel':
+                d = abs(y) - 1.0    
 
             walldist[i,:,j] = d
 
