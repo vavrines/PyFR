@@ -60,7 +60,7 @@
 
 	// Calculate limiter term F2
 	fpdtype_t g4 = max(2*pow(ku_temp, 0.5)/(${c['betastar']}*wu*d), 500*${c['mu']}/(d*d*rho*wu));
-	fpdtype_t F2 = tanh(g4);
+	fpdtype_t F2 = max(0.0, tanh(g4));
 
 	// Calculate vorticity magnitude
 	fpdtype_t vort_jk, vort_mag = 0.0, duk_dxj, duj_dxk;
@@ -74,7 +74,7 @@
     fpdtype_t sig_ku = ${c['fw']/c['fk']}*(F1*${c['sig_k1']} + (1-F1)*${c['sig_k2']});
     fpdtype_t sig_wu = ${c['fw']/c['fk']}*(F1*${c['sig_w1']} + (1-F1)*${c['sig_w2']});
 
-    fpdtype_t mu_t = rho*${c['a1']}*ku/max(${c['a1']}*wu, vort_mag*F2);
+    fpdtype_t mu_t = rho*${c['a1']}*ku_temp/max(${c['a1']}*wu, vort_mag*F2);
 
 	mu_t = (mu_t < 0.0) ? 0.0 : mu_t;
 	mu_t = ${c['tmswitch']}*(1.0 - exp(-${c['tdvc']}*(t - ${c['tmstarttime']})))*mu_t;
@@ -168,7 +168,7 @@
 
 	// Calculate limiter term F2
 	fpdtype_t g4 = max(2*pow(ku_temp, 0.5)/(${c['betastar']}*wu*d), 500*${c['mu']}/(d*d*rho*wu));
-	fpdtype_t F2 = tanh(g4);
+	fpdtype_t F2 = max(0.0, tanh(g4))
 
 	// Calculate vorticity magnitude
 	fpdtype_t vort_jk, vort_mag = 0.0, duk_dxj, duj_dxk;
@@ -182,7 +182,7 @@
     fpdtype_t sig_ku = ${c['fw']/c['fk']}*(F1*${c['sig_k1']} + (1-F1)*${c['sig_k2']});
     fpdtype_t sig_wu = ${c['fw']/c['fk']}*(F1*${c['sig_w1']} + (1-F1)*${c['sig_w2']});
 
-    fpdtype_t mu_t = rho*${c['a1']}*ku/max(${c['a1']}*wu, vort_mag*F2);
+    fpdtype_t mu_t = rho*${c['a1']}*ku_temp/max(${c['a1']}*wu, vort_mag*F2);
 
 	mu_t = (mu_t < 0.0) ? 0.0 : mu_t;
 	mu_t = ${c['tmswitch']}*(1.0 - exp(-${c['tdvc']}*(t - ${c['tmstarttime']})))*mu_t;
