@@ -168,7 +168,7 @@
 
 	// Calculate limiter term F2
 	fpdtype_t g4 = max(2*pow(ku_temp, 0.5)/(${c['betastar']}*wu*d), 500*${c['mu']}/(d*d*rho*wu));
-	fpdtype_t F2 = max(0.0, tanh(g4))
+	fpdtype_t F2 = max(0.0, tanh(g4));
 
 	// Calculate vorticity magnitude
 	fpdtype_t vort_jk, vort_mag = 0.0, duk_dxj, duj_dxk;
