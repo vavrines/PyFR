@@ -74,7 +74,7 @@
     fpdtype_t sig_ku = ${c['fw']/c['fk']}*(F1*${c['sig_k1']} + (1-F1)*${c['sig_k2']});
     fpdtype_t sig_wu = ${c['fw']/c['fk']}*(F1*${c['sig_w1']} + (1-F1)*${c['sig_w2']});
 
-    fpdtype_t mu_t = rho*${c['a1']}*ku_temp/max(${c['a1']}*wu, vort_mag*F2);
+    fpdtype_t mu_t = rho*${c['a1']}*ku_temp/max(${c['a1']}*wu, ${c['evlswitch']}*vort_mag*F2);
 
 	mu_t = (mu_t < 0.0) ? 0.0 : mu_t;
 	mu_t = ${c['tmswitch']}*(1.0 - exp(-${c['tdvc']}*(t - ${c['tmstarttime']})))*mu_t;
@@ -182,7 +182,7 @@
     fpdtype_t sig_ku = ${c['fw']/c['fk']}*(F1*${c['sig_k1']} + (1-F1)*${c['sig_k2']});
     fpdtype_t sig_wu = ${c['fw']/c['fk']}*(F1*${c['sig_w1']} + (1-F1)*${c['sig_w2']});
 
-    fpdtype_t mu_t = rho*${c['a1']}*ku_temp/max(${c['a1']}*wu, vort_mag*F2);
+    fpdtype_t mu_t = rho*${c['a1']}*ku_temp/max(${c['a1']}*wu, ${c['evlswitch']}*vort_mag*F2);
 
 	mu_t = (mu_t < 0.0) ? 0.0 : mu_t;
 	mu_t = ${c['tmswitch']}*(1.0 - exp(-${c['tdvc']}*(t - ${c['tmstarttime']})))*mu_t;
