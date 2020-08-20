@@ -118,7 +118,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
                 u=self.scal_upts_inb, artvisc=self.artvisc
             )
-        elif shock_capturing == 'none':
+        elif shock_capturing == 'riemann-difference' or shock_capturing == 'none':
             self.artvisc = None
         else:
             raise ValueError('Invalid shock capturing scheme')

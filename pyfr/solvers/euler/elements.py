@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from pyfr.solvers.baseadvec import BaseAdvectionElements
-
+import numpy as np
+from scipy import interpolate
 
 class BaseFluidElements(object):
     formulations = ['std', 'dual']
@@ -73,3 +74,71 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 u=self.scal_upts_inb, smats=self.smat_at('upts'),
                 f=self._vect_upts
             )
+
+        # Shock capturing
+        shock_capturing = self.cfg.get('solver', 'shock-capturing', 'none')
+
+        if shock_capturing == 'riemann-difference':
+            # Register the kernels
+            self._be.pointwise.register('pyfr.solvers.euler.kernels.rdshocksensor')
+            self._be.pointwise.register('pyfr.solvers.euler.kernels.riemanndifference')
+
+            self.kernels['copy_soln_at_fpts'] = lambda: self._be.kernel(
+                    'copy', self._scal_fpts_cpy, self._scal_fpts
+                )
+
+            # Sense shocks using density convergence
+            shockvar = 0
+
+            # Template arguments
+            sftplargs = dict(
+                nvars=self.nvars, ndims=self.ndims, nupts=self.nupts, svar=shockvar,
+                c=self.cfg.items_as('solver-riemann-difference', float),
+                order=self.basis.order  
+            )
+
+            # Shockcell is an elementwise value (0,1) dictating if there is a shock in the cell (1)
+            self.shockcell = self._be.matrix((1, self.neles), tags={'align'}, initval=np.zeros((1, self.neles)))
+
+            # Currently the sensor is always on and applies filter everywhere
+            self.kernels['rdshocksensor'] = lambda: self._be.kernel(
+               'rdshocksensor', tplargs=sftplargs, dims=[self.neles],
+               u=self.scal_upts_inb, shockcell=self.shockcell
+            )
+
+            diffmat = self.generateDiffMat()
+            rsolver = self.cfg.get('solver-interfaces', 'riemann-solver') + '3d'
+
+            # Template arguments
+            tplargs = dict(
+                nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts, ndims=self.ndims,
+                c=self.cfg.items_as('constants', float),order=self.basis.order, 
+                diffmat=diffmat, rsolver=rsolver
+            )
+
+            # Apply the sensor to estimate the required artificial viscosity
+            self.kernels['riemanndifference'] = lambda: self._be.kernel(
+                'riemanndifference', tplargs=tplargs, dims=[self.neles],
+                u=self.scal_upts_inb, plocu=self.ploc_at('upts'), urcpdjac=self.rcpdjac_at('upts'), usmats=self.ele_smat_at('upts'),
+                uf=self._scal_fpts_cpy, frcpdjac=self.rcpdjac_at('fpts'), fsmats=self.ele_smat_at('fpts'),
+                divf=self.scal_upts_outb
+            )
+
+    def generateDiffMat(self):
+        p = self.basis.order
+        M = np.zeros((p+1, p+2))
+
+        solpts = self.basis.upts[:p+1,0] # Hack
+        rdpts = np.zeros(p+2)
+        rdpts[0] = -1.
+        rdpts[-1] = 1.
+        for i in range(p):
+            rdpts[i+1] = 0.5*(solpts[i] + solpts[i+1])
+        
+        for i in range(p+2):
+            vals = np.zeros(p+2)
+            vals[i] = 1.
+            dlag = interpolate.lagrange(rdpts, vals).deriv()
+            for j in range(p+1):
+                M[j,i] = dlag(solpts[j])
+        return M

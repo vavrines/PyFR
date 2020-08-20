@@ -19,6 +19,9 @@ class BaseAdvectionElements(BaseElements):
                 bufs |= {'scal_qpts_cpy'}
             else:
                 bufs |= {'scal_upts_cpy'}
+        if self.cfg.get('solver', 'shock-capturing', 'none') == 'riemann-difference':
+            bufs |= {'scal_fpts_cpy'}
+            bufs |= {'scal_upts_cpy'}
 
         return bufs
 
@@ -87,6 +90,16 @@ class BaseAdvectionElements(BaseElements):
         # Second flux correction kernel
         kernels['tdivtconf'] = lambda: self._be.kernel(
             'mul', self.opmat('M3'), self._scal_fpts, out=self.scal_upts_outb,
+            beta=1.0
+        )
+
+        kernels['tdivtpcorf_rd'] = lambda: self._be.kernel(
+                'mul', self.opmat('-M12*M2'), self._vect_upts,
+                out=self.scal_upts_outb, beta=1.0
+        )
+
+        kernels['tdivtconf_rd'] = lambda: self._be.kernel(
+            'mul', self.opmat('M12'), self._scal_fpts, out=self.scal_upts_outb,
             beta=1.0
         )
 

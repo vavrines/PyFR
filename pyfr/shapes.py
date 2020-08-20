@@ -10,6 +10,7 @@ from pyfr.nputil import block_diag, clean
 from pyfr.polys import get_polybasis
 from pyfr.quadrules import get_quadrule
 from pyfr.util import lazyprop
+from scipy import interpolate
 
 
 def _proj_pts(projector, pts):
@@ -157,6 +158,75 @@ class BaseShape(object):
                 A[i] = exp(-alpha*((d - ncut)/(n - ncut))**order)
 
         return np.linalg.solve(ub.vdm, A[:, None]*ub.vdm).T
+
+    @lazyprop
+    # M3 matrix for shock points correction in Riemann Difference scheme
+    def m12(self):
+        p = self.order
+        M = np.zeros((self.nupts, self.nfpts))
+
+        solpts = self.upts[:p+1,0] # Hack
+        rdpts = np.zeros(p+2)
+        rdpts[0] = -1.
+        rdpts[-1] = 1.
+        for i in range(p):
+            rdpts[i+1] = 0.5*(solpts[i] + solpts[i+1])
+        
+        vals = np.zeros(p+2)
+        vals[0] = 1.
+        g_left = interpolate.lagrange(rdpts, vals).deriv()
+
+        vals = np.zeros(p+2)
+        vals[-1] = 1.
+        g_right = interpolate.lagrange(rdpts, vals).deriv()
+
+        if self.ndims == 2:
+            # HEX FACE ORDERING:
+            # 0 -> y = -1
+            # 1 -> x =  1
+            # 2 -> y =  1
+            # 3 -> x = -1
+            faceidx = lambda face, idx: face*(p+1) + idx
+            uidx = lambda xidx, yidx: xidx + yidx*(p+1)
+            for yidx in range(p+1):
+                for xidx in range(p+1):
+                    solidx = uidx(xidx, yidx)
+                    fxm_idx = faceidx(3,yidx)
+                    fxp_idx = faceidx(1,yidx)
+                    fym_idx = faceidx(0,xidx)
+                    fyp_idx = faceidx(2,xidx)
+                    M[solidx, fxm_idx] = -g_left(solpts[xidx])
+                    M[solidx, fym_idx] = -g_left(solpts[yidx])
+                    M[solidx, fxp_idx] = g_right(solpts[xidx])
+                    M[solidx, fyp_idx] = g_right(solpts[yidx])
+        if self.ndims == 3:
+            # HEX FACE ORDERING:
+            # 0 -> z = -1
+            # 1 -> y = -1
+            # 2 -> x =  1
+            # 3 -> y =  1
+            # 4 -> x = -1
+            # 5 -> z =  1
+            faceidx = lambda face, a_idx, b_idx: face*(p+1)**2 + a_idx + b_idx*(p+1)
+            uidx = lambda xidx, yidx, zidx: xidx + yidx*(p+1) + zidx*((p+1)**2)
+            for zidx in range(p+1):
+                for yidx in range(p+1):
+                    for xidx in range(p+1):
+                        solidx = uidx(xidx, yidx, zidx)
+                        fxm_idx = faceidx(4,yidx,zidx)
+                        fxp_idx = faceidx(2,yidx,zidx)
+                        fym_idx = faceidx(1,xidx,zidx)
+                        fyp_idx = faceidx(3,xidx,zidx)
+                        fzm_idx = faceidx(0,xidx,yidx)
+                        fzp_idx = faceidx(5,xidx,yidx)
+                        M[solidx, fxm_idx] = -g_left(solpts[xidx])
+                        M[solidx, fym_idx] = -g_left(solpts[yidx])
+                        M[solidx, fzm_idx] = -g_left(solpts[zidx])
+                        M[solidx, fxp_idx] = g_right(solpts[xidx])
+                        M[solidx, fyp_idx] = g_right(solpts[yidx])
+                        M[solidx, fzp_idx] = g_right(solpts[zidx])
+
+        return M
 
     @lazyprop
     def nupts(self):

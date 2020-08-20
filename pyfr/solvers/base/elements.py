@@ -193,6 +193,9 @@ class BaseElements(object):
         elif 'scal_qpts_cpy' in sbufs:
             self._scal_qpts_cpy = salloc('scal_qpts_cpy', nqpts)
 
+        if 'scal_fpts_cpy' in sbufs:
+            self._scal_fpts_cpy = salloc('scal_fpts_cpy', nfpts)
+
         # Allocate required vector scratch space
         if 'vect_upts' in sbufs:
             self._vect_upts = valloc('vect_upts', nupts)
@@ -246,6 +249,21 @@ class BaseElements(object):
     @memoize
     def smat_at(self, name):
         return self._be.const_matrix(self.smat_at_np(name), tags={'align'})
+
+    @memoize
+    def ele_smat_at(self, name):
+        smats_mpts, _ = self._smats_djacs_mpts
+
+        # Interpolation matrix to pts
+        m0 = self.basis.mbasis.nodal_basis_at(getattr(self.basis, name))
+
+        # Interpolate the smats
+        smats = np.array([np.dot(m0, smat) for smat in smats_mpts])
+        ret = smats.reshape(self.ndims, -1, self.ndims, self.neles)
+        ret = ret.swapaxes(0, 1)
+        ret = ret.reshape(-1, self.ndims**2, self.neles)
+
+        return self._be.const_matrix(ret, tags={'align'})
 
     @memoize
     def rcpdjac_at_np(self, name):

@@ -83,3 +83,8 @@ class EulerCharRiemInvBCInters(EulerBaseBCInters):
 
 class EulerSlpAdiaWallBCInters(EulerBaseBCInters):
     type = 'slp-adia-wall'
+
+
+class EulerSupOutflowBCInters(EulerBaseBCInters):
+    type = 'sup-out-fn'
+    cflux_state = 'ghost'
