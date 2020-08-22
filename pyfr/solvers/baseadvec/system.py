@@ -27,25 +27,24 @@ class BaseAdvectionSystem(BaseSystem):
             q1 << kernels['eles', 'copy_soln_at_fpts']()
         q1 << kernels['eles', 'tdisf']()
 
-
-        #q1 << kernels['eles', 'tdivtpcorf']()
+        q1 << kernels['eles', 'tdivtpcorf']()
         q1 << kernels['iint', 'comm_flux']()
         q1 << kernels['bcint', 'comm_flux'](t=t)
 
         q2 << kernels['mpiint', 'scal_fpts_send']()
         q2 << kernels['mpiint', 'scal_fpts_recv']()
         q2 << kernels['mpiint', 'scal_fpts_unpack']()
-        
 
         runall([q1, q2])
 
         q1 << kernels['mpiint', 'comm_flux']()
-        if ('eles', 'rdshocksensor') in kernels:
-           q1 << kernels['eles', 'rdshocksensor']()
+        q1 << kernels['eles', 'tdivtconf']()
         if ('eles', 'riemanndifference') in kernels:
            q1 << kernels['eles', 'riemanndifference']()
            q1 << kernels['eles', 'tdivtpcorf_rd']()
            q1 << kernels['eles', 'tdivtconf_rd']()
+           q1 << kernels['eles', 'rdshocksensor']()
+
         if ('eles', 'tdivf_qpts') in kernels:
             q1 << kernels['eles', 'tdivf_qpts']()
             q1 << kernels['eles', 'negdivconf'](t=t)

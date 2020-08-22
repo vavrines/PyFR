@@ -86,6 +86,10 @@ class BaseAdvectionElements(BaseElements):
                 'mul', self.opmat('M1 - M3*M2'), self._vect_upts,
                 out=self.scal_upts_outb
             )
+            kernels['tdivtpcorf_rd'] = lambda: self._be.kernel(
+                    'mul', self.opmat('-M12*M2'), self._vect_upts,
+                    out=self._scal_upts_cpy, beta=1.0
+	        )
 
         # Second flux correction kernel
         kernels['tdivtconf'] = lambda: self._be.kernel(
@@ -93,13 +97,8 @@ class BaseAdvectionElements(BaseElements):
             beta=1.0
         )
 
-        kernels['tdivtpcorf_rd'] = lambda: self._be.kernel(
-                'mul', self.opmat('-M12*M2'), self._vect_upts,
-                out=self.scal_upts_outb, beta=1.0
-        )
-
         kernels['tdivtconf_rd'] = lambda: self._be.kernel(
-            'mul', self.opmat('M12'), self._scal_fpts, out=self.scal_upts_outb,
+            'mul', self.opmat('M12'), self._scal_fpts, out=self._scal_upts_cpy,
             beta=1.0
         )
 

@@ -6,10 +6,8 @@
 <%pyfr:kernel name='riemanndifference' ndim='1'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               plocu='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
-              urcpdjac='in fpdtype_t[${str(nupts)}]'
               usmats='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'
               uf='in fpdtype_t[${str(nfpts)}][${str(nvars)}]'
-              frcpdjac='in fpdtype_t[${str(nfpts)}]'
               fsmats='in fpdtype_t[${str(nfpts)}][${str(ndims*ndims)}]'
               divf='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
               >
