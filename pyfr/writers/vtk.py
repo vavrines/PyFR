@@ -17,7 +17,9 @@ class VTKWriter(BaseWriter):
     extn = ['.vtu', '.pvtu']
 
     def __init__(self, args):
-        super().__init__(args)
+        super().__init__(args)     
+        self.privarmap = self.elementscls.privarmap[self.ndims] 
+        self.visvarmap = self.elementscls.visvarmap[self.ndims] 
 
         self.dtype = np.dtype(args.precision).type
         self.divisor = args.divisor or self.cfg.getint('solver', 'order')
@@ -26,8 +28,8 @@ class VTKWriter(BaseWriter):
         if self.dataprefix == 'soln':
             self._pre_proc_fields = self._pre_proc_fields_soln
             self._post_proc_fields = self._post_proc_fields_soln
-            self._soln_fields = list(self.elementscls.privarmap[self.ndims])
-            self._vtk_vars = list(self.elementscls.visvarmap[self.ndims])
+            self._soln_fields = list(self.privarmap)
+            self._vtk_vars = list(self.visvarmap)
         # Otherwise we're dealing with simple scalar data
         else:
             self._pre_proc_fields = self._pre_proc_fields_scal
@@ -43,32 +45,38 @@ class VTKWriter(BaseWriter):
 
             # Update list of solution fields
             self._soln_fields.extend(
-                f'{f}-{d}'
+                '{0}-{1}'.format(f, d)
                 for f in list(self._soln_fields) for d in range(self.ndims)
             )
 
             # Update the list of VTK variables to solution fields
-            nf = lambda f: [f'{f}-{d}' for d in range(self.ndims)]
+            nf = lambda f: ['{0}-{1}'.format(f, d) for d in range(self.ndims)]
             for var, fields in list(self._vtk_vars):
                 if len(fields) == 1:
-                    self._vtk_vars.append((f'grad {var}', nf(fields[0])))
+                    self._vtk_vars.append(('grad ' + var, nf(fields[0])))
                 else:
                     self._vtk_vars.extend(
-                        (f'grad {var} {f}', nf(f)) for f in fields
+                        ('grad {0} {1}'.format(var, f), nf(f)) for f in fields
                     )
 
     def _pre_proc_fields_soln(self, name, mesh, soln):
         # Convert from conservative to primitive variables
-        return np.array(self.elementscls.con_to_pri(soln, self.cfg))
+        nvars, _, _ = np.shape(soln)
+        auxvars = nvars == 2
+        return np.array(self.elementscls.con_to_pri(soln, self.cfg, auxvars=auxvars))
 
     def _pre_proc_fields_scal(self, name, mesh, soln):
         return soln
 
     def _post_proc_fields_soln(self, vsoln):
-        # Primitive and visualisation variable maps
-        privarmap = self.elementscls.privarmap[self.ndims]
-        visvarmap = self.elementscls.visvarmap[self.ndims]
-
+        nvars, _, _ = np.shape(vsoln)
+        auxvars = nvars == 2
+        if auxvars:
+            privarmap = ['shockcell']
+            visvarmap = [('shockcell', ['shockcell'])]
+        else:
+            visvarmap = self.visvarmap
+            privarmap = self.privarmap
         # Prepare the fields
         fields = []
         for fnames, vnames in visvarmap:
@@ -102,7 +110,7 @@ class VTKWriter(BaseWriter):
         gradop = eles.basis.m4.astype(self.dtype)
 
         # Evaluate the transformed gradient of the solution
-        gradsoln = gradop @ soln.swapaxes(0, 1).reshape(nupts, -1)
+        gradsoln = np.dot(gradop, soln.swapaxes(0, 1).reshape(nupts, -1))
         gradsoln = gradsoln.reshape(self.ndims, nupts, nvars, -1)
 
         # Untransform
@@ -122,27 +130,29 @@ class VTKWriter(BaseWriter):
 
         return fields
 
-    def _get_npts_ncells_nnodes(self, sk):
-        etype, neles = self.soln_inf[sk][0], self.soln_inf[sk][1][2]
+    def _get_npts_ncells_nnodes(self, mk):
+        m_inf = self.mesh_inf[mk]
 
         # Get the shape and sub division classes
-        shapecls = subclass_where(BaseShape, name=etype)
-        subdvcls = subclass_where(BaseShapeSubDiv, name=etype)
+        shapecls = subclass_where(BaseShape, name=m_inf[0])
+        subdvcls = subclass_where(BaseShapeSubDiv, name=m_inf[0])
 
         # Number of vis points
-        npts = shapecls.nspts_from_order(self.divisor + 1)*neles
+        npts = shapecls.nspts_from_order(self.divisor + 1)*m_inf[1][1]
 
         # Number of sub cells and nodes
-        ncells = len(subdvcls.subcells(self.divisor))*neles
-        nnodes = len(subdvcls.subnodes(self.divisor))*neles
+        ncells = len(subdvcls.subcells(self.divisor))*m_inf[1][1]
+        nnodes = len(subdvcls.subnodes(self.divisor))*m_inf[1][1]
 
         return npts, ncells, nnodes
 
-    def _get_array_attrs(self, sk=None):
+    def _get_array_attrs(self, mk=None, auxvars=False):
         dtype = 'Float32' if self.dtype == np.float32 else 'Float64'
         dsize = np.dtype(self.dtype).itemsize
 
         vvars = self._vtk_vars
+        if auxvars:
+            vvars = [('shockcell', ['shockcell'])]
 
         names = ['', 'connectivity', 'offsets', 'types']
         types = [dtype, 'Int32', 'Int32', 'UInt8']
@@ -153,9 +163,9 @@ class VTKWriter(BaseWriter):
             types.append(dtype)
             comps.append(str(len(varnames)))
 
-        # If a solution has been given the compute the sizes
-        if sk:
-            npts, ncells, nnodes = self._get_npts_ncells_nnodes(sk)
+        # If a mesh has been given the compute the sizes
+        if mk:
+            npts, ncells, nnodes = self._get_npts_ncells_nnodes(mk)
             nb = npts*dsize
 
             sizes = [3*nb, 4*nnodes, 4*ncells, ncells]
@@ -189,13 +199,13 @@ class VTKWriter(BaseWriter):
         parallel = extn == '.pvtu'
 
         parts = defaultdict(list)
-        for sk, (etype, shape) in self.soln_inf.items():
-            part = sk.split('_')[-1]
-            pname = f'{name}_{part}.vtu' if parallel else self.outf
+        for mk, sk in zip(self.mesh_inf, self.soln_inf):
+            prt = mk.split('_')[-1]
+            pfn = '{0}_{1}.vtu'.format(name, prt) if parallel else self.outf
 
-            parts[pname].append((f'spt_{etype}_{part}', sk))
+            parts[pfn].append((mk, sk))
 
-        write_s_to_fh = lambda s: fh.write(s.encode())
+        write_s_to_fh = lambda s: fh.write(s.encode('utf-8'))
 
         for pfn, misil in parts.items():
             with open(pfn, 'wb') as fh:
@@ -209,7 +219,7 @@ class VTKWriter(BaseWriter):
 
                 # Header
                 for mk, sk in misil:
-                    off = self._write_serial_header(fh, sk, off)
+                    off = self._write_serial_header(fh, mk, sk, off)
 
                 write_s_to_fh('</UnstructuredGrid>\n'
                               '<AppendedData encoding="raw">\n_')
@@ -246,12 +256,15 @@ class VTKWriter(BaseWriter):
     def _process_name(self, name):
         return re.sub(r'\W+', '_', name)
 
-    def _write_serial_header(self, vtuf, sk, off):
-        names, types, comps, sizes = self._get_array_attrs(sk)
-        npts, ncells = self._get_npts_ncells_nnodes(sk)[:2]
+    def _write_serial_header(self, vtuf, mk, sk, off):
+        auxvars = 'aux' in sk
 
-        write_s = lambda s: vtuf.write(s.encode())
-        write_s(f'<Piece NumberOfPoints="{npts}" NumberOfCells="{ncells}">\n')
+        names, types, comps, sizes = self._get_array_attrs(mk=mk,auxvars=auxvars)
+        npts, ncells = self._get_npts_ncells_nnodes(mk)[:2]
+
+        write_s = lambda s: vtuf.write(s.encode('utf-8'))
+        write_s('<Piece NumberOfPoints="{0}" NumberOfCells="{1}">\n'
+                .format(npts, ncells))
         write_s('<Points>\n')
 
         # Write vtk DaraArray headers
@@ -278,7 +291,7 @@ class VTKWriter(BaseWriter):
     def _write_parallel_header(self, vtuf):
         names, types, comps = self._get_array_attrs()
 
-        write_s = lambda s: vtuf.write(s.encode())
+        write_s = lambda s: vtuf.write(s.encode('utf-8'))
         write_s('<PPoints>\n')
 
         # Write vtk DaraArray headers
@@ -299,12 +312,6 @@ class VTKWriter(BaseWriter):
         mesh = self.mesh[mk].astype(self.dtype)
         soln = self.soln[sk].swapaxes(0, 1).astype(self.dtype)
 
-        # Handle the case of partial solution files
-        if soln.shape[2] != mesh.shape[1]:
-            skpre, skpost = sk.rsplit('_', 1)
-
-            mesh = mesh[:, self.soln[f'{skpre}_idxs_{skpost}'], :]
-
         # Dimensions
         nspts, neles = mesh.shape[:2]
 
@@ -317,14 +324,14 @@ class VTKWriter(BaseWriter):
         soln_vtu_op = self._get_soln_op(name, nspts, svpts)
 
         # Calculate node locations of VTU elements
-        vpts = mesh_vtu_op @ mesh.reshape(nspts, -1)
+        vpts = np.dot(mesh_vtu_op, mesh.reshape(nspts, -1))
         vpts = vpts.reshape(nsvpts, -1, self.ndims)
 
         # Pre-process the solution
         soln = self._pre_proc_fields(name, mesh, soln).swapaxes(0, 1)
 
         # Interpolate the solution to the vis points
-        vsoln = soln_vtu_op @ soln.reshape(len(soln), -1)
+        vsoln = np.dot(soln_vtu_op, soln.reshape(len(soln), -1))
         vsoln = vsoln.reshape(nsvpts, -1, neles).swapaxes(0, 1)
 
         # Append dummy z dimension for points in 2D

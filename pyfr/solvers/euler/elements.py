@@ -25,7 +25,9 @@ class BaseFluidElements(object):
     }
 
     @staticmethod
-    def pri_to_con(pris, cfg):
+    def pri_to_con(pris, cfg, auxvars=False):
+        if auxvars:
+            return [pris[0]]
         rho, p = pris[0], pris[-1]
 
         # Multiply velocity components by rho
@@ -38,7 +40,9 @@ class BaseFluidElements(object):
         return [rho] + rhovs + [E]
 
     @staticmethod
-    def con_to_pri(cons, cfg):
+    def con_to_pri(cons, cfg, auxvars=False):
+        if auxvars:
+            return [cons[0]]
         rho, E = cons[0], cons[-1]
 
         # Divide momentum components by rho
