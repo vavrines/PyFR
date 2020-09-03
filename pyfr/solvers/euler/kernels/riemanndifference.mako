@@ -28,15 +28,25 @@
 	% endfor
 </%pyfr:macro>
 
+<%pyfr:macro name='get_tangent2d' params='xl,xr,t'>
+	// Counter-clockwise rotation
+	fpdtype_t tmp;
+	${pyfr.expand('get_normal','xl', 'xr', 't')}
+
+	tmp = t[1];
+	t[1] = -t[0];
+	t[0] = tmp;
+</%pyfr:macro>
+
 
 % for i,j in pyfr.ndrange(nupts, nvars):
 	divf[${i}][${j}] = 0.0;
 % endfor
 
 
-fpdtype_t ftemp[${ndims}][${nvars}], ftemp2[${ndims}][${nvars}], xl[${ndims}], xr[${ndims}];
+fpdtype_t ftemp[${ndims}][${nvars}], ftemp2[${ndims}][${nvars}], fntemp[${nvars}], fntemp2[${nvars}], xl[${ndims}], xr[${ndims}];
 fpdtype_t line_sol[${order+1}][${nvars}], line_flux[${order+2}][${ndims}][${nvars}], line_tflux[${order+2}][${ndims}][${nvars}];
-fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], tmp, p, v[${ndims}];
+fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], t[${ndims}], tmp, p, v[${ndims}];
 
 // Perform along xi direction
 % for j in range(order+1):
@@ -69,6 +79,7 @@ fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], tmp, p, v[${ndims}];
 			xr[${dim}] = plocu[${i+ j*(order+1)}][${dim}];
 		% endfor		
 		${pyfr.expand('get_normal','xl', 'xr', 'n')}
+		${pyfr.expand('get_tangent2d','xl', 'xr', 't')}
 
 		// Set left and right solution states
 		% for var in range(nvars):
@@ -76,9 +87,11 @@ fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], tmp, p, v[${ndims}];
 			ur[${var}] = line_sol[${i+1}][${var}];
 		% endfor
 
-	    ${pyfr.expand('rsolve3d','ul','ur','n','ftemp')};
-		% for dim, var in pyfr.ndrange(ndims, nvars):
-			line_flux[${i+1}][${dim}][${var}] = ftemp[${dim}][${var}];
+		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
+		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
+		% for var in range(nvars):
+			line_flux[${i+1}][0][${var}] = n[0]*fntemp[${var}] - n[1]*fntemp2[${var}];
+			line_flux[${i+1}][1][${var}] = n[1]*fntemp[${var}] + n[0]*fntemp2[${var}];
 		% endfor
 	% endfor
 
@@ -140,6 +153,7 @@ fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], tmp, p, v[${ndims}];
 			xr[${dim}] = plocu[${i+ j*(order+1)}][${dim}];
 		% endfor		
 		${pyfr.expand('get_normal','xl', 'xr', 'n')}
+		${pyfr.expand('get_tangent2d','xl', 'xr', 't')}
 
 		// Set left and right solution states
 		% for var in range(nvars):
@@ -147,9 +161,11 @@ fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], tmp, p, v[${ndims}];
 			ur[${var}] = line_sol[${j+1}][${var}];
 		% endfor
 
-	    ${pyfr.expand('rsolve3d','ul','ur','n','ftemp')};
-		% for dim, var in pyfr.ndrange(ndims, nvars):
-			line_flux[${j+1}][${dim}][${var}] = ftemp[${dim}][${var}];
+		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
+		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
+		% for var in range(nvars):
+			line_flux[${j+1}][0][${var}] = n[0]*fntemp[${var}] - n[1]*fntemp2[${var}];
+			line_flux[${j+1}][1][${var}] = n[1]*fntemp[${var}] + n[0]*fntemp2[${var}];
 		% endfor
 	% endfor
 
