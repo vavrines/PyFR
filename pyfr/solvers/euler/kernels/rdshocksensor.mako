@@ -6,13 +6,14 @@
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               shockcell='out fpdtype_t'
               divf_fr='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              divf_rd='in fpdtype_t[${str(nupts)}][${str(nvars)}]'>
+              divf_rd='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              usmats='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'>
 
 
-% if shocksensor == 'none':
+% if shocksensor == 'off':
 	shockcell = 0;
 % elif shocksensor == 'modal':
-	<% se0 = crd['modal_sensor_coeff']*(order+1)**(-4*ndims) %>
+	<% se0 = crd['modal_sensor_coeff'] %>
 
 	fpdtype_t totEn = 1e-15, pnEn = 1e-15, tmp;
 
@@ -27,6 +28,184 @@
 
     fpdtype_t se  = pnEn/totEn;
     shockcell = (se < ${se0}) ? 0 : 1;
+% elif shocksensor == 'maxmodal':
+	<% se0 = crd['modal_sensor_coeff'] %>
+
+	fpdtype_t totEn = 1e-15, pnEn = 1e-15, tmp;
+
+	% for i, deg in enumerate(ubdegs):
+		tmp = ${' + '.join('{jx}*u[{j}][{svar}]'.format(j=j, jx=jx, svar=svar)
+							for j, jx in enumerate(invvdm[i]) if jx != 0)};
+		totEn += tmp*tmp;
+		% if deg == max(ubdegs):
+			pnEn = tmp*tmp;
+		% endif
+	% endfor
+
+    fpdtype_t se  = pnEn/totEn;
+    shockcell = (se < ${se0}) ? 0 : 1;
+% elif shocksensor == 'l1modal':
+	<% se0 = crd['modal_sensor_coeff'] %>
+
+	fpdtype_t totEn = 1e-15, pnEn = 1e-15, tmp;
+
+	% for i, deg in enumerate(l1degs):
+		tmp = ${' + '.join('{jx}*u[{j}][{svar}]'.format(j=j, jx=jx, svar=svar)
+							for j, jx in enumerate(invvdm[i]) if jx != 0)};
+		totEn += tmp*tmp;
+		% if deg == max(l1degs):
+			pnEn = max(tmp*tmp, pnEn);
+		% endif
+	% endfor
+
+    fpdtype_t se  = pnEn/totEn;
+    shockcell = (se < ${se0}) ? 0 : 1;
+
+% elif shocksensor == 'convergence':
+	<%include file='pyfr.solvers.euler.kernels.flux'/>
+	fpdtype_t f1t[${nupts}][${ndims}][${nvars}], f2t[${nupts}][${ndims}][${nvars}], f3t[${nupts}][${ndims}][${nvars}];
+	fpdtype_t f1[${nupts}][${ndims}][${nvars}], f2[${nupts}][${ndims}][${nvars}], f3[${nupts}][${ndims}][${nvars}];
+	fpdtype_t u1[${nupts}][${nvars}], u2[${nupts}][${nvars}], u3[${nupts}][${nvars}];
+	fpdtype_t f1c[${nupts}][${ndims}][${nvars}], f2c[${nupts}][${ndims}][${nvars}], f3c[${nupts}][${ndims}][${nvars}];
+	fpdtype_t divf1[${nupts}][${nvars}], divf2[${nupts}][${nvars}], divf3[${nupts}][${nvars}];
+	fpdtype_t dd12[${nvars}], dd23[${nvars}];
+
+
+	
+
+	// Calculate projected solution 
+	% for i in range(nupts):
+		% for var in range(nvars):
+			u1[${i}][${var}] = ${' + '.join('{jx}*u[{j}][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(proj1[i]) if jx != 0)};
+			u2[${i}][${var}] = ${' + '.join('{jx}*u[{j}][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(proj2[i]) if jx != 0)};
+			u3[${i}][${var}] = ${' + '.join('{jx}*u[{j}][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(proj3[i]) if jx != 0)};
+		% endfor
+	% endfor
+
+    fpdtype_t ftemp[${ndims}][${nvars}], utemp[${nvars}];
+    fpdtype_t p, v[${ndims}];
+
+	% for i in range(nupts):
+		% for j in range(nvars):
+			utemp[${j}] = u1[${i}][${j}];
+		% endfor
+
+    	${pyfr.expand('inviscid_flux', 'utemp', 'ftemp', 'p', 'v')};
+
+		% for j in range(nvars):
+			% for k in range(ndims):
+				f1t[${i}][${k}][${j}] = ftemp[${k}][${j}];
+			% endfor
+		% endfor
+	% endfor
+
+	% for i in range(nupts):
+		% for j in range(nvars):
+			utemp[${j}] = u2[${i}][${j}];
+		% endfor
+
+    	${pyfr.expand('inviscid_flux', 'utemp', 'ftemp', 'p', 'v')};
+
+		% for j in range(nvars):
+			% for k in range(ndims):
+				f2t[${i}][${k}][${j}] = ftemp[${k}][${j}];
+			% endfor
+		% endfor
+	% endfor
+
+	% for i in range(nupts):
+		% for j in range(nvars):
+			utemp[${j}] = u3[${i}][${j}];
+		% endfor
+
+    	${pyfr.expand('inviscid_flux', 'utemp', 'ftemp', 'p', 'v')};
+
+		% for j in range(nvars):
+			% for k in range(ndims):
+				f3t[${i}][${k}][${j}] = ftemp[${k}][${j}];
+			% endfor
+		% endfor
+	% endfor
+
+
+
+	// Calculate projected flux values
+	% for i in range(nupts):
+		% for var,k in pyfr.ndrange(nvars, ndims):
+			f1[${i}][${k}][${var}] = ${' + '.join('{jx}*f1t[{j}][{k}][{var}]'.format(j=j, jx=jx, k=k, var=var) for j, jx in enumerate(proj1[i]) if jx != 0)};
+			f2[${i}][${k}][${var}] = ${' + '.join('{jx}*f2t[{j}][{k}][{var}]'.format(j=j, jx=jx, k=k, var=var) for j, jx in enumerate(proj2[i]) if jx != 0)};
+			f3[${i}][${k}][${var}] = ${' + '.join('{jx}*f3t[{j}][{k}][{var}]'.format(j=j, jx=jx, k=k, var=var) for j, jx in enumerate(proj3[i]) if jx != 0)};
+		% endfor
+	% endfor
+
+	// Transform to computational space
+	% for i,dim,var in pyfr.ndrange(nupts, ndims,nvars):
+    	f1c[${i}][${dim}][${var}] = ${' + '.join('usmats[{0}][{1}]*f1[{0}][{2}][{var}]'.format(i, ndims*dim+k, k, var=var) for k in range(ndims))};
+    	f2c[${i}][${dim}][${var}] = ${' + '.join('usmats[{0}][{1}]*f2[{0}][{2}][{var}]'.format(i, ndims*dim+k, k, var=var) for k in range(ndims))};
+    	f3c[${i}][${dim}][${var}] = ${' + '.join('usmats[{0}][{1}]*f3[{0}][{2}][{var}]'.format(i, ndims*dim+k, k, var=var) for k in range(ndims))};
+	% endfor
+
+	// Calculate divergence (hardcoded for ndims=2)
+	% for i,var in pyfr.ndrange(nupts, nvars):
+		divf1[${i}][${var}] =  ${' + '.join('{jx}*f1c[{j}][0][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(diffxi[i]) if jx != 0)};
+		divf2[${i}][${var}] =  ${' + '.join('{jx}*f2c[{j}][0][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(diffxi[i]) if jx != 0)};
+		divf3[${i}][${var}] =  ${' + '.join('{jx}*f3c[{j}][0][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(diffxi[i]) if jx != 0)};
+		divf1[${i}][${var}] += ${' + '.join('{jx}*f1c[{j}][1][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(diffeta[i]) if jx != 0)};
+		divf2[${i}][${var}] += ${' + '.join('{jx}*f2c[{j}][1][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(diffeta[i]) if jx != 0)};
+		divf3[${i}][${var}] += ${' + '.join('{jx}*f3c[{j}][1][{var}]'.format(j=j, jx=jx, var=var) for j, jx in enumerate(diffeta[i]) if jx != 0)};
+	% endfor
+
+	// L2 norm
+	% for j in range(nvars):
+		dd12[${j}] = 0;
+		dd23[${j}] = 0;
+	% endfor
+	% for i,var in pyfr.ndrange(nupts, nvars):
+		dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
+		dd23[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
+		//dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf2[${i}][${var}], 2.0);
+		//dd23[${var}] += ${quadwts[i]}*pow(divf2[${i}][${var}] - divf3[${i}][${var}], 2.0);
+	% endfor
+
+
+	<% tol = 1e-3%>
+	shockcell = 0;
+	// Look at density and energy
+	% for i in [0,3]: 
+		if (dd23[${i}] > (dd12[${i}] + ${tol})) { 
+			shockcell = 1;
+		}
+	% endfor
+
+	
+% elif shocksensor == 'gradient':
+	fpdtype_t gradrho[${nupts}];
+	% for i in range(nupts):
+		gradrho[${i}] =  pow(${' + '.join('{jx}*u[{j}][0]'.format(j=j, jx=jx) for j, jx in enumerate(diffxi[i]) if jx != 0)},  2.0);
+		gradrho[${i}] += pow(${' + '.join('{jx}*u[{j}][0]'.format(j=j, jx=jx) for j, jx in enumerate(diffeta[i]) if jx != 0)}, 2.0);
+		gradrho[${i}] = pow(gradrho[${i}], 0.5);
+	% endfor
+
+	shockcell = 0;
+	% for i in range(nupts): 
+		if (gradrho[${i}] > ${crd['max_grad']}) { 
+			shockcell = 1;
+		}
+	% endfor
+
+% elif shocksensor == 'averagegradient':
+	fpdtype_t gradrho = 0, tmp;
+	% for i in range(nupts):
+		tmp =  pow(${' + '.join('{jx}*u[{j}][0]'.format(j=j, jx=jx) for j, jx in enumerate(diffxi[i]) if jx != 0)},  2.0);
+		tmp += pow(${' + '.join('{jx}*u[{j}][0]'.format(j=j, jx=jx) for j, jx in enumerate(diffeta[i]) if jx != 0)}, 2.0);
+		gradrho += pow(tmp, 0.5)/${nupts};
+	% endfor
+
+	shockcell = 0;
+	if (gradrho > ${crd['max_grad']} || gradrho < ${crd['min_grad']}) { 
+		shockcell = 1;
+	}
+
 % else:
 	shockcell = 1;
 % endif

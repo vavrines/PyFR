@@ -39,6 +39,7 @@ class BaseAdvectionElements(BaseElements):
         # What anti-aliasing options we're running with
         fluxaa = 'flux' in self.antialias
         divfluxaa = 'div-flux' in self.antialias
+        shock_capturing = self.cfg.get('solver', 'shock-capturing', 'none')
 
         # What the source term expressions (if any) are a function of
         plocsrc = self._ploc_in_src_exprs
@@ -86,10 +87,12 @@ class BaseAdvectionElements(BaseElements):
                 'mul', self.opmat('M1 - M3*M2'), self._vect_upts,
                 out=self.scal_upts_outb
             )
-            kernels['tdivtpcorf_rd'] = lambda: self._be.kernel(
-                    'mul', self.opmat('-M12*M2'), self._vect_upts,
-                    out=self._scal_upts_cpy, beta=1.0
-	        )
+
+            if shock_capturing == 'riemann-difference':
+                kernels['tdivtpcorf_rd'] = lambda: self._be.kernel(
+                        'mul', self.opmat('-M12*M2'), self._vect_upts,
+                        out=self._scal_upts_cpy, beta=1.0
+                )
 
         # Second flux correction kernel
         kernels['tdivtconf'] = lambda: self._be.kernel(
@@ -97,10 +100,11 @@ class BaseAdvectionElements(BaseElements):
             beta=1.0
         )
 
-        kernels['tdivtconf_rd'] = lambda: self._be.kernel(
-            'mul', self.opmat('M12'), self._scal_fpts, out=self._scal_upts_cpy,
-            beta=1.0
-        )
+        if shock_capturing == 'riemann-difference':
+            kernels['tdivtconf_rd'] = lambda: self._be.kernel(
+                'mul', self.opmat('M12'), self._scal_fpts, out=self._scal_upts_cpy,
+                beta=1.0
+            )
 
         # Transformed to physical divergence kernel + source term
         if divfluxaa:
