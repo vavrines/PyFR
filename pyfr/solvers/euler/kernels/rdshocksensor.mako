@@ -161,18 +161,21 @@
 		dd23[${j}] = 0;
 	% endfor
 	% for i,var in pyfr.ndrange(nupts, nvars):
-		dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
-		dd23[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
+		//dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
+		//dd23[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
+		dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf3[${i}][${var}], 2.0);
+		dd23[${var}] += ${quadwts[i]}*pow(divf2[${i}][${var}] - divf3[${i}][${var}], 2.0);
+		//dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
+		//dd23[${var}] += ${quadwts[i]}*pow(  (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
 		//dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf2[${i}][${var}], 2.0);
 		//dd23[${var}] += ${quadwts[i]}*pow(divf2[${i}][${var}] - divf3[${i}][${var}], 2.0);
 	% endfor
 
 
-	<% tol = 1e-3%>
 	shockcell = 0;
 	// Look at density and energy
 	% for i in [0,3]: 
-		if (dd23[${i}] > (dd12[${i}] + ${tol})) { 
+		if (dd23[${i}] > (dd12[${i}] + ${crd['convergence_tolerance']})) { 
 			shockcell = 1;
 		}
 	% endfor
