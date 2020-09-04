@@ -161,10 +161,10 @@
 		dd23[${j}] = 0;
 	% endfor
 	% for i,var in pyfr.ndrange(nupts, nvars):
-		//dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
-		//dd23[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
-		dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf3[${i}][${var}], 2.0);
-		dd23[${var}] += ${quadwts[i]}*pow(divf2[${i}][${var}] - divf3[${i}][${var}], 2.0);
+		dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
+		dd23[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
+		//dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf3[${i}][${var}], 2.0);
+		//dd23[${var}] += ${quadwts[i]}*pow(divf2[${i}][${var}] - divf3[${i}][${var}], 2.0);
 		//dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
 		//dd23[${var}] += ${quadwts[i]}*pow(  (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
 		//dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf2[${i}][${var}], 2.0);
