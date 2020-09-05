@@ -13,7 +13,7 @@
 % if shocksensor == 'off':
 	shockcell = 0;
 % elif shocksensor == 'modal':
-	<% se0 = crd['modal_sensor_coeff'] %>
+	<% se0 = crd['modal-sensor-coeff'] %>
 
 	fpdtype_t totEn = 1e-15, pnEn = 1e-15, tmp;
 
@@ -29,7 +29,7 @@
     fpdtype_t se  = pnEn/totEn;
     shockcell = (se < ${se0}) ? 0 : 1;
 % elif shocksensor == 'maxmodal':
-	<% se0 = crd['modal_sensor_coeff'] %>
+	<% se0 = crd['modal-sensor-coeff'] %>
 
 	fpdtype_t totEn = 1e-15, pnEn = 1e-15, tmp;
 
@@ -45,7 +45,7 @@
     fpdtype_t se  = pnEn/totEn;
     shockcell = (se < ${se0}) ? 0 : 1;
 % elif shocksensor == 'l1modal':
-	<% se0 = crd['modal_sensor_coeff'] %>
+	<% se0 = crd['modal-sensor-coeff'] %>
 
 	fpdtype_t totEn = 1e-15, pnEn = 1e-15, tmp;
 
@@ -161,10 +161,11 @@
 		dd23[${j}] = 0;
 	% endfor
 	% for i,var in pyfr.ndrange(nupts, nvars):
-		dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
-		dd23[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
-		//dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf3[${i}][${var}], 2.0);
-		//dd23[${var}] += ${quadwts[i]}*pow(divf2[${i}][${var}] - divf3[${i}][${var}], 2.0);
+		dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf3[${i}][${var}], 2.0);
+		dd23[${var}] += ${quadwts[i]}*pow(divf2[${i}][${var}] - divf3[${i}][${var}], 2.0);
+
+		//dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
+		//dd23[${var}] += ${quadwts[i]}*pow(  (u2[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
 		//dd12[${var}] += ${quadwts[i]}*pow(  (u1[${i}][${var}] - ${dt}*divf1[${i}][${var}]) - (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) , 2.0);
 		//dd23[${var}] += ${quadwts[i]}*pow(  (u2[${i}][${var}] - ${dt}*divf2[${i}][${var}]) - (u3[${i}][${var}] - ${dt}*divf3[${i}][${var}]) , 2.0);
 		//dd12[${var}] += ${quadwts[i]}*pow(divf1[${i}][${var}] - divf2[${i}][${var}], 2.0);
@@ -175,7 +176,7 @@
 	shockcell = 0;
 	// Look at density and energy
 	% for i in [0,3]: 
-		if (dd23[${i}] > (dd12[${i}] + ${crd['convergence_tolerance']})) { 
+		if (dd23[${i}] > (${crd['elem-vol']}*dd12[${i}] + ${crd['convergence-tolerance']})) { 
 			shockcell = 1;
 		}
 	% endfor
@@ -191,7 +192,7 @@
 
 	shockcell = 0;
 	% for i in range(nupts): 
-		if (gradrho[${i}] > ${crd['max_grad']}) { 
+		if (gradrho[${i}] > ${crd['max-grad']}) { 
 			shockcell = 1;
 		}
 	% endfor
@@ -205,7 +206,7 @@
 	% endfor
 
 	shockcell = 0;
-	if (gradrho > ${crd['max_grad']} || gradrho < ${crd['min_grad']}) { 
+	if (gradrho > ${crd['max-grad']} || gradrho < ${crd['min-grad']}) { 
 		shockcell = 1;
 	}
 

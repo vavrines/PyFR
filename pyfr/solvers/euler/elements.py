@@ -101,7 +101,7 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             shocksensor = self.cfg.get('solver-riemann-difference', 'shock-sensor', 'none')
 
             # Get matrices for convergence sensor
-            pstages = [1,2,3]
+            pstages = self.cfg.getliteral('solver-riemann-difference', 'order-stages', [1,2,3])
             if max(pstages) > self.basis.order:
                 raise ValueError('Invalid projection order for convergence stages. {0}'.format(pstages))
 
