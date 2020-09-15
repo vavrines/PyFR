@@ -90,8 +90,8 @@ fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], t[${ndims}], tmp, p, v[${ndim
 		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
 		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
 		% for var in range(nvars):
-			line_flux[${i+1}][0][${var}] = n[0]*fntemp[${var}] - n[1]*fntemp2[${var}];
-			line_flux[${i+1}][1][${var}] = n[1]*fntemp[${var}] + n[0]*fntemp2[${var}];
+			line_flux[${i+1}][0][${var}] = n[0]*fntemp[${var}] + n[1]*fntemp2[${var}];
+			line_flux[${i+1}][1][${var}] = n[1]*fntemp[${var}] - n[0]*fntemp2[${var}];
 		% endfor
 	% endfor
 
@@ -164,8 +164,8 @@ fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], t[${ndims}], tmp, p, v[${ndim
 		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
 		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
 		% for var in range(nvars):
-			line_flux[${j+1}][0][${var}] = n[0]*fntemp[${var}] - n[1]*fntemp2[${var}];
-			line_flux[${j+1}][1][${var}] = n[1]*fntemp[${var}] + n[0]*fntemp2[${var}];
+			line_flux[${j+1}][0][${var}] = n[0]*fntemp[${var}] + n[1]*fntemp2[${var}];
+			line_flux[${j+1}][1][${var}] = n[1]*fntemp[${var}] - n[0]*fntemp2[${var}];
 		% endfor
 	% endfor
 

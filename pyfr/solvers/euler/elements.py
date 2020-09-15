@@ -102,7 +102,7 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
 
             # Get matrices for convergence sensor
             pstages = self.cfg.getliteral('solver-riemann-difference', 'order-stages', [1,2,3])
-            if max(pstages) > self.basis.order:
+            if shocksensor == 'convergence' and max(pstages) > self.basis.order:
                 raise ValueError('Invalid projection order for convergence stages. {0}'.format(pstages))
 
             [diffxi, diffeta, diffzeta, proj1, proj2, proj3, quadwts] = self.generateProjectionMats(pstages)
@@ -134,7 +134,9 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 dt=self.cfg.get('solver-time-integrator', 'dt')
             )
 
-            # Apply the sensor to estimate the required artificial viscosity
+            # Smats order is 
+            # [dxi/dx, deta/dx, dxi/dy, deta/dy]
+            # [dxi/dx, deta/dx, dzeta/dx, dxi/dy, deta/dy, dzeta/dy,  dxi/dz, deta/dz, dzeta/dz]
             self.kernels['riemanndifference'] = lambda: self._be.kernel(
                 'riemanndifference', tplargs=tplargs, dims=[self.neles],
                 u=self.scal_upts_inb, plocu=self.ploc_at('upts'), usmats=self.ele_smat_at('upts'),
