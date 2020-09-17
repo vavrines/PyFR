@@ -178,7 +178,7 @@
 
 	shockcell = 0;
 	// Look at density and energy
-	% for i in [0,3]: 
+	% for i in convvars: 
 		if (dd23[${i}] > (h*dd12[${i}] + ${crd['convergence-tolerance']})) { 
 			shockcell = 1;
 		}
@@ -289,7 +289,7 @@
 
 	shockcell = 0;
 	// Look at density and energy
-	% for i in [0,1,2]: 
+	% for i in convvars: 
 		if (maxd2[${i}] > (maxd1[${i}] + ${crd['convergence-tolerance']})  &&
 			maxd3[${i}] > (maxd2[${i}] + ${crd['convergence-tolerance']})) { 
 				shockcell = 1;
@@ -410,7 +410,7 @@
 
 	shockcell = 0;
 	// Look at density and energy
-	% for i in [0,3]: 
+	% for i in convvars: 
 		if (dd23[${i}] > (h*dd12[${i}] + ${crd['convergence-tolerance']})) { 
 			shockcell = 1;
 		}
@@ -443,6 +443,7 @@
 	if (gradrho > ${crd['max-grad']} || gradrho < ${crd['min-grad']}) { 
 		shockcell = 1;
 	}
+
 
 % else:
 	shockcell = 1;
