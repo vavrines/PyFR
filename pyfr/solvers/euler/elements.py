@@ -113,7 +113,7 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             self.kernels['rdshocksensor'] = lambda: self._be.kernel(
                'rdshocksensor', tplargs=tplargs, dims=[self.neles], u=self.scal_upts_inb, 
                shockcell=self.shockcell, divf_fr=self.scal_upts_outb, divf_rd=self._scal_upts_cpy,
-               usmats=self.ele_smat_at('upts'), rcpdjac=self.rcpdjac_at('upts')
+               usmats=self.ele_smat_at('upts'), rcpdjac=self.rcpdjac_at('upts'), ploc=self.ploc_at('upts')
             )
 
 

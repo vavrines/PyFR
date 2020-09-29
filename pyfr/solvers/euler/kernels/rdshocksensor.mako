@@ -8,7 +8,8 @@
               divf_fr='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               divf_rd='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               usmats='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'
-              rcpdjac='in fpdtype_t[${str(nupts)}]'>
+              rcpdjac='in fpdtype_t[${str(nupts)}]'
+              ploc='in fpdtype_t[${str(nupts)}][${str(ndims)}]'>
 
 
 % if shocksensor == 'off':
@@ -29,6 +30,28 @@
 
     fpdtype_t se  = pnEn/totEn;
     shockcell = (se < ${se0}) ? 0 : 1;
+% elif shocksensor == 'local-modal':
+	<% se0 = crd['modal-sensor-coeff'] %>
+	fpdtype_t totEn = 1e-15, pnEn = 1e-15, tmp;
+
+	% for i, deg in enumerate(ubdegs):
+		tmp = ${' + '.join('{jx}*u[{j}][{svar}]'.format(j=j, jx=jx, svar=svar)
+							for j, jx in enumerate(invvdm[i]) if jx != 0)};
+		totEn += tmp*tmp;
+		% if deg >= order:
+			pnEn += tmp*tmp;
+		% endif
+	% endfor
+
+    fpdtype_t se  = pnEn/totEn;
+    shockcell = (se < ${se0}) ? 0 : 1;
+
+    % for i in range(nupts):
+    	if ((ploc[${i}][0] >= ${crd['x1']} && ploc[${i}][0] <= ${crd['x2']}) && (ploc[${i}][1] >= ${crd['y1']} && ploc[${i}][1] <= ${crd['y2']})){
+    		shockcell = 1;
+    	}
+	% endfor
+
 % elif shocksensor == 'maxmodal':
 	<% se0 = crd['modal-sensor-coeff'] %>
 
