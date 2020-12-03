@@ -5,11 +5,8 @@
     fpdtype_t nor = ${' + '.join('ul[{1}]*nl[{0}]'.format(i, i + 1)
                                  for i in range(ndims))};
     ur[0] = ul[0];
-    fpdtype_t tmp;
 % for i in range(ndims):
-	tmp = ul[${i + 1}] - 2*nor*nl[${i}];
-    ul[${i + 1}] = tmp;
-    ur[${i + 1}] = tmp;
+	ur[${i + 1}] = ul[${i + 1}] - 2*nor*nl[${i}];
 % endfor
     ur[${nvars - 1}] = ul[${nvars - 1}];
 </%pyfr:macro>
