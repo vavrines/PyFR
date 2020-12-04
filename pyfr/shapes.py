@@ -225,7 +225,117 @@ class BaseShape(object):
                         M[solidx, fxp_idx] = g_right(solpts[xidx])
                         M[solidx, fyp_idx] = g_right(solpts[yidx])
                         M[solidx, fzp_idx] = g_right(solpts[zidx])
+        return M
 
+    @lazyprop
+
+    # M3 matrix for shock points correction in subcell scheme
+    def m13(self):
+        p = self.order
+        M = np.zeros((self.nupts, self.nfpts))
+
+        solpts = self.upts[:p+1,0] # Hack
+        rdpts = np.zeros(p+2)
+        rdpts[0] = -1.
+        rdpts[-1] = 1.
+        for i in range(p):
+            rdpts[i+1] = 0.5*(solpts[i] + solpts[i+1])
+
+        dx = rdpts[1] - rdpts[0]
+
+        if self.ndims == 2:
+            # HEX FACE ORDERING:
+            # 0 -> y = -1
+            # 1 -> x =  1
+            # 2 -> y =  1
+            # 3 -> x = -1
+            faceidx = lambda face, idx: face*(p+1) + idx
+            uidx = lambda xidx, yidx: xidx + yidx*(p+1)
+            for yidx in range(p+1):
+                fxm_idx = faceidx(3,yidx)
+                fxp_idx = faceidx(1,yidx)
+                solidx = uidx(0, yidx)
+                M[solidx, fxm_idx] = 1./dx
+                solidx = uidx(p, yidx)
+                M[solidx, fxp_idx] =  1./dx
+            for xidx in range(p+1):
+                fym_idx = faceidx(0,xidx)
+                fyp_idx = faceidx(2,xidx)
+                solidx = uidx(xidx, 0)
+                M[solidx, fym_idx] = 1./dx
+                solidx = uidx(xidx, p)
+                M[solidx, fyp_idx] =  1./dx
+        if self.ndims == 3:
+            # HEX FACE ORDERING:
+            # 0 -> z = -1
+            # 1 -> y = -1
+            # 2 -> x =  1
+            # 3 -> y =  1
+            # 4 -> x = -1
+            # 5 -> z =  1
+            raise NotImplementedError()
+            # faceidx = lambda face, a_idx, b_idx: face*(p+1)**2 + a_idx + b_idx*(p+1)
+            # uidx = lambda xidx, yidx, zidx: xidx + yidx*(p+1) + zidx*((p+1)**2)
+            # for yidx in range(p+1):
+            # 	for zidx in range(p+1):
+	           #      fxm_idx = faceidx(3,yidx)
+	           #      fxp_idx = faceidx(1,yidx)
+	           #      solidx = uidx(0, yidx)
+	           #      M[solidx, fxm_idx] = 1./dx
+	           #      solidx = uidx(p, yidx)
+	           #      M[solidx, fxp_idx] = 1./dx
+            # for xidx in range(p+1):
+            # 	for zidx in range(p+1):
+	           #      solidx = uidx(xidx, 0)
+	           #      M[solidx, fym_idx] = 1./dx
+	           #      solidx = uidx(xidx, p)
+	           #      M[solidx, fyp_idx] = 1./dx        
+        return M
+
+    @lazyprop
+
+    # M0 matrix for interpolating subcells to flux points (constant)
+    def m14(self):
+        p = self.order
+        M = np.zeros((self.nfpts, self.nupts))
+
+        solpts = self.upts[:p+1,0] # Hack
+
+        if self.ndims == 2:
+            # HEX FACE ORDERING:
+            # 0 -> y = -1
+            # 1 -> x =  1
+            # 2 -> y =  1
+            # 3 -> x = -1
+            faceidx = lambda face, idx: face*(p+1) + idx
+            uidx = lambda xidx, yidx: xidx + yidx*(p+1)
+            for idx in range(p+1):
+                fxm_idx = faceidx(3,idx)
+                fxp_idx = faceidx(1,idx)
+                fym_idx = faceidx(0,idx)
+                fyp_idx = faceidx(2,idx)
+
+                solidx = uidx(0, idx)
+                M[fxm_idx, solidx] = 1.
+
+                solidx = uidx(p, idx)
+                M[fxp_idx, solidx] = 1.
+
+                solidx = uidx(idx, 0)
+                M[fym_idx, solidx] = 1.
+
+                solidx = uidx(idx, p)
+                M[fyp_idx, solidx] = 1.
+
+        if self.ndims == 3:
+            # HEX FACE ORDERING:
+            # 0 -> z = -1
+            # 1 -> y = -1
+            # 2 -> x =  1
+            # 3 -> y =  1
+            # 4 -> x = -1
+            # 5 -> z =  1
+            raise NotImplementedError()
         return M
 
     @lazyprop

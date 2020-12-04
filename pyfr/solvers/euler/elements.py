@@ -9,52 +9,54 @@ from pyfr.quadrules import get_quadrule
 class BaseFluidElements(object):
     formulations = ['std', 'dual']
 
-    privarmap = {2: ['rho', 'u', 'v', 'p'],
-                 3: ['rho', 'u', 'v', 'w', 'p']}
+    privarmap = {2: ['rho', 'u', 'v', 'p', 's'],
+                 3: ['rho', 'u', 'v', 'w', 'p', 's']}
 
-    convarmap = {2: ['rho', 'rhou', 'rhov', 'E'],
-                 3: ['rho', 'rhou', 'rhov', 'rhow', 'E']}
+    convarmap = {2: ['rho', 'rhou', 'rhov', 'E', 's'],
+                 3: ['rho', 'rhou', 'rhov', 'rhow', 'E', 's']}
 
     dualcoeffs = convarmap
 
     visvarmap = {
         2: [('density', ['rho']),
             ('velocity', ['u', 'v']),
-            ('pressure', ['p'])],
+            ('pressure', ['p']),
+            ('entropy', ['s'])],
         3: [('density', ['rho']),
             ('velocity', ['u', 'v', 'w']),
-            ('pressure', ['p'])]
+            ('pressure', ['p']),
+            ('entropy', ['s'])]
     }
 
     @staticmethod
     def pri_to_con(pris, cfg, auxvars=False):
         if auxvars:
             return [pris[0]]
-        rho, p = pris[0], pris[-1]
+        rho, p, s = pris[0], pris[-2], pris[-1]
 
         # Multiply velocity components by rho
-        rhovs = [rho*c for c in pris[1:-1]]
+        rhovs = [rho*c for c in pris[1:-2]]
 
         # Compute the energy
         gamma = cfg.getfloat('constants', 'gamma')
-        E = p/(gamma - 1) + 0.5*rho*sum(c*c for c in pris[1:-1])
+        E = p/(gamma - 1) + 0.5*rho*sum(c*c for c in pris[1:-2])
 
-        return [rho] + rhovs + [E]
+        return [rho] + rhovs + [E] + [s]
 
     @staticmethod
     def con_to_pri(cons, cfg, auxvars=False):
         if auxvars:
             return [cons[0]]
-        rho, E = cons[0], cons[-1]
+        rho, E, s = cons[0], cons[-2], cons[-1]
 
         # Divide momentum components by rho
-        vs = [rhov/rho for rhov in cons[1:-1]]
+        vs = [rhov/rho for rhov in cons[1:-2]]
 
         # Compute the pressure
         gamma = cfg.getfloat('constants', 'gamma')
         p = (gamma - 1)*(E - 0.5*rho*sum(v*v for v in vs))
 
-        return [rho] + vs + [p]
+        return [rho] + vs + [p] + [s]
 
 
 class EulerElements(BaseFluidElements, BaseAdvectionElements):
@@ -69,11 +71,7 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                        c=self.cfg.items_as('constants', float))
 
         if 'flux' in self.antialias:
-            self.kernels['tdisf'] = lambda: self._be.kernel(
-                'tflux', tplargs=tplargs, dims=[self.nqpts, self.neles],
-                u=self._scal_qpts, smats=self.smat_at('qpts'),
-                f=self._vect_qpts
-            )
+            	raise ValueError('AA not allowed.')
         else:
             self.kernels['tdisf'] = lambda: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, self.neles],
@@ -81,20 +79,26 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 f=self._vect_upts
             )
 
+
         # Shock capturing
         shock_capturing = self.cfg.get('solver', 'shock-capturing', 'none')
 
-        # Shockcell is an elementwise value (0,1) dictating if there is a shock in the cell (1)
-        self.shockcell = self._be.matrix((1, self.neles), tags={'align'}, initval=np.zeros((1, self.neles)))
 
         if shock_capturing == 'riemann-difference':
             # Register the kernels
             self._be.pointwise.register('pyfr.solvers.euler.kernels.rdshocksensor')
             self._be.pointwise.register('pyfr.solvers.euler.kernels.riemanndifference')
+            self._be.pointwise.register('pyfr.solvers.euler.kernels.residual')
 
             self.kernels['copy_soln_at_fpts'] = lambda: self._be.kernel(
                     'copy', self._scal_fpts_cpy, self._scal_fpts
                 )
+
+
+            # Shockcell is an elementwise value (0,1) dictating if there is a shock in the cell (1)
+            self.shockcell = self._be.matrix((1, self.neles), tags={'align'}, initval=np.zeros((1, self.neles)))
+
+            self.residual = self._be.matrix((self.nupts, self.neles), tags={'align'}, initval=np.zeros((self.nupts, self.neles)))
 
             # Sense shocks using density 
             shockvar = 0
@@ -116,8 +120,7 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                usmats=self.ele_smat_at('upts'), rcpdjac=self.rcpdjac_at('upts'), ploc=self.ploc_at('upts')
             )
 
-
-            diffmat = self.generateDiffMat()
+            diffmat = self.generateRDDiffMat()
             rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
 
             # Template arguments
@@ -144,9 +147,20 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 uf=self._scal_fpts_cpy, fsmats=self.ele_smat_at('fpts'), divf=self._scal_upts_cpy
             )
 
+            diffmat = self.generateSubcellDiffMat()
+            tplargs["diffmat"] = diffmat
+            self.kernels['divf_LO'] = lambda: self._be.kernel(
+                'riemanndifference', tplargs=tplargs, dims=[self.neles],
+                u=self.scal_upts_inb, plocu=self.ploc_at('upts'), usmats=self.ele_smat_at('upts'),
+                uf=self._scal_fpts_cpy, fsmats=self.ele_smat_at('fpts'), divf=self.scal_upts_outb
+            )
 
+            self.kernels['residual'] = lambda: self._be.kernel(
+                'residual', tplargs=tplargs, dims=[self.nupts, self.neles], tdivtconf=self.scal_upts_outb,
+                rcpdjac=self.rcpdjac_at('upts'), u=self.scal_upts_inb, r=self.residual
+            )
 
-    def generateDiffMat(self):
+    def generateRDDiffMat(self):
         p = self.basis.order
         M = np.zeros((p+1, p+2))
 
@@ -164,6 +178,24 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             for j in range(p+1):
                 M[j,i] = dlag(solpts[j])
         return M
+
+    def generateSubcellDiffMat(self):
+        p = self.basis.order
+        M = np.zeros((p+1, p+2))
+
+        solpts = self.basis.upts[:p+1,0] # Hack
+        rdpts = np.zeros(p+2)
+        rdpts[0] = -1.
+        rdpts[-1] = 1.
+        for i in range(p):
+            rdpts[i+1] = 0.5*(solpts[i] + solpts[i+1])
+
+        for i in range(p+1):
+        	dx = rdpts[i+1] - rdpts[i]
+        	M[i,i] = -1./dx
+        	M[i,i+1] = 1./dx
+        return M
+
 
     def generateProjectionMats(self, pstages):
         # p1pts = np.array([-0.5773502, 0.5773502])

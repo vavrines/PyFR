@@ -71,11 +71,9 @@ class WriterPlugin(BasePlugin):
         for key in intg.system.ele_map:
             elekeys.append(key)
         for i in range(nsects):
-            soln = np.moveaxis(intg.soln[i],0,1)
-            out = []
-            sc = intg.system.ele_map[elekeys[i]].shockcell._get()
-            sc = np.repeat(sc[np.newaxis,:,:], nupts, axis = 0)
-            outsoln.append(sc)
+            r = intg.system.ele_map[elekeys[i]].residual._get()
+            r = r[:,np.newaxis, :]
+            outsoln.append(r)
         return np.array(outsoln)
 
 

@@ -55,13 +55,15 @@ class BaseAdvectionElements(BaseElements):
         # Interpolation from elemental points
         for s, neles in self._ext_int_sides:
             if fluxaa or (divfluxaa and solnsrc):
-                kernels['disu_' + s] = lambda s=s: self._be.kernel(
-                    'mul', self.opmat('M8'), slicem(self.scal_upts_inb, s),
-                    out=slicem(self._scal_fqpts, s)
-                )
+            	raise ValueError('AA not allowed.')
             else:
-                kernels['disu_' + s] = lambda s=s: self._be.kernel(
+                kernels['disu_HO_' + s] = lambda s=s: self._be.kernel(
                     'mul', self.opmat('M0'), slicem(self.scal_upts_inb, s),
+                    out=slicem(self._scal_fpts, s)
+                )
+                
+                kernels['disu_LO_' + s] = lambda s=s: self._be.kernel(
+                    'mul', self.opmat('M14'), slicem(self.scal_upts_inb, s),
                     out=slicem(self._scal_fpts, s)
                 )
 
@@ -78,33 +80,28 @@ class BaseAdvectionElements(BaseElements):
 
         # First flux correction kernel
         if fluxaa:
-            kernels['tdivtpcorf'] = lambda: self._be.kernel(
-                'mul', self.opmat('(M1 - M3*M2)*M10'), self._vect_qpts,
-                out=self.scal_upts_outb
-            )
+            raise ValueError('AA not allowed.')
         else:
-            kernels['tdivtpcorf'] = lambda: self._be.kernel(
-                'mul', self.opmat('M1 - M3*M2'), self._vect_upts,
-                out=self.scal_upts_outb
+            kernels['tdivtpcorf_LO'] = lambda: self._be.kernel(
+                    'mul', self.opmat('-M13*M2'), self._vect_upts,
+                    out=self.scal_upts_outb, beta=1.0
             )
 
-            if shock_capturing == 'riemann-difference':
-                kernels['tdivtpcorf_rd'] = lambda: self._be.kernel(
-                        'mul', self.opmat('-M12*M2'), self._vect_upts,
-                        out=self._scal_upts_cpy, beta=1.0
-                )
+            kernels['tdivtpcorf_RD'] = lambda: self._be.kernel(
+                    'mul', self.opmat('-M12*M2'), self._vect_upts,
+                    out=self._scal_upts_cpy, beta=1.0
+            )
 
         # Second flux correction kernel
-        kernels['tdivtconf'] = lambda: self._be.kernel(
-            'mul', self.opmat('M3'), self._scal_fpts, out=self.scal_upts_outb,
+        kernels['tdivtconf_LO'] = lambda: self._be.kernel(
+            'mul', self.opmat('M13'), self._scal_fpts, out=self.scal_upts_outb,
             beta=1.0
         )
 
-        if shock_capturing == 'riemann-difference':
-            kernels['tdivtconf_rd'] = lambda: self._be.kernel(
-                'mul', self.opmat('M12'), self._scal_fpts, out=self._scal_upts_cpy,
-                beta=1.0
-            )
+        kernels['tdivtconf_RD'] = lambda: self._be.kernel(
+            'mul', self.opmat('M12'), self._scal_fpts, out=self._scal_upts_cpy,
+            beta=1.0
+        )
 
         # Transformed to physical divergence kernel + source term
         if divfluxaa:

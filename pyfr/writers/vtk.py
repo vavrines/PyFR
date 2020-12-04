@@ -62,7 +62,7 @@ class VTKWriter(BaseWriter):
     def _pre_proc_fields_soln(self, name, mesh, soln):
         # Convert from conservative to primitive variables
         nvars, _, _ = np.shape(soln)
-        auxvars = nvars == 2
+        auxvars = nvars == 1
         return np.array(self.elementscls.con_to_pri(soln, self.cfg, auxvars=auxvars))
 
     def _pre_proc_fields_scal(self, name, mesh, soln):
@@ -70,10 +70,10 @@ class VTKWriter(BaseWriter):
 
     def _post_proc_fields_soln(self, vsoln):
         nvars, _, _ = np.shape(vsoln)
-        auxvars = nvars == 2
+        auxvars = nvars == 1
         if auxvars:
-            privarmap = ['shockcell']
-            visvarmap = [('shockcell', ['shockcell'])]
+            privarmap = ['residual']
+            visvarmap = [('residual', ['residual'])]
         else:
             visvarmap = self.visvarmap
             privarmap = self.privarmap
@@ -152,7 +152,7 @@ class VTKWriter(BaseWriter):
 
         vvars = self._vtk_vars
         if auxvars:
-            vvars = [('shockcell', ['shockcell'])]
+            vvars = [('residual', ['residual'])]
 
         names = ['', 'connectivity', 'offsets', 'types']
         types = [dtype, 'Int32', 'Int32', 'UInt8']

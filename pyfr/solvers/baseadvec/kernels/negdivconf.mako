@@ -11,4 +11,5 @@
 % for i, ex in enumerate(srcex):
     tdivtconf[${i}] = -rcpdjac*tdivtconf[${i}] + ${ex};
 % endfor
+tdivtconf[${nvars-1}] = 0.0;
 </%pyfr:kernel>
