@@ -82,24 +82,33 @@ class BaseAdvectionElements(BaseElements):
         if fluxaa:
             raise ValueError('AA not allowed.')
         else:
+            kernels['tdivtpcorf_HO'] = lambda: self._be.kernel(
+                'mul', self.opmat('M1 - M3*M2'), self._vect_upts,
+                out=self.scal_upts_outb
+            )
             kernels['tdivtpcorf_LO'] = lambda: self._be.kernel(
-                    'mul', self.opmat('-M13*M2'), self._vect_upts,
-                    out=self.scal_upts_outb, beta=1.0
+                    'mul', self.opmat('M15 - M13*M16'), self._vect_upts,
+                    out=self.scal_upts_outb
             )
 
             kernels['tdivtpcorf_RD'] = lambda: self._be.kernel(
                     'mul', self.opmat('-M12*M2'), self._vect_upts,
-                    out=self._scal_upts_cpy, beta=1.0
+                    out=self.scal_upts_outb, beta=1.0
             )
 
         # Second flux correction kernel
+        kernels['tdivtconf_HO'] = lambda: self._be.kernel(
+            'mul', self.opmat('M3'), self._scal_fpts, out=self.scal_upts_outb,
+            beta=1.0
+        )
+        
         kernels['tdivtconf_LO'] = lambda: self._be.kernel(
             'mul', self.opmat('M13'), self._scal_fpts, out=self.scal_upts_outb,
             beta=1.0
         )
 
         kernels['tdivtconf_RD'] = lambda: self._be.kernel(
-            'mul', self.opmat('M12'), self._scal_fpts, out=self._scal_upts_cpy,
+            'mul', self.opmat('M12'), self._scal_fpts, out=self.scal_upts_outb,
             beta=1.0
         )
 

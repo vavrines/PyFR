@@ -3,14 +3,13 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 <%include file='pyfr.solvers.euler.kernels.rsolvers.${rsolver}'/>
 
-<%pyfr:kernel name='riemanndifference' ndim='1'
+<%pyfr:kernel name='divf_LO_centered' ndim='1'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               plocu='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
               usmats='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'
               uf='in fpdtype_t[${str(nfpts)}][${str(nvars)}]'
               fsmats='in fpdtype_t[${str(nfpts)}][${str(ndims*ndims)}]'
               divf='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              res='in fpdtype_t[${str(nupts)}]'
               >
 
 <%pyfr:macro name='get_normal' params='xl,xr,n'>
@@ -47,7 +46,7 @@
 
 fpdtype_t ftemp[${ndims}][${nvars}], ftemp2[${ndims}][${nvars}], fntemp[${nvars}], fntemp2[${nvars}], xl[${ndims}], xr[${ndims}];
 fpdtype_t line_sol[${order+1}][${nvars}], line_flux[${order+2}][${ndims}][${nvars}], line_tflux[${order+2}][${ndims}][${nvars}];
-fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], tmp, p, v[${ndims}];
+fpdtype_t ul[${nvars}], ur[${nvars}], n[${ndims}], t[${ndims}], tmp, p, v[${ndims}];
 
 // Perform along xi direction
 % for j in range(order+1):
@@ -88,28 +87,11 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 			ur[${var}] = line_sol[${i+1}][${var}];
 		% endfor
 
-        // If res > e_max
-        if (abs(res[${i+j*(order+1)}]) > ${e_max} || abs(res[${i+j*(order+1)}]) > ${e_max}) {
-    		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
-    		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
-    		% for var in range(nvars):
-    			line_flux[${i+1}][0][${var}] = n[0]*fntemp[${var}] + n[1]*fntemp2[${var}];
-    			line_flux[${i+1}][1][${var}] = n[1]*fntemp[${var}] - n[0]*fntemp2[${var}];
-    		% endfor
-            }
-        else {
-            // Else interp to RD points
-            % for var in range(nvars):
-                usd[${var}] = ${' + '.join('{mx}*line_sol[{m}][{var}]'.format(m=m, mx=mx, var=var)
-                           for m, mx in enumerate(interpmat[i+1]) if mx != 0)}; // 
-            % endfor
-            // And calculate flux
-            ${pyfr.expand('inviscid_flux', 'usd', 'ftemp', 'p', 'v')};
-            % for dim, var in pyfr.ndrange(ndims, nvars):
-                line_flux[${i+1}][${dim}][${var}] = ftemp[${dim}][${var}];
-            % endfor
-        }
-
+        ${pyfr.expand('inviscid_flux', 'ul', 'ftemp', 'p', 'v')};
+        ${pyfr.expand('inviscid_flux', 'ur', 'ftemp2', 'p', 'v')};
+        % for dim, var in pyfr.ndrange(ndims, nvars):
+            line_flux[${i+1}][${dim}][${var}] = 0.5*ftemp[${dim}][${var}] + 0.5*ftemp2[${dim}][${var}];
+        % endfor
 	% endfor
 
 
@@ -133,7 +115,7 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 	% for var in range(nvars):
 		% for i in range(order+1):
 			tmp =  ${' + '.join('{mx}*line_tflux[{m}][0][{var}]'.format(m=m, mx=mx, var=var)
-                       for m, mx in enumerate(diffmatRD[i]) if mx != 0)};
+                       for m, mx in enumerate(diffmatLO[i]) if mx != 0)};
 			divf[${i+ j*(order+1)}][${var}] += tmp;
 		% endfor
 	% endfor 
@@ -178,27 +160,11 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 			ur[${var}] = line_sol[${j+1}][${var}];
 		% endfor
 
-        // If res > e_max
-        if (abs(res[${i+ (j+1)*(order+1)}]) > ${e_max} || abs(res[${i+ j*(order+1)}]) > ${e_max}) {
-    		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
-    		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
-    		% for var in range(nvars):
-    			line_flux[${j+1}][0][${var}] = n[0]*fntemp[${var}] + n[1]*fntemp2[${var}];
-    			line_flux[${j+1}][1][${var}] = n[1]*fntemp[${var}] - n[0]*fntemp2[${var}];
-    		% endfor
-            }
-        else {
-            // Else interp to RD points
-            % for var in range(nvars):
-                usd[${var}] = ${' + '.join('{mx}*line_sol[{m}][{var}]'.format(m=m, mx=mx, var=var)
-                           for m, mx in enumerate(interpmat[j+1]) if mx != 0)};
-            % endfor
-            // And calculate flux
-            ${pyfr.expand('inviscid_flux', 'usd', 'ftemp', 'p', 'v')};
-            % for dim, var in pyfr.ndrange(ndims, nvars):
-                line_flux[${j+1}][${dim}][${var}] = ftemp[${dim}][${var}];
-            % endfor
-        }
+        ${pyfr.expand('inviscid_flux', 'ul', 'ftemp', 'p', 'v')};
+        ${pyfr.expand('inviscid_flux', 'ur', 'ftemp2', 'p', 'v')};
+		% for dim, var in pyfr.ndrange(ndims, nvars):
+            line_flux[${j+1}][${dim}][${var}] = 0.5*ftemp[${dim}][${var}] + 0.5*ftemp2[${dim}][${var}];
+		% endfor
 	% endfor
 
 	// Transform flux to computational space
@@ -220,7 +186,7 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 	% for var in range(nvars):
 		% for j in range(order+1):
 			tmp =  ${' + '.join('{mx}*line_tflux[{m}][1][{var}]'.format(m=m, mx=mx, var=var)
-                       for m, mx in enumerate(diffmatRD[j]) if mx != 0)};
+                       for m, mx in enumerate(diffmatLO[j]) if mx != 0)};
 			divf[${i+ j*(order+1)}][${var}] += tmp; 
 		% endfor
 	% endfor

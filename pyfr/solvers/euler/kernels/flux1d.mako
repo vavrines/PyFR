@@ -16,7 +16,6 @@
 
     // Compute the numerical entropy
     fpdtype_t ent = -rho*log(p*pow(rho, -${c['gamma']}))/(${c['gamma']- 1.0});
-    ent = 0;
 
     // Density and energy fluxes
     f[0] = rhov[0];
