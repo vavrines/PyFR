@@ -65,6 +65,7 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
 
         # Register our flux kernel
         self._be.pointwise.register('pyfr.solvers.euler.kernels.tflux')
+        self._be.pointwise.register('pyfr.solvers.euler.kernels.uflux')
 
         # Template parameters for the flux kernel
         tplargs = dict(ndims=self.ndims, nvars=self.nvars,
@@ -80,6 +81,11 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             )
 
 
+        self.kernels['tdisu'] = lambda: self._be.kernel(
+            'uflux', tplargs=tplargs, dims=[self.nupts, self.neles],
+            u=self.scal_upts_inb, smats=self.smat_at('upts'),
+            f=self._vect_upts
+        )
         # Shock capturing
         shock_capturing = self.cfg.get('solver', 'shock-capturing', 'none')
 
@@ -117,16 +123,22 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 rcpdjac=self.rcpdjac_at('upts'), u=self.scal_upts_inb, r=self.residual
             )
 
-            diffmatSOL = self.generateSolDiffMat(rdpts)
-            tplargs["diffmatSOL"] = diffmatSOL
+            # diffmatSOL = self.generateSolDiffMat(rdpts)
+            # tplargs["diffmatSOL"] = diffmatSOL
             tplargs["kvars"] = 3
             tplargs["tol"] = 1e-8
 
             self.kernels['normalizeresidual'] = lambda: self._be.kernel(
                 'normalizeresidual', tplargs=tplargs, dims=[self.neles],
-                u=self.scal_upts_inb, r=self.residual, usmats=self.ele_smat_at('upts'),
-                rcpdjac=self.rcpdjac_at('upts')
+                u=self.scal_upts_inb, r=self.residual, divu=self.scal_upts_outb, 
+                usmats=self.ele_smat_at('upts'), rcpdjac=self.rcpdjac_at('upts')
             )
+
+            # self.kernels['normalizeresidual'] = lambda: self._be.kernel(
+            #     'normalizeresidual', tplargs=tplargs, dims=[self.neles],
+            #     u=self.scal_upts_inb, r=self.residual, usmats=self.ele_smat_at('upts'),
+            #     rcpdjac=self.rcpdjac_at('upts')
+            # )
 
             self.kernels['limitinterp'] = lambda: self._be.kernel(
                 'limitinterp', tplargs=tplargs, dims=[self.nfpts, self.neles],
