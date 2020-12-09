@@ -88,40 +88,44 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 			ur[${var}] = line_sol[${i+1}][${var}];
 		% endfor
 
-        // If res > e_max
-        if (abs(res[${i+j*(order+1)}]) > ${e_max} || abs(res[${i+j*(order+1)}]) > ${e_max}) {
-    		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
-    		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
-    		% for var in range(nvars):
-    			line_flux[${i+1}][0][${var}] = n[0]*fntemp[${var}] + n[1]*fntemp2[${var}];
-    			line_flux[${i+1}][1][${var}] = n[1]*fntemp[${var}] - n[0]*fntemp2[${var}];
-    		% endfor
+        // Interp to RD points
+        % for var in range(nvars):
+            usd[${var}] = ${' + '.join('{mx}*line_sol[{m}][{var}]'.format(m=m, mx=mx, var=var)
+                       for m, mx in enumerate(interpmat[i+1]) if mx != 0)}; // 
+        % endfor
+
+        // Check if density or pressure is negative 
+        p = ${c['gamma'] - 1}*(usd[${nvars-2}] - 0.5*(pow(usd[1], 2.0) + pow(usd[2], 2.0))/usd[0]);
+
+        // If res > e_max or rho < tol or pressure < tol
+        if (abs(res[${i+j*(order+1)}]) > ${e_max} 
+            || abs(res[${i+j*(order+1)+1}]) > ${e_max}
+            || usd[0] < ${tol}
+            || p < ${tol}) {
+
+            ${pyfr.expand('rsolve','ul','ur','n','fntemp')};
+            ${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
+            % for var in range(nvars):
+                line_flux[${i+1}][0][${var}] = n[0]*fntemp[${var}] + n[1]*fntemp2[${var}];
+                line_flux[${i+1}][1][${var}] = n[1]*fntemp[${var}] - n[0]*fntemp2[${var}];
+            % endfor
             }
         else {
-            // Else interp to RD points
-            % for var in range(nvars):
-                usd[${var}] = ${' + '.join('{mx}*line_sol[{m}][{var}]'.format(m=m, mx=mx, var=var)
-                           for m, mx in enumerate(interpmat[i+1]) if mx != 0)}; // 
-            % endfor
             // And calculate flux
             ${pyfr.expand('inviscid_flux', 'usd', 'ftemp', 'p', 'v')};
             % for dim, var in pyfr.ndrange(ndims, nvars):
                 line_flux[${i+1}][${dim}][${var}] = ftemp[${dim}][${var}];
             % endfor
         }
+    % endfor
 
-	% endfor
-
-
-	// Transform flux to computational space
 	% for dim, var in pyfr.ndrange(ndims, nvars):
-		line_tflux[${0}][${dim}][${var}] = ${' + '.join('fsmats[{0}][{1}]*line_flux[{4}][{2}][{3}]'
-                                                 .format(3*(order+1) + j, ndims*dim+k, k, var, 0) for k in range(ndims))};
-		line_tflux[${order+1}][${dim}][${var}] = ${' + '.join('fsmats[{0}][{1}]*line_flux[{4}][{2}][{3}]'
-                                                 .format(1*(order+1) + j, ndims*dim+k, k, var, order+1) for k in range(ndims))};
+		line_tflux[${0}][${dim}][${var}] = 0;
+		line_tflux[${order+1}][${dim}][${var}] = 0;
 	% endfor
-	// Definitely ndims*dim+k
 
+    // Transform flux to computational space
+	// Definitely ndims*dim+k
 	% for i in range(1,order+1):
 		% for dim, var in pyfr.ndrange(ndims, nvars):
 			line_tflux[${i}][${dim}][${var}] = ${' + '.join('(0.5*usmats[{0}][{2}] + 0.5*usmats[{1}][{2}])*line_flux[{5}][{3}][{4}]'
@@ -178,8 +182,21 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 			ur[${var}] = line_sol[${j+1}][${var}];
 		% endfor
 
-        // If res > e_max
-        if (abs(res[${i+ (j+1)*(order+1)}]) > ${e_max} || abs(res[${i+ j*(order+1)}]) > ${e_max}) {
+        // Interp to RD points
+        % for var in range(nvars):
+            usd[${var}] = ${' + '.join('{mx}*line_sol[{m}][{var}]'.format(m=m, mx=mx, var=var)
+                       for m, mx in enumerate(interpmat[j+1]) if mx != 0)};
+        % endfor
+
+        // Check if density or pressure is negative 
+        p = ${c['gamma'] - 1}*(usd[${nvars-2}] - 0.5*(pow(usd[1], 2.0) + pow(usd[2], 2.0))/usd[0]);
+
+        // If res > e_max or rho < tol or pressure < tol
+        if (abs(res[${i+(j+1)*(order+1)}]) > ${e_max} 
+            || abs(res[${i+j*(order+1)}]) > ${e_max}
+            || usd[0] < ${tol}
+            || p < ${tol}) {
+
     		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
     		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
     		% for var in range(nvars):
@@ -188,11 +205,6 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
     		% endfor
             }
         else {
-            // Else interp to RD points
-            % for var in range(nvars):
-                usd[${var}] = ${' + '.join('{mx}*line_sol[{m}][{var}]'.format(m=m, mx=mx, var=var)
-                           for m, mx in enumerate(interpmat[j+1]) if mx != 0)};
-            % endfor
             // And calculate flux
             ${pyfr.expand('inviscid_flux', 'usd', 'ftemp', 'p', 'v')};
             % for dim, var in pyfr.ndrange(ndims, nvars):
@@ -203,10 +215,8 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 
 	// Transform flux to computational space
 	% for dim, var in pyfr.ndrange(ndims, nvars):
-		line_tflux[${0}][${dim}][${var}] = ${' + '.join('fsmats[{0}][{1}]*line_flux[{4}][{2}][{3}]'
-                                                 .format(0*(order+1) + i, ndims*dim+k, k, var, 0) for k in range(ndims))};
-		line_tflux[${order+1}][${dim}][${var}] = ${' + '.join('fsmats[{0}][{1}]*line_flux[{4}][{2}][{3}]'
-                                                 .format(2*(order+1) + i, ndims*dim+k, k, var, order+1) for k in range(ndims))};
+		line_tflux[${0}][${dim}][${var}] = 0;
+		line_tflux[${order+1}][${dim}][${var}] = 0;
 	% endfor
 
 	% for j in range(1,order+1):

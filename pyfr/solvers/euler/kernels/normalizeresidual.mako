@@ -35,20 +35,21 @@ fpdtype_t dsdr[${nupts}], dsdp[${nupts}];
 // divp = nvars-2
 // divs = nvars-1
 
-fpdtype_t r0 = 0, r1, r2, divs, divr, divp, lambda;
+fpdtype_t r0 = ${tol}, r1, r2, divs, divr, divp, lambda;
 % for i in range(nupts):
-    r0 = 0; r1 = 0; r2 = 0; divs = 0; divr = 0; divp = 0;
-    % for dim in range(ndims):
-        divr += divu[${i}][0];
-        divp += divu[${i}][${nvars-2}];
-        divs += divu[${i}][${nvars-1}];
-    % endfor
+
+    divr = divu[${i}][0];
+    divp = divu[${i}][${nvars-2}];
+    divs = divu[${i}][${nvars-1}];
 
     lambda = abs(pow(pow(u[${i}][1]/u[${i}][0], 2.0) + pow(u[${i}][2]/u[${i}][0], 2.0), 0.5)) + sqrt(ub[${i}][1]/ub[${i}][0]);
 
-    r1 = lambda*(abs(divs) + ${tol});
-    r2 = lambda*(abs(divr)*abs(dsdr[${i}]) + abs(divp)*abs(dsdp[${i}]) + ${tol});
-    r0 = max(r0, max(r1, r2));
+    r1 = rcpdjac[${i}]*lambda*(abs(divs) + ${tol});
+    r2 = rcpdjac[${i}]*lambda*(abs(divr)*abs(dsdr[${i}]) + abs(divp)*abs(dsdp[${i}]) + ${tol});
+    r0 = fmax(r0, fmax(r1, r2));
+
+    //r0 = fmax(r1, r2);
+    //r[${i}] = abs(r[${i}])/r0;
 % endfor
 
 % for i in range(nupts):

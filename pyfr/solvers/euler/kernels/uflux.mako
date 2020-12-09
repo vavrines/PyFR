@@ -11,8 +11,8 @@
 fpdtype_t ftemp[${ndims}][${nvars}];
 
 % for i, j in pyfr.ndrange(ndims, nvars):
-    % if i == nvars - 1:
-        ftemp[${i}][${j}] = ${c['gamma'] - 1}*(u[${nvars-2}] - 0.5*(pow(u[1], 2.0) + pow(u[2], 2.0))/u[0]); // Pressure
+    % if j == nvars - 2:
+        ftemp[${i}][${j}] = ${c['gamma'] - 1}*(u[${j}] - 0.5*(pow(u[1], 2.0) + pow(u[2], 2.0))/u[0]); // Pressure
     % else:
         ftemp[${i}][${j}] = u[${j}];
     % endif
