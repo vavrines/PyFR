@@ -63,32 +63,15 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 // Perform along xi direction
 % for j in range(order+1):
 	// Gather solution along constant eta line
-	% for i in range(order+1):
-		% for var in range(nvars):
-			line_sol[${i}][${var}] = u[${i+ j*(order+1)}][${var}];
-		% endfor
-	% endfor
-
-	// Riemann solve between points
-
-	// Take interior interface flux 
-	% for var in range(nvars):
-		ul[${var}] = uf[${j + 3*(order+1)}][${var}];
-		ur[${var}] = uf[${j + 1*(order+1)}][${var}];
-	% endfor 
-    ${pyfr.expand('inviscid_flux', 'ul', 'ftemp', 'p', 'v')};
-    ${pyfr.expand('inviscid_flux', 'ur', 'ftemp2', 'p', 'v')};
-
-	% for dim, var in pyfr.ndrange(ndims, nvars):
-		line_flux[0][${dim}][${var}] = ftemp[${dim}][${var}];
-		line_flux[${order+1}][${dim}][${var}] = ftemp2[${dim}][${var}];
+	% for i, var in pyfr.ndrange(order+1, nvars):
+		line_sol[${i}][${var}] = u[${i+j*(order+1)}][${var}];
 	% endfor
 
 	% for i in range(order):
 		// Get normal direction between solution points
 		% for dim in range(ndims):
 			xl[${dim}] = plocu[${i+1+j*(order+1)}][${dim}];
-			xr[${dim}] = plocu[${i+ j*(order+1)}][${dim}];
+			xr[${dim}] = plocu[${i+  j*(order+1)}][${dim}];
 		% endfor		
 		${pyfr.expand('get_normal','xl', 'xr', 'n')}
 		${pyfr.expand('get_tangent2d','xl', 'xr', 't')}
@@ -99,7 +82,7 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 			ur[${var}] = line_sol[${i+1}][${var}];
 		% endfor
 
-        // Interp to RD points
+        // Interpolate to RD points
         % for var in range(nvars):
             usd[${var}] = ${' + '.join('{mx}*line_sol[{m}][{var}]'.format(m=m, mx=mx, var=var)
                        for m, mx in enumerate(interpmat[i+1]) if mx != 0)}; // 
@@ -130,11 +113,6 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
         }
     % endfor
 
-	% for dim, var in pyfr.ndrange(ndims, nvars):
-		line_tflux[${0}][${dim}][${var}] = 0;
-		line_tflux[${order+1}][${dim}][${var}] = 0;
-	% endfor
-
     // Transform flux to computational space
 	// Definitely ndims*dim+k
 	% for i in range(1,order+1):
@@ -144,45 +122,32 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 		% endfor
 	% endfor
 
+    // Set interface fluxes to zero (include them in correction term)
+    % for dim, var in pyfr.ndrange(ndims, nvars):
+        line_tflux[0][${dim}][${var}] = 0;
+        line_tflux[${order+1}][${dim}][${var}] = 0;
+    % endfor
+
 	// Calculate df/dxi at solution points
-	% for var in range(nvars):
-		% for i in range(order+1):
-			tmp =  ${' + '.join('{mx}*line_tflux[{m}][0][{var}]'.format(m=m, mx=mx, var=var)
-                       for m, mx in enumerate(diffmatRD[i]) if mx != 0)};
-			divf[${i+ j*(order+1)}][${var}] += tmp;
-		% endfor
+	% for var, i in pyfr.ndrange(nvars, order+1):
+		tmp =  ${' + '.join('{mx}*line_tflux[{m}][0][{var}]'.format(m=m, mx=mx, var=var)
+                   for m, mx in enumerate(diffmatRD[i]) if mx != 0)};
+		divf[${i+ j*(order+1)}][${var}] += tmp;
 	% endfor 
 % endfor
 
 // Perform along eta direction
 % for i in range(order+1):
 	// Gather solution along constant xi line
-	% for j in range(order+1):
-		% for var in range(nvars):
-			line_sol[${j}][${var}] = u[${i+ j*(order+1)}][${var}];
-		% endfor
-	% endfor
-
-	// Flux split points
-
-	// Take interior interface flux 
-	% for var in range(nvars):
-		ul[${var}] = uf[${i}][${var}];
-		ur[${var}] = uf[${i + 2*(order+1)}][${var}];
-	% endfor 
-    ${pyfr.expand('inviscid_flux', 'ul', 'ftemp', 'p', 'v')};
-    ${pyfr.expand('inviscid_flux', 'ur', 'ftemp2', 'p', 'v')};
-
-	% for dim, var in pyfr.ndrange(ndims, nvars):
-		line_flux[0][${dim}][${var}] = ftemp[${dim}][${var}];
-		line_flux[${order+1}][${dim}][${var}] = ftemp2[${dim}][${var}];
+	% for j, var in pyfr.ndrange(order+1, nvars):
+		line_sol[${j}][${var}] = u[${i+j*(order+1)}][${var}];
 	% endfor
 
 	% for j in range(order):
 		// Get normal direction between solution points
 		% for dim in range(ndims):
-			xl[${dim}] = plocu[${i+ (j+1)*(order+1)}][${dim}];
-			xr[${dim}] = plocu[${i+ j*(order+1)}][${dim}];
+			xl[${dim}] = plocu[${i+(j+1)*(order+1)}][${dim}];
+			xr[${dim}] = plocu[${i+j*(order+1)}][${dim}];
 		% endfor		
 		${pyfr.expand('get_normal','xl', 'xr', 'n')}
 		${pyfr.expand('get_tangent2d','xl', 'xr', 't')}
@@ -193,7 +158,7 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 			ur[${var}] = line_sol[${j+1}][${var}];
 		% endfor
 
-        // Interp to RD points
+        // Interpolate to RD points
         % for var in range(nvars):
             usd[${var}] = ${' + '.join('{mx}*line_sol[{m}][{var}]'.format(m=m, mx=mx, var=var)
                        for m, mx in enumerate(interpmat[j+1]) if mx != 0)};
@@ -225,11 +190,6 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 	% endfor
 
 	// Transform flux to computational space
-	% for dim, var in pyfr.ndrange(ndims, nvars):
-		line_tflux[${0}][${dim}][${var}] = 0;
-		line_tflux[${order+1}][${dim}][${var}] = 0;
-	% endfor
-
 	% for j in range(1,order+1):
 		% for dim, var in pyfr.ndrange(ndims, nvars):
 			line_tflux[${j}][${dim}][${var}] = ${' + '.join('(0.5*usmats[{0}][{2}] + 0.5*usmats[{1}][{2}])*line_flux[{5}][{3}][{4}]'
@@ -237,13 +197,17 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 		% endfor
 	% endfor
 
+    // Set interface fluxes to zero (include them in correction term)
+    % for dim, var in pyfr.ndrange(ndims, nvars):
+        line_tflux[0][${dim}][${var}] = 0;
+        line_tflux[${order+1}][${dim}][${var}] = 0;
+    % endfor
+
 	// Calculate dg/deta at solution points
-	% for var in range(nvars):
-		% for j in range(order+1):
-			tmp =  ${' + '.join('{mx}*line_tflux[{m}][1][{var}]'.format(m=m, mx=mx, var=var)
-                       for m, mx in enumerate(diffmatRD[j]) if mx != 0)};
-			divf[${i+ j*(order+1)}][${var}] += tmp; 
-		% endfor
+	% for var, j in pyfr.ndrange(nvars, order+1):
+		tmp =  ${' + '.join('{mx}*line_tflux[{m}][1][{var}]'.format(m=m, mx=mx, var=var)
+                   for m, mx in enumerate(diffmatRD[j]) if mx != 0)};
+		divf[${i+ j*(order+1)}][${var}] += tmp; 
 	% endfor
 
 % endfor
