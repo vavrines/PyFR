@@ -123,10 +123,11 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 rcpdjac=self.rcpdjac_at('upts'), u=self.scal_upts_inb, r=self.residual
             )
 
-            # diffmatSOL = self.generateSolDiffMat(rdpts)
-            # tplargs["diffmatSOL"] = diffmatSOL
+            smoothmat = self.generateSmoothMat()
+            tplargs["smoothmat"] = smoothmat
             tplargs["kvars"] = 3
             tplargs["tol"] = 1e-8
+            tplargs["quadwts"] = get_quadrule('quad', 'gauss-legendre', (self.basis.order+1)**2).wts
 
             self.kernels['normalizeresidual'] = lambda: self._be.kernel(
                 'normalizeresidual', tplargs=tplargs, dims=[self.neles],
@@ -168,6 +169,41 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
         rdpts[1:-1] = get_quadrule('line', 'gauss-legendre', p).pts
 
         return rdpts
+
+    def generateSmoothMat(self):
+        p = self.basis.order
+        solpts = self.basis.upts[:p+1,0] # Hack
+        
+        M = np.zeros((self.nupts, self.nupts))
+
+        if self.ndims == 2:
+            uidx = lambda xidx, yidx: xidx + yidx*(p+1)
+            for i in range(p+1):
+                for j in range(p+1):
+                    idx = uidx(i,j)
+                    ridx = uidx(min(i+1,p),j)
+                    lidx = uidx(max(0,i-1),j)
+                    tidx = uidx(i,min(j+1,p))
+                    bidx = uidx(i,max(0,j-1))
+
+                    dxp = abs(solpts[min(i+1,p)] - solpts[i])
+                    dxm = abs(solpts[max(0,i-1)] - solpts[i])
+                    dym = abs(solpts[min(j+1,p)] - solpts[j])
+                    dyp = abs(solpts[max(0,j-1)] - solpts[j])
+
+                    dxp = 1./dxp if (dxp != 0 and dxm != 0)else 0
+                    dxm = 1./dxm if (dxp != 0 and dxm != 0) else 0
+                    dyp = 1./dyp if (dyp != 0 and dym != 0)else 0
+                    dym = 1./dym if (dyp != 0 and dym != 0) else 0
+
+                    dtot = dxp + dxm + dyp + dym
+
+                    M[idx, ridx] = 0.5*dxp/dtot if dtot != 0 else 0.0
+                    M[idx, lidx] = 0.5*dxm/dtot if dtot != 0 else 0.0
+                    M[idx, tidx] = 0.5*dyp/dtot if dtot != 0 else 0.0
+                    M[idx, bidx] = 0.5*dym/dtot if dtot != 0 else 0.0
+                    M[idx, idx] = 0.5 if dtot != 0 else 1.0
+        return M
 
     def generateInterpMat(self, rdpts):
         p = self.basis.order

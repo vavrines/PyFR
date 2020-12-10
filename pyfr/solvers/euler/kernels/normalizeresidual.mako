@@ -35,9 +35,8 @@ fpdtype_t dsdr[${nupts}], dsdp[${nupts}];
 // divp = nvars-2
 // divs = nvars-1
 
-fpdtype_t r0 = ${tol}, r1, r2, divs, divr, divp, lambda;
+fpdtype_t r0[${nupts}], smooth_r[${nupts}], smooth_r0[${nupts}], max_r0 = ${tol}, mean_r0 = ${tol}, r1, r2, divs, divr, divp, lambda;
 % for i in range(nupts):
-
     divr = divu[${i}][0];
     divp = divu[${i}][${nvars-2}];
     divs = divu[${i}][${nvars-1}];
@@ -46,14 +45,29 @@ fpdtype_t r0 = ${tol}, r1, r2, divs, divr, divp, lambda;
 
     r1 = rcpdjac[${i}]*lambda*(abs(divs) + ${tol});
     r2 = rcpdjac[${i}]*lambda*(abs(divr)*abs(dsdr[${i}]) + abs(divp)*abs(dsdp[${i}]) + ${tol});
-    r0 = fmax(r0, fmax(r1, r2));
 
-    //r0 = fmax(r1, r2);
-    //r[${i}] = abs(r[${i}])/r0;
+    r0[${i}] = fmax(${tol}, fmax(r1, r2));
+    max_r0 = fmax(max_r0, r0[${i}]);
+    mean_r0 = ${quadwts[i]/4.0}*r0[${i}];
+
+    r[${i}] = abs(r[${i}]);
 % endfor
 
+
 % for i in range(nupts):
-    r[${i}] = abs(r[${i}])/r0;
+    smooth_r[${i}] = ${' + '.join('{mx}*r[{m}]'.format(m=m, mx=mx)
+                       for m, mx in enumerate(smoothmat[i]) if mx != 0)};
+    smooth_r0[${i}] = ${' + '.join('{mx}*r0[{m}]'.format(m=m, mx=mx)
+                       for m, mx in enumerate(smoothmat[i]) if mx != 0)};
+% endfor
+
+
+% for i in range(nupts):
+    //r[${i}] = abs(smooth_r[${i}])/smooth_r0[${i}];
+    //r[${i}] = abs(r[${i}]/r0[${i}]);
+    //r[${i}] = abs(smooth_r[${i}])/r0[${i}];
+    //r[${i}] = abs(smooth_r[${i}])/max_r0;
+    r[${i}] = abs(smooth_r[${i}])/mean_r0;
 % endfor
 
 </%pyfr:kernel>

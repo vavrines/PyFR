@@ -39,6 +39,17 @@
 	t[0] = tmp;
 </%pyfr:macro>
 
+<%pyfr:macro name='centered_rsolve' params='ul, ur, t, f'>
+    fpdtype_t fl[${ndims}][${nvars}], fr[${ndims}][${nvars}], p, v[${ndims}];
+    ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'p', 'v')}
+    ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'p', 'v')}
+
+    % for var in range(nvars):
+        f[${var}] = 0.5*(${' + '.join('t[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
+                                 .format(i=var, j=j) for j in range(ndims))});
+    % endfor
+    
+</%pyfr:macro>
 
 % for i,j in pyfr.ndrange(nupts, nvars):
 	divf[${i}][${j}] = 0.0;
@@ -104,7 +115,7 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
             || p < ${tol}) {
 
             ${pyfr.expand('rsolve','ul','ur','n','fntemp')};
-            ${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
+            ${pyfr.expand('centered_rsolve','ul','ur','t','fntemp2')};
             % for var in range(nvars):
                 line_flux[${i+1}][0][${var}] = n[0]*fntemp[${var}] + n[1]*fntemp2[${var}];
                 line_flux[${i+1}][1][${var}] = n[1]*fntemp[${var}] - n[0]*fntemp2[${var}];
@@ -198,7 +209,7 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
             || p < ${tol}) {
 
     		${pyfr.expand('rsolve','ul','ur','n','fntemp')};
-    		${pyfr.expand('rsolve','ul','ur','t','fntemp2')};
+            ${pyfr.expand('centered_rsolve','ul','ur','t','fntemp2')};
     		% for var in range(nvars):
     			line_flux[${j+1}][0][${var}] = n[0]*fntemp[${var}] + n[1]*fntemp2[${var}];
     			line_flux[${j+1}][1][${var}] = n[1]*fntemp[${var}] - n[0]*fntemp2[${var}];
