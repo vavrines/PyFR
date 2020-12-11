@@ -149,15 +149,18 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             interpmat = self.generateInterpMat(rdpts)
             tplargs["interpmat"] = interpmat
             tplargs["e_max"] = self.cfg.get('solver-riemann-difference', 'e_max')
+
+            [self.basis.rdptsx, self.basis.rdptsy] = self.getAllRDpts()
+
             # Smats order is 
             # [dxi/dx, deta/dx, dxi/dy, deta/dy]
             # [dxi/dx, deta/dx, dzeta/dx, dxi/dy, deta/dy, dzeta/dy,  dxi/dz, deta/dz, dzeta/dz]
             self.kernels['riemanndifference'] = lambda: self._be.kernel(
                 'riemanndifference', tplargs=tplargs, dims=[self.neles],
-                u=self.scal_upts_inb, plocu=self.ploc_at('upts'), usmats=self.ele_smat_at('upts'),
-                uf=self._scal_fpts_cpy, fsmats=self.ele_smat_at('fpts'), divf=self.scal_upts_outb,
-                res=self.residual
+                u=self.scal_upts_inb, plocu=self.ploc_at('upts'), divf=self.scal_upts_outb, res=self.residual, 
+                rdsmatsx=self.ele_smat_at('rdptsx'), rdsmatsy=self.ele_smat_at('rdptsy')                
             )
+
 
     def getRDpts(self):
         p = self.basis.order
@@ -259,4 +262,15 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 M[i,i-1] = -0.5/dx
                 M[i,i+1] = 0.5/dx
         return M
+
+    def getAllRDpts(self):
+        p = self.basis.order
+        solpts = self.basis.upts[:p+1,0] 
+        rdpts = self.getRDpts()
+
+        rdptsx = np.array(np.meshgrid(rdpts, solpts, sparse=False, indexing='xy')).reshape((2,-1)).T
+        rdptsy = np.array(np.meshgrid(solpts, rdpts, sparse=False, indexing='xy')).reshape((2,-1)).T
+
+        return [rdptsx, rdptsy]
+
 

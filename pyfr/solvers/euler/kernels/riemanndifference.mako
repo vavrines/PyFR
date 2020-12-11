@@ -6,11 +6,10 @@
 <%pyfr:kernel name='riemanndifference' ndim='1'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               plocu='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
-              usmats='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'
-              uf='in fpdtype_t[${str(nfpts)}][${str(nvars)}]'
-              fsmats='in fpdtype_t[${str(nfpts)}][${str(ndims*ndims)}]'
               divf='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
               res='in fpdtype_t[${str(nupts)}]'
+              rdsmatsx='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'
+              rdsmatsy='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'
               >
 
 <%pyfr:macro name='get_normal' params='xl,xr,n'>
@@ -117,8 +116,8 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 	// Definitely ndims*dim+k
 	% for i in range(1,order+1):
 		% for dim, var in pyfr.ndrange(ndims, nvars):
-			line_tflux[${i}][${dim}][${var}] = ${' + '.join('(0.5*usmats[{0}][{2}] + 0.5*usmats[{1}][{2}])*line_flux[{5}][{3}][{4}]'
-                                                 .format(i-1+j*(order+1),i+j*(order+1), ndims*dim+k, k, var, i) for k in range(ndims))};
+            line_tflux[${i}][${dim}][${var}] = ${' + '.join('rdsmatsx[{0}][{1}]*line_flux[{2}][{3}][{4}]'
+                                                 .format(i+j*(order+2), ndims*dim+k, i, k, var) for k in range(ndims))};
 		% endfor
 	% endfor
 
@@ -192,8 +191,8 @@ fpdtype_t ul[${nvars}], ur[${nvars}], usd[${nvars}], n[${ndims}], t[${ndims}], t
 	// Transform flux to computational space
 	% for j in range(1,order+1):
 		% for dim, var in pyfr.ndrange(ndims, nvars):
-			line_tflux[${j}][${dim}][${var}] = ${' + '.join('(0.5*usmats[{0}][{2}] + 0.5*usmats[{1}][{2}])*line_flux[{5}][{3}][{4}]'
-                                                 .format(i+(j-1)*(order+1),i+j*(order+1), ndims*dim+k, k, var, j) for k in range(ndims))};
+            line_tflux[${j}][${dim}][${var}] = ${' + '.join('rdsmatsy[{0}][{1}]*line_flux[{2}][{3}][{4}]'
+                                                 .format(i+j*(order+1), ndims*dim+k, j, k, var) for k in range(ndims))};
 		% endfor
 	% endfor
 
