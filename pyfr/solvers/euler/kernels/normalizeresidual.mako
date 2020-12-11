@@ -63,11 +63,11 @@ fpdtype_t r0[${nupts}], smooth_r[${nupts}], smooth_r0[${nupts}], max_r0 = ${tol}
 
 
 % for i in range(nupts):
-    //r[${i}] = abs(smooth_r[${i}])/smooth_r0[${i}];
+    r[${i}] = abs(smooth_r[${i}])/smooth_r0[${i}];
     //r[${i}] = abs(r[${i}]/r0[${i}]);
     //r[${i}] = abs(smooth_r[${i}])/r0[${i}];
     //r[${i}] = abs(smooth_r[${i}])/max_r0;
-    r[${i}] = abs(smooth_r[${i}])/mean_r0;
+    //r[${i}] = abs(smooth_r[${i}])/mean_r0;
 % endfor
 
 </%pyfr:kernel>

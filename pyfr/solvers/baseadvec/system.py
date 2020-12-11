@@ -19,8 +19,10 @@ class BaseAdvectionSystem(BaseSystem):
         self.eles_scal_upts_inb.active = uinbank
         self.eles_scal_upts_outb.active = foutbank
 
-        self.calc_LO_divf(runall, q1, q2, kernels, t)
-        self.calc_residual(runall, q1, q2, kernels, t)
+        # self.calc_LO_divf(runall, q1, q2, kernels, t)
+        # self.calc_LO_residual(runall, q1, q2, kernels, t)
+        self.calc_HO_divf(runall, q1, q2, kernels, t)
+        self.calc_HO_residual(runall, q1, q2, kernels, t)
         self.calc_RD_divf(runall, q1, q2, kernels, t)
 
     def calc_LO_divf(self, runall, q1, q2, kernels, t):
@@ -47,7 +49,31 @@ class BaseAdvectionSystem(BaseSystem):
         q1 << kernels['mpiint', 'comm_flux_LO']()
         q1 << kernels['eles', 'tdivtconf_LO']()
 
-    def calc_residual(self, runall, q1, q2, kernels, t):
+    def calc_HO_divf(self, runall, q1, q2, kernels, t):
+        # Calculate low-order gradients
+        q1 << kernels['eles', 'disu_HO_ext']()
+        q1 << kernels['mpiint', 'scal_fpts_pack']()
+        runall([q1])
+        q1 << kernels['eles', 'disu_HO_int']()
+        if ('eles', 'copy_soln') in kernels:
+            q1 << kernels['eles', 'copy_soln']()
+        if ('eles', 'copy_soln_at_fpts') in kernels:
+            q1 << kernels['eles', 'copy_soln_at_fpts']()
+
+        q1 << kernels['eles', 'tdisf']()
+        q1 << kernels['eles', 'tdivtpcorf_HO']()
+
+        q1 << kernels['iint', 'comm_flux']()
+        q1 << kernels['bcint', 'comm_flux'](t=t)
+
+        q2 << kernels['mpiint', 'scal_fpts_send']()
+        q2 << kernels['mpiint', 'scal_fpts_recv']()
+        q2 << kernels['mpiint', 'scal_fpts_unpack']()
+        runall([q1, q2])
+        q1 << kernels['mpiint', 'comm_flux']()
+        q1 << kernels['eles', 'tdivtconf_HO']()
+
+    def calc_LO_residual(self, runall, q1, q2, kernels, t):
         q1 << kernels['eles', 'residual']()
         # Map u to f shape and calculate gradient
         q1 << kernels['eles', 'disu_LO_ext']()
@@ -70,6 +96,31 @@ class BaseAdvectionSystem(BaseSystem):
         runall([q1, q2])
         q1 << kernels['mpiint', 'comm_sol_LO']()
         q1 << kernels['eles', 'tdivtconf_LO']()
+        q1 << kernels['eles', 'normalizeresidual']()
+
+    def calc_HO_residual(self, runall, q1, q2, kernels, t):
+        q1 << kernels['eles', 'residual']()
+        # Map u to f shape and calculate gradient
+        q1 << kernels['eles', 'disu_HO_ext']()
+        q1 << kernels['mpiint', 'scal_fpts_pack']()
+        runall([q1])
+        q1 << kernels['eles', 'disu_HO_int']()
+        if ('eles', 'copy_soln') in kernels:
+            q1 << kernels['eles', 'copy_soln']()
+        if ('eles', 'copy_soln_at_fpts') in kernels:
+            q1 << kernels['eles', 'copy_soln_at_fpts']()
+
+        q1 << kernels['eles', 'tdisu']()
+        q1 << kernels['eles', 'tdivtpcorf_HO']()
+
+        q1 << kernels['iint', 'comm_sol_LO']()
+        q1 << kernels['bcint', 'comm_sol_LO'](t=t)
+        q2 << kernels['mpiint', 'scal_fpts_send']()
+        q2 << kernels['mpiint', 'scal_fpts_recv']()
+        q2 << kernels['mpiint', 'scal_fpts_unpack']()
+        runall([q1, q2])
+        q1 << kernels['mpiint', 'comm_sol_LO']()
+        q1 << kernels['eles', 'tdivtconf_HO']()
         q1 << kernels['eles', 'normalizeresidual']()
 
     def calc_RD_divf(self, runall, q1, q2, kernels, t):
