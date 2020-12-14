@@ -98,12 +98,14 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             self._be.pointwise.register('pyfr.solvers.euler.kernels.residual')
             self._be.pointwise.register('pyfr.solvers.euler.kernels.normalizeresidual')
             self._be.pointwise.register('pyfr.solvers.euler.kernels.limitinterp')
+            self._be.pointwise.register('pyfr.solvers.euler.kernels.blendintflux')
 
             self.kernels['copy_soln_at_fpts'] = lambda: self._be.kernel(
                     'copy', self._scal_fpts_cpy, self._scal_fpts
                 )
 
             self.residual = self._be.matrix((self.nupts, self.neles), tags={'align'}, initval=np.zeros((self.nupts, self.neles)))
+            self.alpha_fpts = self._be.matrix((self.nfpts, self.neles), tags={'align'}, initval=np.zeros((self.nfpts, self.neles)))
 
             rdpts = self.getRDpts()
             diffmatRD = self.generateRDDiffMat(rdpts)
@@ -135,12 +137,6 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 usmats=self.ele_smat_at('upts'), rcpdjac=self.rcpdjac_at('upts')
             )
 
-            # self.kernels['normalizeresidual'] = lambda: self._be.kernel(
-            #     'normalizeresidual', tplargs=tplargs, dims=[self.neles],
-            #     u=self.scal_upts_inb, r=self.residual, usmats=self.ele_smat_at('upts'),
-            #     rcpdjac=self.rcpdjac_at('upts')
-            # )
-
             self.kernels['limitinterp'] = lambda: self._be.kernel(
                 'limitinterp', tplargs=tplargs, dims=[self.nfpts, self.neles],
                 u=self._scal_fpts
@@ -151,6 +147,8 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             tplargs["e_max"] = self.cfg.get('solver-riemann-difference', 'e_max')
 
             [self.basis.rdptsx, self.basis.rdptsy] = self.getAllRDpts()
+            tplargs["linesmoothmat"] = self.generate1DSmoothMat()
+            print(tplargs["linesmoothmat"])
 
             # Smats order is 
             # [dxi/dx, deta/dx, dxi/dy, deta/dy]
@@ -158,7 +156,13 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             self.kernels['riemanndifference'] = lambda: self._be.kernel(
                 'riemanndifference', tplargs=tplargs, dims=[self.neles],
                 u=self.scal_upts_inb, plocu=self.ploc_at('upts'), divf=self.scal_upts_outb, res=self.residual, 
-                rdsmatsx=self.ele_smat_at('rdptsx'), rdsmatsy=self.ele_smat_at('rdptsy')                
+                rdsmatsx=self.ele_smat_at('rdptsx'), rdsmatsy=self.ele_smat_at('rdptsy'), alpha_fpts=self.alpha_fpts             
+            )
+
+            # Belnds high-order and low-order interface flux based on alpha_fpts
+            self.kernels['blendintflux'] = lambda: self._be.kernel(
+                'blendintflux', tplargs=tplargs, dims=[self.neles],
+                f_HO=self._scal_fpts, f_LO=self._scal_fpts_cpy, alpha_fpts=self.alpha_fpts             
             )
 
 
@@ -206,6 +210,39 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                     M[idx, tidx] = 0.5*dyp/dtot if dtot != 0 else 0.0
                     M[idx, bidx] = 0.5*dym/dtot if dtot != 0 else 0.0
                     M[idx, idx] = 0.5 if dtot != 0 else 1.0
+        return M
+
+
+    def generate1DSmoothMat(self):
+        p = self.basis.order
+        rdpts = self.getRDpts() # Hack
+        
+        M = np.zeros((p+2, p+2))
+
+        sfac = 0.0
+        pfac = 2.0
+
+        if self.ndims == 2:
+            # for i in range(1,p+1):
+            #     dxp = abs(rdpts[i+1] - rdpts[i])
+            #     dxm = abs(rdpts[i-1] - rdpts[i])
+
+            #     dxp = 1./dxp
+            #     dxm = 1./dxm 
+
+            #     dtot = dxp + dxm
+
+            #     M[i, i+1] = (1-sfac)*dxp/dtot
+            #     M[i, i-1] = (1-sfac)*dxm/dtot
+            #     M[i, i] = sfac
+            for i in range(1,p+1):
+                dx = np.abs(rdpts - rdpts[i])**pfac
+                dx[i] = 1.
+                dx = 1./dx
+                dx[i] = 0.
+                dtot = np.sum(dx)
+                M[i, :] = (1-sfac)*dx/dtot
+                M[i, i] = sfac
         return M
 
     def generateInterpMat(self, rdpts):

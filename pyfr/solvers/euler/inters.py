@@ -24,12 +24,12 @@ class EulerIntInters(BaseAdvectionIntInters):
             ul=self._scal_lhs, ur=self._scal_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
         )
-        self.kernels['comm_flux_LO'] = lambda: self._be.kernel(
+        self.kernels['comm_flux_centered'] = lambda: self._be.kernel(
             'intcflux', tplargs=tplargsc, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
         )
-        self.kernels['comm_sol_LO'] = lambda: self._be.kernel(
+        self.kernels['comm_sol_centered'] = lambda: self._be.kernel(
             'intcflux', tplargs=tplargss, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
@@ -56,13 +56,13 @@ class EulerMPIInters(BaseAdvectionMPIInters):
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
         )
 
-        self.kernels['comm_flux_LO'] = lambda: self._be.kernel(
+        self.kernels['comm_flux_centered'] = lambda: self._be.kernel(
             'mpicflux', tplargsc, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
         )
 
-        self.kernels['comm_sol_LO'] = lambda: self._be.kernel(
+        self.kernels['comm_sol_centered'] = lambda: self._be.kernel(
             'mpicflux', tplargss, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
@@ -90,14 +90,14 @@ class EulerBaseBCInters(BaseAdvectionBCInters):
             **self._external_vals
         )
 
-        self.kernels['comm_flux_LO'] = lambda: self._be.kernel(
+        self.kernels['comm_flux_centered'] = lambda: self._be.kernel(
             'bccflux', tplargs=tplargsc, dims=[self.ninterfpts],
             extrns=self._external_args, ul=self._scal_lhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
             **self._external_vals
         )
 
-        self.kernels['comm_sol_LO'] = lambda: self._be.kernel(
+        self.kernels['comm_sol_centered'] = lambda: self._be.kernel(
             'bccflux', tplargs=tplargss, dims=[self.ninterfpts],
             extrns=self._external_args, ul=self._scal_lhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
