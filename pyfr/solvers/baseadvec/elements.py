@@ -86,8 +86,12 @@ class BaseAdvectionElements(BaseElements):
                 'mul', self.opmat('M1 - M3*M2'), self._vect_upts,
                 out=self.scal_upts_outb
             )
-            kernels['tdivtpcorf_LO'] = lambda: self._be.kernel(
+            kernels['tdivtpcorf_LOcentered'] = lambda: self._be.kernel(
                     'mul', self.opmat('M15 - M13*M16'), self._vect_upts,
+                    out=self.scal_upts_outb
+            )
+            kernels['tdivtpcorf_subcell'] = lambda: self._be.kernel(
+                    'mul', self.opmat('M13*M16'), self._vect_upts,
                     out=self.scal_upts_outb
             )
 

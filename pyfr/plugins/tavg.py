@@ -45,7 +45,7 @@ class TavgPlugin(BasePlugin):
         basedir = self.cfg.getpath(cfgsect, 'basedir', '.', abs=True)
         basename = self.cfg.get(cfgsect, 'basename')
 
-        self._writer = NativeWriter(intg, mdata, basedir, basename)
+        self._writer = NativeWriter(intg, mdata, basedir, basename, prefix='soln')
 
         # Time averaging parameters
         self.dtout = self.cfg.getfloat(cfgsect, 'dt-out')

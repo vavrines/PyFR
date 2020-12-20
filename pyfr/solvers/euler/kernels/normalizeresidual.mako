@@ -18,17 +18,18 @@
 
 // Calculate rho, P, entropy
 fpdtype_t ub[${nupts}][${kvars}];
-fpdtype_t dsdr[${nupts}], dsdp[${nupts}];
+fpdtype_t dsdr[${nupts}], dsdp[${nupts}], s;
 % for i in range(nupts):
     ub[${i}][0] = u[${i}][0]; // Rho
     ub[${i}][1] = ${c['gamma'] - 1}*(u[${i}][${nvars-2}] - 0.5*(pow(u[${i}][1], 2.0) + pow(u[${i}][2], 2.0))/u[${i}][0]); // Pressure
 
     // Entropy
-    u[${i}][${nvars-1}] = -ub[${i}][0]*log(ub[${i}][1]*pow(ub[${i}][0], -${c['gamma']}))/(${c['gamma']- 1.0});
+    s = ub[${i}][1]*pow(ub[${i}][0], -${c['gamma']}); // Physical entropy = P*r^(-gamma)
+    u[${i}][${nvars-1}] = -ub[${i}][0]*log(s)/(${c['gamma']- 1.0}); // Numerical entropy = -r*ln(s)/(gamma-1)
     ub[${i}][2] = u[${i}][${nvars-1}];
 
-    dsdr[${i}] = -ub[${i}][2]/(${c['gamma'] - 1}) + ${c['gamma']/(c['gamma'] - 1)};
-    dsdp[${i}] = -u[${i}][0]/(${c['gamma'] - 1}*ub[${i}][1]);
+    dsdr[${i}] = -log(s)/(${c['gamma'] - 1}) + ${c['gamma']/(c['gamma'] - 1)}; // dsdr = -ln(s)/(gamma-1) + gamma/(gamma-1)
+    dsdp[${i}] = -u[${i}][0]/(${c['gamma'] - 1}*ub[${i}][1]); // dsdp = -r/(P*(gamma-1))
 % endfor
 
 // divr = 0
@@ -47,6 +48,9 @@ fpdtype_t r0[${nupts}], smooth_r[${nupts}], smooth_r0[${nupts}], max_r0 = ${tol}
     r2 = rcpdjac[${i}]*lambda*(abs(divr)*abs(dsdr[${i}]) + abs(divp)*abs(dsdp[${i}]) + ${tol});
 
     r0[${i}] = fmax(${tol}, fmax(r1, r2));
+    // r0[${i}] = 1.0;
+
+
     max_r0 = fmax(max_r0, r0[${i}]);
     mean_r0 += ${quadwts[i]/4.0}*r0[${i}];
 

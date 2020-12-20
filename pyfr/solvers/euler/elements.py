@@ -93,8 +93,8 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
         if shock_capturing == 'riemann-difference':
             # Register the kernels
             self._be.pointwise.register('pyfr.solvers.euler.kernels.riemanndifference')
-            # self._be.pointwise.register('pyfr.solvers.euler.kernels.divf_LO')
-            # self._be.pointwise.register('pyfr.solvers.euler.kernels.divf_LO_centered')
+            self._be.pointwise.register('pyfr.solvers.euler.kernels.divf_LO')
+            self._be.pointwise.register('pyfr.solvers.euler.kernels.subcell')
             self._be.pointwise.register('pyfr.solvers.euler.kernels.residual')
             self._be.pointwise.register('pyfr.solvers.euler.kernels.normalizeresidual')
             self._be.pointwise.register('pyfr.solvers.euler.kernels.limitinterp')
@@ -119,6 +119,28 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 order=self.basis.order, diffmatRD=diffmatRD, rsolver=rsolver,
                 dt=self.cfg.get('solver-time-integrator', 'dt')
             )
+
+            scpts = self.getSCpts()
+            scdiffmat = self.generateSubcellDiffMat(scpts)
+            tplargs["scdiffmat"] = scdiffmat
+            tplargs["sclengths"] = scpts[1:] - scpts[:-1]
+
+            [self.basis.scptsx, self.basis.scptsy] = self.getAllSCpts()
+
+            self.kernels['divf_LO'] = lambda: self._be.kernel(
+                'divf_LO', tplargs=tplargs, dims=[self.neles],
+                u=self.scal_upts_inb, plocu=self.ploc_at('upts'), divf=self.scal_upts_outb,
+                scsmatsx=self.ele_smat_at('scptsx'), scsmatsy=self.ele_smat_at('scptsy')          
+            )
+
+
+            # self.basis.scpts = self.getSCVertices()
+            # self.kernels['divf_LO'] = lambda: self._be.kernel(
+            #     'subcell', tplargs=tplargs, dims=[self.neles],
+            #     u=self.scal_upts_inb, plocu=self.ploc_at('upts'), divf=self.scal_upts_outb,
+            #     scverts=self.ploc_at('scpts'), rcpdjac=self.rcpdjac_at('upts')  
+            # )
+
 
             self.kernels['residual'] = lambda: self._be.kernel(
                 'residual', tplargs=tplargs, dims=[self.nupts, self.neles], tdivtconf=self.scal_upts_outb,
@@ -148,7 +170,6 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
 
             [self.basis.rdptsx, self.basis.rdptsy] = self.getAllRDpts()
             tplargs["linesmoothmat"] = self.generate1DSmoothMat()
-            print(tplargs["linesmoothmat"])
 
             # Smats order is 
             # [dxi/dx, deta/dx, dxi/dy, deta/dy]
@@ -165,6 +186,9 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 f_HO=self._scal_fpts, f_LO=self._scal_fpts_cpy, alpha_fpts=self.alpha_fpts             
             )
 
+    def getSubcellData(self):
+        print(np.shape(self.plocfpts))
+        input()
 
     def getRDpts(self):
         p = self.basis.order
@@ -176,6 +200,17 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
         rdpts[1:-1] = get_quadrule('line', 'gauss-legendre', p).pts
 
         return rdpts
+
+    def getSCpts(self):
+        p = self.basis.order
+        solpts = self.basis.upts[:p+1,0] # Hack
+
+        scpts = np.zeros(p+2)
+        scpts[0] = -1.
+        scpts[-1] = 1.
+        scpts[1:-1] = 0.5*(solpts[1:] + solpts[:-1])
+
+        return scpts
 
     def generateSmoothMat(self):
         p = self.basis.order
@@ -212,7 +247,6 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                     M[idx, idx] = 0.5 if dtot != 0 else 1.0
         return M
 
-
     def generate1DSmoothMat(self):
         p = self.basis.order
         rdpts = self.getRDpts() # Hack
@@ -220,7 +254,7 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
         M = np.zeros((p+2, p+2))
 
         sfac = 0.0
-        pfac = 2.0
+        pfac = 1.0
 
         if self.ndims == 2:
             # for i in range(1,p+1):
@@ -235,14 +269,17 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             #     M[i, i+1] = (1-sfac)*dxp/dtot
             #     M[i, i-1] = (1-sfac)*dxm/dtot
             #     M[i, i] = sfac
-            for i in range(1,p+1):
-                dx = np.abs(rdpts - rdpts[i])**pfac
-                dx[i] = 1.
-                dx = 1./dx
-                dx[i] = 0.
-                dtot = np.sum(dx)
-                M[i, :] = (1-sfac)*dx/dtot
-                M[i, i] = sfac
+            if p < 2:
+                M = np.eye(p+2)
+            else:
+                for i in range(1,p+1):
+                    dx = np.abs(rdpts - rdpts[i])**pfac
+                    dx[i] = dx[0] = dx[-1] = 1.
+                    dx = 1./dx
+                    dx[i] = dx[0] = dx[-1] = 0.
+                    dtot = np.sum(dx)
+                    M[i, :] = (1-sfac)*dx/dtot
+                    M[i, i] = sfac
         return M
 
     def generateInterpMat(self, rdpts):
@@ -310,4 +347,18 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
 
         return [rdptsx, rdptsy]
 
+    def getAllSCpts(self):
+        p = self.basis.order
+        solpts = self.basis.upts[:p+1,0] 
+        rdpts = self.getSCpts()
+
+        rdptsx = np.array(np.meshgrid(rdpts, solpts, sparse=False, indexing='xy')).reshape((2,-1)).T
+        rdptsy = np.array(np.meshgrid(solpts, rdpts, sparse=False, indexing='xy')).reshape((2,-1)).T
+
+        return [rdptsx, rdptsy]
+
+    def getSCVertices(self):
+        p = self.basis.order
+        scpts = self.getSCpts()
+        return np.array(np.meshgrid(scpts, scpts, sparse=False, indexing='xy')).reshape((2,-1)).T
 
