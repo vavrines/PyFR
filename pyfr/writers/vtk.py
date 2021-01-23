@@ -20,7 +20,7 @@ class VTKWriter(BaseWriter):
         super().__init__(args)
 
         self.dtype = np.dtype(args.precision).type
-        self.divisor = args.divisor or self.cfg.getint('solver', 'order')
+        self.divisor = args.divisor or max(1, self.cfg.getint('solver', 'order'))
 
         # Solutions need a separate processing pipeline to other data
         if self.dataprefix == 'soln':
