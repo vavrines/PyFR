@@ -37,7 +37,7 @@ class FluidForcePlugin(BasePlugin):
         self.elementscls = intg.system.elementscls
 
         # Boundary to integrate over
-        bc = 'bcon_{0}_p{1}'.format(suffix, intg.rallocs.prank)
+        bc = f'bcon_{suffix}_p{intg.rallocs.prank}'
 
         # Get the mesh and elements
         mesh, elemap = intg.system.mesh, intg.system.ele_map
@@ -48,8 +48,7 @@ class FluidForcePlugin(BasePlugin):
         # The root rank needs to open the output file
         if rank == root:
             if not any(bcranks):
-                raise RuntimeError('Boundary {0} does not exist'
-                                   .format(suffix))
+                raise RuntimeError(f'Boundary {suffix} does not exist')
 
             # CSV header
             header = ['t', 'px', 'py', 'pz'][:self.ndims + 1]
@@ -73,7 +72,7 @@ class FluidForcePlugin(BasePlugin):
             eidxs = defaultdict(list)
             norms = defaultdict(list)
 
-            for etype, eidx, fidx, flags in mesh[bc].astype('U4,i4,i1,i1'):
+            for etype, eidx, fidx, flags in mesh[bc].astype('U4,i4,i1,i2'):
                 eles = elemap[etype]
 
                 if (etype, fidx) not in m0:
@@ -132,7 +131,7 @@ class FluidForcePlugin(BasePlugin):
             uupts = solns[etype][..., self._eidxs[etype, fidx]]
 
             # Interpolate to the face
-            ufpts = np.dot(m0, uupts.reshape(nupts, -1))
+            ufpts = m0 @ uupts.reshape(nupts, -1)
             ufpts = ufpts.reshape(nfpts, nvars, -1)
             ufpts = ufpts.swapaxes(0, 1)
 
@@ -153,7 +152,7 @@ class FluidForcePlugin(BasePlugin):
                 rcpjact = self._rcpjact[etype, fidx]
 
                 # Transformed gradient at solution points
-                tduupts = np.dot(m4, uupts.reshape(nupts, -1))
+                tduupts = m4 @ uupts.reshape(nupts, -1)
                 tduupts = tduupts.reshape(ndims, nupts, nvars, -1)
 
                 # Physical gradient at solution points
@@ -161,7 +160,7 @@ class FluidForcePlugin(BasePlugin):
                 duupts = duupts.reshape(ndims, nupts, -1)
 
                 # Interpolate gradient to flux points
-                dufpts = np.array([np.dot(m0, du) for du in duupts])
+                dufpts = np.array([m0 @ du for du in duupts])
                 dufpts = dufpts.reshape(ndims, nfpts, nvars, -1)
                 dufpts = dufpts.swapaxes(1, 2)
 
@@ -180,11 +179,8 @@ class FluidForcePlugin(BasePlugin):
         else:
             comm.Reduce(get_mpi('in_place'), f, op=get_mpi('sum'), root=root)
 
-            # Build the row
-            row = [intg.tcurr] + f.tolist()
-
             # Write
-            print(','.join(str(r) for r in row), file=self.outf)
+            print(intg.tcurr, *f, sep=',', file=self.outf)
 
             # Flush to disk
             self.outf.flush()
@@ -208,7 +204,7 @@ class FluidForcePlugin(BasePlugin):
         mu = c['mu']
 
         if self._viscorr == 'sutherland':
-            cpT = c['gamma']*(E/rho - 0.5*np.sum(u[1:-1]**2, axis=0))
+            cpT = c['gamma']*(E/rho - 0.5*np.sum(u[1:-1]**2, axis=0)/rho**2)
             Trat = cpT/c['cpTref']
             mu *= (c['cpTref'] + c['cpTs'])*Trat**1.5 / (cpT + c['cpTs'])
 

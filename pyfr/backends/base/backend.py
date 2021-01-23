@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 from functools import wraps
 from itertools import count
@@ -25,10 +24,9 @@ def recordmat(fn):
     return newfn
 
 
-class BaseBackend(object, metaclass=ABCMeta):
+class BaseBackend(object):
     name = None
 
-    @abstractmethod
     def __init__(self, cfg):
         self.cfg = cfg
 
@@ -55,7 +53,7 @@ class BaseBackend(object, metaclass=ABCMeta):
 
     @lazyprop
     def lookup(self):
-        pkg = 'pyfr.backends.{0}.kernels'.format(self.name)
+        pkg = f'pyfr.backends.{self.name}.kernels'
         dfltargs = dict(alignb=self.alignb, fpdtype=self.fpdtype,
                         soasz=self.soasz, math=math)
 
@@ -76,8 +74,8 @@ class BaseBackend(object, metaclass=ABCMeta):
         else:
             # Check that the extent has not already been committed
             if extent in self._comm_extents:
-                raise ValueError('Extent "{}" has already been allocated'
-                                 .format(extent))
+                raise ValueError(f'Extent "{extent}" has already been '
+                                 'allocated')
 
             # Append
             self._pend_extents[extent].append(obj)
@@ -119,7 +117,6 @@ class BaseBackend(object, metaclass=ABCMeta):
         self._pend_aliases.clear()
         self._pend_extents.clear()
 
-    @abstractmethod
     def _malloc_impl(self, nbytes):
         pass
 
@@ -133,8 +130,8 @@ class BaseBackend(object, metaclass=ABCMeta):
         return self.matrix_cls(self, ioshape, initval, extent, aliases, tags)
 
     @recordmat
-    def matrix_rslice(self, mat, p, q):
-        return self.matrix_rslice_cls(self, mat, p, q)
+    def matrix_slice(self, mat, ra, rb, ca, cb):
+        return self.matrix_slice_cls(self, mat, ra, rb, ca, cb)
 
     def matrix_bank(self, mats, initbank=0, tags=set()):
         return self.matrix_bank_cls(self, mats, initbank, tags)
@@ -167,7 +164,7 @@ class BaseBackend(object, metaclass=ABCMeta):
                 except NotSuitableError:
                     pass
         else:
-            raise KeyError("'{}' has no providers".format(name))
+            raise KeyError(f'Kernel "{name}" has no providers')
 
     def queue(self):
         return self.queue_cls(self)

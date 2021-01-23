@@ -10,12 +10,12 @@ from pyfr.readers.nodemaps import GmshNodeMaps
 
 
 def msh_section(mshit, section):
-    endln = '$End{}\n'.format(section)
-    endix = int(next(mshit)) - 1
+    endln = f'$End{section}\n'
+    endix = int(next(mshit))
 
-    for i, l in enumerate(mshit):
+    for i, l in enumerate(mshit, start=1):
         if l == endln:
-            raise ValueError('Unexpected end of section $' + section)
+            raise ValueError(f'Unexpected end of section ${section}')
 
         yield l.strip()
 
@@ -25,7 +25,7 @@ def msh_section(mshit, section):
         raise ValueError('Unexpected EOF')
 
     if next(mshit) != endln:
-        raise ValueError('Expected $End' + section)
+        raise ValueError(f'Expected $End{section}')
 
 
 class GmshReader(BaseReader):
@@ -89,13 +89,13 @@ class GmshReader(BaseReader):
                 sect_map[sect](mshit)
             # Else skip over it
             except KeyError:
-                endsect = '$End{0}\n'.format(sect)
+                endsect = f'$End{sect}\n'
 
                 for el in mshit:
                     if el == endsect:
                         break
                 else:
-                    raise ValueError('Expected $End' + sect)
+                    raise ValueError(f'Expected $End{sect}')
 
     def _read_mesh_format(self, mshit):
         ver, ftype, dsize = next(mshit).split()
@@ -103,9 +103,9 @@ class GmshReader(BaseReader):
         if ver == '2.2':
             self._read_nodes_impl = self._read_nodes_impl_v2
             self._read_eles_impl = self._read_eles_impl_v2
-        elif ver == '4':
-            self._read_nodes_impl = self._read_nodes_impl_v4
-            self._read_eles_impl = self._read_eles_impl_v4
+        elif ver == '4.1':
+            self._read_nodes_impl = self._read_nodes_impl_v41
+            self._read_eles_impl = self._read_eles_impl_v41
         else:
             raise ValueError('Invalid mesh version')
 
@@ -139,7 +139,7 @@ class GmshReader(BaseReader):
 
             # Ensure we have not seen this name before
             if name in seen:
-                raise ValueError('Duplicate physical name: {}'.format(name))
+                raise ValueError(f'Duplicate physical name: {name}')
 
             # Fluid elements
             if name == 'fluid':
@@ -166,18 +166,25 @@ class GmshReader(BaseReader):
     def _read_entities(self, mshit):
         self._tagpents = tagpents = {}
 
-        # Iterate over the entities
-        nent = sum(int(i) for i in next(mshit).split())
-        for i in range(nent):
-            ent = next(mshit).split()
-            etag, enphys = int(ent[0]), int(ent[7])
+        # Obtain the entity counts
+        npts, *ents = (int(i) for i in next(mshit).split())
 
-            if enphys == 0:
-                continue
-            elif enphys == 1:
-                tagpents[etag] = int(ent[8])
-            else:
-                raise ValueError('Invalid physical tag count for entity')
+        # Skip over the point entities
+        for i in range(npts):
+            next(mshit)
+
+        # Iterate through the curves, surfaces, and volume entities
+        for ndim, nent in enumerate(ents, start=1):
+            for j in range(nent):
+                ent = next(mshit).split()
+                etag, enphys = int(ent[0]), int(ent[7])
+
+                if enphys == 0:
+                    continue
+                elif enphys == 1:
+                    tagpents[ndim, etag] = abs(int(ent[8]))
+                else:
+                    raise ValueError('Invalid physical tag count for entity')
 
         if next(mshit) != '$EndEntities\n':
             raise ValueError('Expected $EndEntities')
@@ -192,18 +199,18 @@ class GmshReader(BaseReader):
             nv = l.split()
             nodepts[int(nv[0])] = np.array([float(x) for x in nv[1:]])
 
-    def _read_nodes_impl_v4(self, mshit):
+    def _read_nodes_impl_v41(self, mshit):
         self._nodepts = nodepts = {}
 
         # Entity and total node count
-        ne, nn = (int(i) for i in next(mshit).split())
+        ne, nn = (int(i) for i in next(mshit).split()[:2])
 
         for i in range(ne):
             nen = int(next(mshit).split()[-1])
+            nix = [int(next(mshit)[:-1]) for _ in range(nen)]
 
-            for j in range(nen):
-                nv = next(mshit).split()
-                nodepts[int(nv[0])] = np.array([float(x) for x in nv[1:]])
+            for j in nix:
+                nodepts[j] = np.array([float(x) for x in next(mshit).split()])
 
         if nn != len(nodepts):
             raise ValueError('Invalid node count')
@@ -224,7 +231,7 @@ class GmshReader(BaseReader):
             etags, enodes = elei[3:3 + entags], elei[3 + entags:]
 
             if etype not in self._etype_map:
-                raise ValueError('Unsupported element type {0}'.format(etype))
+                raise ValueError(f'Unsupported element type {etype}')
 
             # Physical entity type (used for BCs)
             epent = etags[0]
@@ -233,20 +240,20 @@ class GmshReader(BaseReader):
 
         self._elenodes = {k: np.array(v) for k, v in elenodes.items()}
 
-    def _read_eles_impl_v4(self, mshit):
+    def _read_eles_impl_v41(self, mshit):
         elenodes = defaultdict(list)
 
         # Block and total element count
-        nb, ne = (int(i) for i in next(mshit).split())
+        nb, ne = (int(i) for i in next(mshit).split()[:2])
 
         for i in range(nb):
-            etag, _, etype, ecount = (int(j) for j in next(mshit).split())
+            edim, etag, etype, ecount = (int(j) for j in next(mshit).split())
 
             if etype not in self._etype_map:
-                raise ValueError('Unsupported element type {0}'.format(etype))
+                raise ValueError(f'Unsupported element type {etype}')
 
             # Physical entity type (used for BCs)
-            epent = self._tagpents.get(etag, -1)
+            epent = self._tagpents.get((edim, etag), -1)
             append = elenodes[etype, epent].append
 
             for j in range(ecount):

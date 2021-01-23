@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from abc import ABCMeta, abstractmethod
 from collections import defaultdict
 import random
 import re
@@ -15,7 +14,7 @@ def get_rank_allocation(mesh, cfg):
     return subclass_where(BaseRankAllocator, name=name)(mesh, cfg)
 
 
-class BaseRankAllocator(object, metaclass=ABCMeta):
+class BaseRankAllocator(object):
     name = None
 
     def __init__(self, mesh, cfg):
@@ -29,8 +28,8 @@ class BaseRankAllocator(object, metaclass=ABCMeta):
             nparts = len(prankconn)
 
             if nparts != comm.size:
-                raise RuntimeError('Mesh has {0} partitions but running with '
-                                   '{1} MPI ranks'.format(nparts, comm.size))
+                raise RuntimeError(f'Mesh has {nparts} partitions but running '
+                                   f'with {comm.size} MPI ranks')
         else:
             prankconn = None
 
@@ -61,17 +60,15 @@ class BaseRankAllocator(object, metaclass=ABCMeta):
                 lhs, rhs = int(m.group(1)), int(m.group(2))
                 conn[lhs].append(rhs)
 
-                if 'con_p{0}p{1}'.format(rhs, lhs) not in mesh:
-                    raise ValueError('MPI interface ({0}, {1}) is not '
-                                     'symmetric'.format(lhs, rhs))
+                if f'con_p{rhs}p{lhs}' not in mesh:
+                    raise ValueError(f'MPI interface ({lhs}, {rhs}) is not '
+                                     'symmetric')
 
         return [conn[i] for i in range(len(conn) or 1)]
 
-    @abstractmethod
     def _get_rank_info(self):
         pass
 
-    @abstractmethod
     def _get_mprankmap(self, prankconn, rinfo):
         pass
 

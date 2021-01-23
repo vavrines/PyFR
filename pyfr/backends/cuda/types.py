@@ -1,20 +1,18 @@
 # -*- coding: utf-8 -*-
 
-from ctypes import c_int, c_ssize_t, c_void_p, pythonapi, py_object
-
 import numpy as np
-import pycuda.driver as cuda
 
 import pyfr.backends.base as base
-from pyfr.util import lazyprop
+from pyfr.util import make_pybuf
 
 
-_make_pybuf = pythonapi.PyMemoryView_FromMemory
-_make_pybuf.argtypes = [c_void_p, c_ssize_t, c_int]
-_make_pybuf.restype = py_object
+class _CUDAMatrixCommon(object):
+    @property
+    def _as_parameter_(self):
+        return self.data
 
 
-class CUDAMatrixBase(base.MatrixBase):
+class CUDAMatrixBase(_CUDAMatrixCommon, base.MatrixBase):
     def onalloc(self, basedata, offset):
         self.basedata = basedata
         self.data = int(self.basedata) + offset
@@ -32,7 +30,7 @@ class CUDAMatrixBase(base.MatrixBase):
         buf = np.empty((self.nrow, self.leaddim), dtype=self.dtype)
 
         # Copy
-        cuda.memcpy_dtoh(buf, self.data)
+        self.backend.cuda.memcpy(buf, self.data, self.nbytes)
 
         # Unpack
         return self._unpack(buf[:, :self.ncol])
@@ -43,36 +41,21 @@ class CUDAMatrixBase(base.MatrixBase):
         buf[:, :self.ncol] = self._pack(ary)
 
         # Copy
-        cuda.memcpy_htod(self.data, buf)
-
-    @property
-    def _as_parameter_(self):
-        return self.data
-
-    def __index__(self):
-        return self.data
+        self.backend.cuda.memcpy(self.data, buf, self.nbytes)
 
 
 class CUDAMatrix(CUDAMatrixBase, base.Matrix):
     pass
 
 
-class CUDAMatrixRSlice(base.MatrixRSlice):
-    @lazyprop
-    def data(self):
-        return int(self.parent.basedata) + int(self.offset)
-
-    @property
-    def _as_parameter_(self):
-        return self.data
-
-    def __index__(self):
-        return self.data
+class CUDAMatrixSlice(_CUDAMatrixCommon, base.MatrixSlice):
+    def _init_data(self, mat):
+        return (int(mat.basedata) + mat.offset +
+                self.ra*self.pitch + self.ca*self.itemsize)
 
 
 class CUDAMatrixBank(base.MatrixBank):
-    def __index__(self):
-        return self._curr_mat.data
+    pass
 
 
 class CUDAConstMatrix(CUDAMatrixBase, base.ConstMatrix):
@@ -91,11 +74,11 @@ class CUDAXchgMatrix(CUDAMatrix, base.XchgMatrix):
         # If MPI is CUDA-aware then construct a buffer out of our CUDA
         # device allocation and pass this directly to MPI
         if backend.mpitype == 'cuda-aware':
-            self.hdata = _make_pybuf(self.data, self.nbytes, 0x200)
+            self.hdata = make_pybuf(self.data, self.nbytes, 0x200)
         # Otherwise, allocate a buffer on the host for MPI to send/recv from
         else:
-            self.hdata = cuda.pagelocked_empty((self.nrow, self.ncol),
-                                               self.dtype, 'C')
+            shape, dtype = (self.nrow, self.ncol), self.dtype
+            self.hdata = backend.cuda.pagelocked_empty(shape, dtype)
 
 
 class CUDAXchgView(base.XchgView):
@@ -107,25 +90,23 @@ class CUDAQueue(base.Queue):
         super().__init__(backend)
 
         # CUDA streams
-        self.cuda_stream_comp = cuda.Stream()
-        self.cuda_stream_copy = cuda.Stream()
+        self.cuda_stream_comp = backend.cuda.create_stream()
+        self.cuda_stream_copy = backend.cuda.create_stream()
 
     def _wait(self):
-        last = self._last
-
-        if last and last.ktype == 'compute':
+        if self._last_ktype == 'compute':
             self.cuda_stream_comp.synchronize()
             self.cuda_stream_copy.synchronize()
-        elif last and last.ktype == 'mpi':
+        elif self._last_ktype == 'mpi':
             from mpi4py import MPI
 
             MPI.Prequest.Waitall(self.mpi_reqs)
             self.mpi_reqs = []
 
-        self._last = None
+        self._last_ktype = None
 
     def _at_sequence_point(self, item):
-        return self._last and self._last.ktype != item.ktype
+        return self._last_ktype != item.ktype
 
     @staticmethod
     def runall(queues):

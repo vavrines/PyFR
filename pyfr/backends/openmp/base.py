@@ -11,8 +11,8 @@ class OpenMPBackend(BaseBackend):
     def __init__(self, cfg):
         super().__init__(cfg)
 
-        # Take the default alignment requirement to be 32-bytes
-        self.alignb = cfg.getint('backend-openmp', 'alignb', 32)
+        # Take the default alignment requirement to be 64-bytes
+        self.alignb = cfg.getint('backend-openmp', 'alignb', 64)
 
         if self.alignb < 32 or (self.alignb & (self.alignb - 1)):
             raise ValueError('Alignment must be a power of 2 and >= 32')
@@ -28,7 +28,7 @@ class OpenMPBackend(BaseBackend):
         self.const_matrix_cls = types.OpenMPConstMatrix
         self.matrix_cls = types.OpenMPMatrix
         self.matrix_bank_cls = types.OpenMPMatrixBank
-        self.matrix_rslice_cls = types.OpenMPMatrixRSlice
+        self.matrix_slice_cls = types.OpenMPMatrixSlice
         self.queue_cls = types.OpenMPQueue
         self.view_cls = types.OpenMPView
         self.xchg_matrix_cls = types.OpenMPXchgMatrix
@@ -37,12 +37,12 @@ class OpenMPBackend(BaseBackend):
         # Instantiate mandatory kernel provider classes
         kprovcls = [provider.OpenMPPointwiseKernelProvider,
                     blasext.OpenMPBlasExtKernels,
-                    packing.OpenMPPackingKernels,
-                    gimmik.OpenMPGiMMiKKernels]
+                    packing.OpenMPPackingKernels]
         self._providers = [k(self) for k in kprovcls]
 
         # Instantiate optional kernel provider classes
-        for k in [xsmm.OpenMPXSMMKernels, cblas.OpenMPCBLASKernels]:
+        for k in [xsmm.OpenMPXSMMKernels, gimmik.OpenMPGiMMiKKernels,
+                  cblas.OpenMPCBLASKernels]:
             try:
                 self._providers.append(k(self))
             except (KeyboardInterrupt, SystemExit):

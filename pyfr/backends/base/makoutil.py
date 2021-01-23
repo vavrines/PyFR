@@ -66,18 +66,22 @@ def _locals(body):
     # A statement can define multiple variables, so split by ','
     decls = it.chain.from_iterable(d.split(',') for d in decls)
 
-    return [re.match(r'\s*(\w+)', v).group(1) for v in decls]
+    # Extract the variable names
+    lvars = [re.match(r'\s*(\w+)', v).group(1) for v in decls]
+
+    # Prune invalid names
+    return [lv for lv in lvars if lv != 'if']
 
 
 @supports_caller
-def macro(context, name, params):
+def macro(context, name, params, externs=''):
     # Check we have not already been defined
     if name in context['_macros']:
-        raise RuntimeError('Attempt to redefine macro "{0}"'
-                           .format(name))
+        raise RuntimeError(f'Attempt to redefine macro "{name}"')
 
-    # Split up the parameter list
+    # Split up the parameter and external variable list
     params = [p.strip() for p in params.split(',')]
+    externs = [e.strip() for e in externs.split(',')] if externs else []
 
     # Capture the function body
     body = capture(context, context['caller'].body)
@@ -90,29 +94,45 @@ def macro(context, name, params):
         body = re.sub(r'\b({0})\b'.format('|'.join(lvars)), r'\1_', body)
 
     # Save
-    context['_macros'][name] = (params, body)
+    context['_macros'][name] = (params, externs, body)
 
     return ''
 
 
 def expand(context, name, *params):
     # Get the macro parameter list and the body
-    mparams, body = context['_macros'][name]
+    mparams, mexterns, body = context['_macros'][name]
 
-    # Validate
+    # Validate the parameters
     if len(mparams) != len(params):
-        raise ValueError('Inconsistent macro parameter list in {} [{}], [{}]'
-                         .format(name, mparams, params))
+        raise ValueError('Inconsistent macro parameter list in {0} {1}, {2}'
+                         .format(name, list(mparams), list(params)))
 
-    # Substitute
+    # Ensure all (used) external parameters have been passed to the kernel
+    for extrn in mexterns:
+        if (extrn not in context['_extrns'] and
+            re.search(rf'\b{extrn}\b', body)):
+            raise ValueError(f'Missing external {extrn} in {name}')
+
+    # Rename local parameters
     for name, subst in zip(mparams, params):
-        body = re.sub(r'\b{0}\b'.format(name), subst, body)
+        body = re.sub(rf'\b{name}\b', subst, body)
 
-    return '{\n' + body + '\n}'
+    return f'{{\n{body}\n}}'
 
 
 @supports_caller
 def kernel(context, name, ndim, **kwargs):
+    extrns = context['_extrns']
+
+    # Validate the argument list
+    if any(arg in extrns for arg in kwargs):
+        raise ValueError('Duplicate argument in {0}: {1} {2}'
+                         .format(name, list(kwargs), list(extrns)))
+
+    # Merge local and external arguments
+    kwargs = dict(kwargs, **extrns)
+
     # Capture the kernel body
     body = capture(context, context['caller'].body)
 

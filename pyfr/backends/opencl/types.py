@@ -4,10 +4,15 @@ import numpy as np
 import pyopencl as cl
 
 import pyfr.backends.base as base
-from pyfr.util import lazyprop
 
 
-class OpenCLMatrixBase(base.MatrixBase):
+class _OpenCLMatrixCommon(object):
+    @property
+    def _as_parameter_(self):
+        return self.data.int_ptr
+
+
+class OpenCLMatrixBase(_OpenCLMatrixCommon, base.MatrixBase):
     def onalloc(self, basedata, offset):
         self.basedata = basedata
         self.data = basedata.get_sub_region(offset, self.nbytes)
@@ -38,24 +43,17 @@ class OpenCLMatrixBase(base.MatrixBase):
         # Copy
         cl.enqueue_copy(self.backend.qdflt, self.data, buf)
 
-    @property
-    def _as_parameter_(self):
-        return self.data.int_ptr
-
 
 class OpenCLMatrix(OpenCLMatrixBase, base.Matrix):
     pass
 
 
-class OpenCLMatrixRSlice(base.MatrixRSlice):
-    @lazyprop
-    def data(self):
-        return self.parent.basedata.get_sub_region(self.offset,
-                                                   self.nrow*self.pitch)
+class OpenCLMatrixSlice(_OpenCLMatrixCommon, base.MatrixSlice):
+    def _init_data(self, mat):
+        start = self.ra*self.pitch + self.ca*self.itemsize
+        nbytes = (self.nrow - 1)*self.pitch + self.ncol*self.itemsize
 
-    @property
-    def _as_parameter_(self):
-        return self.data.int_ptr
+        return mat.basedata.get_sub_region(mat.offset + start, nbytes)
 
 
 class OpenCLMatrixBank(base.MatrixBank):
@@ -90,22 +88,24 @@ class OpenCLQueue(base.Queue):
         self.cl_queue_comp = cl.CommandQueue(backend.ctx)
         self.cl_queue_copy = cl.CommandQueue(backend.ctx)
 
-    def _wait(self):
-        last = self._last
+        # Active copy event list
+        self.copy_events = []
 
-        if last and last.ktype == 'compute':
+    def _wait(self):
+        if self._last_ktype == 'compute':
             self.cl_queue_comp.finish()
             self.cl_queue_copy.finish()
-        elif last and last.ktype == 'mpi':
+            self.copy_events.clear()
+        elif self._last_ktype == 'mpi':
             from mpi4py import MPI
 
             MPI.Prequest.Waitall(self.mpi_reqs)
             self.mpi_reqs = []
 
-        self._last = None
+        self._last_ktype = None
 
     def _at_sequence_point(self, item):
-        return self._last and self._last.ktype != item.ktype
+        return self._last_ktype != item.ktype
 
     @staticmethod
     def runall(queues):

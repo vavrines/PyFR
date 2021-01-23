@@ -13,7 +13,7 @@ class ACEulerIntInters(BaseAdvectionIntInters):
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self._tpl_c)
+                       c=self.c)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'intcflux', tplargs=tplargs, dims=[self.ninterfpts],
@@ -30,7 +30,7 @@ class ACEulerMPIInters(BaseAdvectionMPIInters):
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self._tpl_c)
+                       c=self.c)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'mpicflux', tplargs, dims=[self.ninterfpts],
@@ -47,11 +47,13 @@ class ACEulerBaseBCInters(BaseAdvectionBCInters):
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self._tpl_c, bctype=self.type)
+                       c=self.c, bctype=self.type)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
-            'bccflux', tplargs, dims=[self.ninterfpts], ul=self._scal_lhs,
-            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+            'bccflux', tplargs=tplargs, dims=[self.ninterfpts],
+            extrns=self._external_args, ul=self._scal_lhs,
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
+            **self._external_vals
         )
 
 
@@ -61,7 +63,7 @@ class ACEulerInflowBCInters(ACEulerBaseBCInters):
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
-        self._tpl_c.update(self._exp_opts('uvw'[:self.ndims], lhs))
+        self.c.update(self._exp_opts('uvw'[:self.ndims], lhs))
 
 
 class ACEulerOutflowBCInters(ACEulerBaseBCInters):
@@ -70,7 +72,7 @@ class ACEulerOutflowBCInters(ACEulerBaseBCInters):
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
-        self._tpl_c.update(self._exp_opts('p', lhs))
+        self.c.update(self._exp_opts('p', lhs))
 
 
 class ACEulerSlpWallBCInters(ACEulerBaseBCInters):
@@ -83,9 +85,9 @@ class ACEulerCharRiemInvBCInters(ACEulerBaseBCInters):
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
-        self._tpl_c['niters'] = cfg.getint(cfgsect, 'niters', 4)
-        self._tpl_c['bc-ac-zeta'] = cfg.getfloat(cfgsect, 'ac-zeta')
+        self.c['niters'] = cfg.getint(cfgsect, 'niters', 4)
+        self.c['bc-ac-zeta'] = cfg.getfloat(cfgsect, 'ac-zeta')
         tplc = self._exp_opts(
             ['p', 'u', 'v', 'w'][:self.ndims + 1], lhs
         )
-        self._tpl_c.update(tplc)
+        self.c.update(tplc)
