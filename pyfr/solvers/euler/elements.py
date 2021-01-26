@@ -171,6 +171,13 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             [self.basis.rdptsx, self.basis.rdptsy] = self.getAllRDpts()
             tplargs["linesmoothmat"] = self.generate1DSmoothMat()
 
+            tplargs["nrdptsx"] = len(self.basis.rdptsx)
+            tplargs["nrdptsy"] = len(self.basis.rdptsx)
+
+            print(self.basis.rdptsx)
+            print()
+            print(self.basis.rdptsy)
+
             # Smats order is 
             # [dxi/dx, deta/dx, dxi/dy, deta/dy]
             # [dxi/dx, deta/dx, dzeta/dx, dxi/dy, deta/dy, dzeta/dy,  dxi/dz, deta/dz, dzeta/dz]

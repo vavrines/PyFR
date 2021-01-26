@@ -8,8 +8,8 @@
               plocu='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
               divf='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
               res='in fpdtype_t[${str(nupts)}]'
-              rdsmatsx='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'
-              rdsmatsy='in fpdtype_t[${str(nupts)}][${str(ndims*ndims)}]'
+              rdsmatsx='in fpdtype_t[${str(nrdptsx)}][${str(ndims*ndims)}]'
+              rdsmatsy='in fpdtype_t[${str(nrdptsy)}][${str(ndims*ndims)}]'
               alpha_fpts='out fpdtype_t[${str(nfpts)}]'
               >
 
