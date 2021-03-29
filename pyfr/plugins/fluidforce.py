@@ -196,10 +196,10 @@ class FluidForcePlugin(BasePlugin):
         rho, E = u[0], u[-1]
 
         # Gradient of density and momentum
-        gradrho, gradrhou = du[:, 0], du[:, 1:-1]
+        gradrho, gradrhou = du[:, 0], du[:, 1:-3]
 
         # Gradient of velocity
-        gradu = (gradrhou - gradrho[:, None]*u[None, 1:-1]/rho) / rho
+        gradu = (gradrhou - gradrho[:, None]*u[None, 1:-3]/rho) / rho
 
         # Bulk tensor
         bulk = np.eye(self.ndims)[:, :, None, None]*np.trace(gradu)
