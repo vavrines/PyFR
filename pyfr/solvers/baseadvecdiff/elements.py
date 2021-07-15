@@ -3,7 +3,7 @@
 from pyfr.backends.base.kernels import ComputeMetaKernel
 from pyfr.solvers.baseadvec import BaseAdvectionElements
 from pyfr.quadrules import get_quadrule
-
+import numpy as np
 
 class BaseAdvectionDiffusionElements(BaseAdvectionElements):
     @property
