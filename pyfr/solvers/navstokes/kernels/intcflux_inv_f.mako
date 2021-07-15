@@ -13,8 +13,8 @@
               ur='inout view fpdtype_t[${str(nvars)}]'
               gradul='in view fpdtype_t[${str(ndims)}][${str(nvars)}]'
               gradur='in view fpdtype_t[${str(ndims)}][${str(nvars)}]'
-              artviscl='in view fpdtype_t[${str(ndims)}]'
-              artviscr='in view fpdtype_t[${str(ndims)}]'
+              artviscl='in view fpdtype_t'
+              artviscr='in view fpdtype_t'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
     // Perform the Riemann solve
