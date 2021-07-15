@@ -22,7 +22,7 @@
 
     // Perform the Riemann solve
     fpdtype_t ficomm[${nvars}];
-    ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'ficomm')};
+    ${pyfr.expand('rsolve_f', 'ul', 'ur', 'nl', 'ficomm')};
 
 % for i in range(nvars):
     ul[${i}] = magnl*(ficomm[${i}]);
