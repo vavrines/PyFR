@@ -1,0 +1,15 @@
+# -*- coding: utf-8 -*-
+<%inherit file='base'/>
+<%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
+
+<%pyfr:kernel name='negdivconf_b' ndim='2'
+              t='scalar fpdtype_t'
+              tdivtconf='inout fpdtype_t[${str(nvars)}]'
+              ploc='in fpdtype_t[${str(ndims)}]'
+              u='inout fpdtype_t[${str(nvars)}]'
+              rcpdjac='in fpdtype_t'>
+% for i, ex in enumerate(srcex):
+    tdivtconf[${i}] = -rcpdjac*tdivtconf[${i}] + ${ex};
+    u[${i}] += 0.00001*tdivtconf[${i}];
+% endfor
+</%pyfr:kernel>

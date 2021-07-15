@@ -25,7 +25,9 @@ class NavierStokesIntInters(TplargsMixin, BaseAdvectionDiffusionIntInters):
         super().__init__(be, lhs, rhs, elemap, cfg)
 
         be.pointwise.register('pyfr.solvers.navstokes.kernels.intconu')
-        be.pointwise.register('pyfr.solvers.navstokes.kernels.intcflux')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.intcflux_vis')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.intcflux_inv_f')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.intcflux_inv_b')
 
         if abs(self.c['ldg-beta']) == 0.5:
             self.kernels['copy_fpts'] = lambda: ComputeMetaKernel(
@@ -37,8 +39,22 @@ class NavierStokesIntInters(TplargsMixin, BaseAdvectionDiffusionIntInters):
             ulin=self._scal_lhs, urin=self._scal_rhs,
             ulout=self._vect_lhs, urout=self._vect_rhs
         )
-        self.kernels['comm_flux'] = lambda: be.kernel(
-            'intcflux', tplargs=self._tplargs, dims=[self.ninterfpts],
+        self.kernels['comm_flux_vis'] = lambda: be.kernel(
+            'intcflux_vis', tplargs=self._tplargs, dims=[self.ninterfpts],
+            ul=self._scal_lhs, ur=self._scal_rhs,
+            gradul=self._vect_lhs, gradur=self._vect_rhs,
+            artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+        )
+        self.kernels['comm_flux_inv_f'] = lambda: be.kernel(
+            'intcflux_inv_f', tplargs=self._tplargs, dims=[self.ninterfpts],
+            ul=self._scal_lhs, ur=self._scal_rhs,
+            gradul=self._vect_lhs, gradur=self._vect_rhs,
+            artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+        )
+        self.kernels['comm_flux_inv_b'] = lambda: be.kernel(
+            'intcflux_inv_b', tplargs=self._tplargs, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
@@ -51,14 +67,30 @@ class NavierStokesMPIInters(TplargsMixin, BaseAdvectionDiffusionMPIInters):
         super().__init__(be, lhs, rhsrank, rallocs, elemap, cfg)
 
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpiconu')
-        be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux_vis')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux_inv_f')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux_inv_b')
 
         self.kernels['con_u'] = lambda: be.kernel(
             'mpiconu', tplargs=self._tplargs, dims=[self.ninterfpts],
             ulin=self._scal_lhs, urin=self._scal_rhs, ulout=self._vect_lhs
         )
-        self.kernels['comm_flux'] = lambda: be.kernel(
-            'mpicflux', tplargs=self._tplargs, dims=[self.ninterfpts],
+        self.kernels['comm_flux_vis'] = lambda: be.kernel(
+            'mpicflux_vis', tplargs=self._tplargs, dims=[self.ninterfpts],
+            ul=self._scal_lhs, ur=self._scal_rhs,
+            gradul=self._vect_lhs, gradur=self._vect_rhs,
+            artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+        )
+        self.kernels['comm_flux_inv_f'] = lambda: be.kernel(
+            'mpicflux_inv_f', tplargs=self._tplargs, dims=[self.ninterfpts],
+            ul=self._scal_lhs, ur=self._scal_rhs,
+            gradul=self._vect_lhs, gradur=self._vect_rhs,
+            artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+        )
+        self.kernels['comm_flux_inv_b'] = lambda: be.kernel(
+            'mpicflux_inv_b', tplargs=self._tplargs, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
@@ -77,7 +109,9 @@ class NavierStokesBaseBCInters(TplargsMixin, BaseAdvectionDiffusionBCInters):
         self._tplargs['bccfluxstate'] = self.cflux_state
 
         be.pointwise.register('pyfr.solvers.navstokes.kernels.bcconu')
-        be.pointwise.register('pyfr.solvers.navstokes.kernels.bccflux')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.bccflux_vis')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.bccflux_inv_f')
+        be.pointwise.register('pyfr.solvers.navstokes.kernels.bccflux_inv_b')
 
         self.kernels['con_u'] = lambda: be.kernel(
             'bcconu', tplargs=self._tplargs, dims=[self.ninterfpts],
@@ -85,8 +119,22 @@ class NavierStokesBaseBCInters(TplargsMixin, BaseAdvectionDiffusionBCInters):
             ulout=self._vect_lhs, nlin=self._norm_pnorm_lhs,
             **self._external_vals
         )
-        self.kernels['comm_flux'] = lambda: be.kernel(
-            'bccflux', tplargs=self._tplargs, dims=[self.ninterfpts],
+        self.kernels['comm_flux_vis'] = lambda: be.kernel(
+            'bccflux_vis', tplargs=self._tplargs, dims=[self.ninterfpts],
+            extrns=self._external_args, ul=self._scal_lhs,
+            gradul=self._vect_lhs, magnl=self._mag_pnorm_lhs,
+            nl=self._norm_pnorm_lhs, artviscl=self._artvisc_lhs,
+            **self._external_vals
+        )
+        self.kernels['comm_flux_inv_f'] = lambda: be.kernel(
+            'bccflux_inv_f', tplargs=self._tplargs, dims=[self.ninterfpts],
+            extrns=self._external_args, ul=self._scal_lhs,
+            gradul=self._vect_lhs, magnl=self._mag_pnorm_lhs,
+            nl=self._norm_pnorm_lhs, artviscl=self._artvisc_lhs,
+            **self._external_vals
+        )
+        self.kernels['comm_flux_inv_b'] = lambda: be.kernel(
+            'bccflux_inv_b', tplargs=self._tplargs, dims=[self.ninterfpts],
             extrns=self._external_args, ul=self._scal_lhs,
             gradul=self._vect_lhs, magnl=self._mag_pnorm_lhs,
             nl=self._norm_pnorm_lhs, artviscl=self._artvisc_lhs,

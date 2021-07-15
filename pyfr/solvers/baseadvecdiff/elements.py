@@ -12,8 +12,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
         if 'flux' in self.antialias:
             bufs |= {'scal_qpts', 'vect_qpts'}
 
-        if self._soln_in_src_exprs:
-            bufs |= {'scal_upts_cpy'}
+        bufs |= {'scal_upts_cpy'}
 
         return bufs
 
@@ -28,6 +27,10 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             'pyfr.solvers.baseadvecdiff.kernels.gradcoru'
         )
 
+        kernels['copy_soln'] = lambda: self._be.kernel(
+                'copy', self._scal_upts_cpy, self.scal_upts_inb
+            )
+        
         kernels['_copy_fpts'] = lambda: kernel(
             'copy', self._vect_fpts.slice(0, self.nfpts), self._scal_fpts
         )

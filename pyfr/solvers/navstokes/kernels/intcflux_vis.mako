@@ -8,18 +8,18 @@
 
 <% beta, tau = c['ldg-beta'], c['ldg-tau'] %>
 
-<%pyfr:kernel name='mpicflux' ndim='1'
+<%pyfr:kernel name='intcflux_vis' ndim='1'
               ul='inout view fpdtype_t[${str(nvars)}]'
-              ur='inout mpi fpdtype_t[${str(nvars)}]'
+              ur='inout view fpdtype_t[${str(nvars)}]'
               gradul='in view fpdtype_t[${str(ndims)}][${str(nvars)}]'
-              gradur='in mpi fpdtype_t[${str(ndims)}][${str(nvars)}]'
+              gradur='in view fpdtype_t[${str(ndims)}][${str(nvars)}]'
               artviscl='in view fpdtype_t'
-              artviscr='in mpi fpdtype_t'
+              artviscr='in view fpdtype_t'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
     // Perform the Riemann solve
     fpdtype_t ficomm[${nvars}], fvcomm;
-    ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'ficomm')};
+    ${pyfr.expand('rsolve_f', 'ul', 'ur', 'nl', 'ficomm')};
 
 % if beta != -0.5:
     fpdtype_t fvl[${ndims}][${nvars}] = {{0}};
@@ -52,6 +52,7 @@
     fvcomm += ${tau}*(ul[${i}] - ur[${i}]);
 % endif
 
-    ul[${i}] = magnl*(ficomm[${i}] + fvcomm);
+    ul[${i}] =  magnl*(ficomm[${i}] + fvcomm);
+    ur[${i}] = -magnl*(ficomm[${i}] + fvcomm);
 % endfor
 </%pyfr:kernel>
