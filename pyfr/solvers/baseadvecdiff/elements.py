@@ -89,9 +89,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             tags = {'align'}
 
             # Register the kernels
-            self._be.pointwise.register(
-                'pyfr.solvers.baseadvecdiff.kernels.shocksensor'
-            )
+            self._be.pointwise.register('pyfr.solvers.baseadvecdiff.kernels.shocksensor')
+            self._be.pointwise.register('pyfr.solvers.baseadvecdiff.kernels.add_visc')
 
             # Obtain the scalar variable to be used for shock sensing
             shockvar = self.convarmap[self.ndims].index(self.shockvar)
@@ -106,10 +105,16 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 order=self.basis.order, ubdegs=ubdegs,
                 invvdm=self.basis.ubasis.invvdm.T
             )
+            self.artvisc = None
 
             # Allocate space for the artificial viscosity vector
-            self.artvisc = self._be.matrix((1, self.neles),
+            self.revvisc = self._be.matrix((1, self.nvars, self.neles),
                                            extent=nonce + 'artvisc', tags=tags)
+
+            kernels['add_visc'] = lambda: self._be.kernel(
+                'add_visc', tplargs=tplargs, dims=[self.nupts, self.neles], 
+                grads=self._vect_upts_cpy, revvisc=self.revvisc
+            )
 
             # Apply the sensor to estimate the required artificial viscosity
             kernels['shocksensor'] = lambda: self._be.kernel(

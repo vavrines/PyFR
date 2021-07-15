@@ -76,6 +76,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
 
         # Copy gradients and multiply by AV
         q1.enqueue(kernels['eles', 'copy_grads'])
+        q1.enqueue(kernels['eles', 'add_visc'])
 
         q1.enqueue(kernels['mpiint', 'vect_fpts_pack'])
 
