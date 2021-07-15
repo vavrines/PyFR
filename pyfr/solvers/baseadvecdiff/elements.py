@@ -2,6 +2,7 @@
 
 from pyfr.backends.base.kernels import ComputeMetaKernel
 from pyfr.solvers.baseadvec import BaseAdvectionElements
+from pyfr.quadrules import get_quadrule
 
 
 class BaseAdvectionDiffusionElements(BaseAdvectionElements):
@@ -94,16 +95,20 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             # Obtain the degrees of the polynomial modes in the basis
             ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
 
+            # Get normalized element weights
+            ename = self.basis.name
+            weights = get_quadrule(ename, self.cfg.get(f'solver-elements-{ename}', 'soln-pts'), self.nupts).wts
+            weights /= np.sum(weights)
+
             # Template arguments
             tplargs = dict(
                 nvars=self.nvars, nupts=self.nupts, svar=shockvar,
                 c=self.cfg.items_as('solver-artificial-viscosity', float),
-                order=self.basis.order, ubdegs=ubdegs,
-                invvdm=self.basis.ubasis.invvdm.T
+                weights=weights
             )
 
             # Allocate space for the artificial viscosity vector
-            self.artvisc = self._be.matrix((1, self.neles),
+            self.artvisc = self._be.matrix((self.nupts, self.neles),
                                            extent=nonce + 'artvisc', tags=tags)
 
             # Apply the sensor to estimate the required artificial viscosity
