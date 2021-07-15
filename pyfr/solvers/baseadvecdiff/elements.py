@@ -100,12 +100,12 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 
             # Template arguments
             tplargs = dict(
-                nvars=self.nvars, nupts=self.nupts, svar=shockvar,
-                c=self.cfg.items_as('solver-artificial-viscosity', float),
+                nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
+                c=self.cfg.items_as('solver-rev-viscosity', float),
                 order=self.basis.order, ubdegs=ubdegs,
                 invvdm=self.basis.ubasis.invvdm.T
             )
-            
+
             # Allocate space for the artificial viscosity vector
             self.revvisc = self._be.matrix((1, self.nvars, self.neles),
                                            extent=nonce + 'artvisc', tags=tags)
