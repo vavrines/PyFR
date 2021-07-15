@@ -85,7 +85,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 
         # Shock capturing
         shock_capturing = self.cfg.get('solver', 'shock-capturing', 'none')
-        if shock_capturing == 'artificial-viscosity':
+        if shock_capturing == 'rev-viscosity':
             tags = {'align'}
 
             # Register the kernels
@@ -105,8 +105,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 order=self.basis.order, ubdegs=ubdegs,
                 invvdm=self.basis.ubasis.invvdm.T
             )
-            self.artvisc = None
-
+            
             # Allocate space for the artificial viscosity vector
             self.revvisc = self._be.matrix((1, self.nvars, self.neles),
                                            extent=nonce + 'artvisc', tags=tags)
@@ -121,10 +120,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
                 u=self.scal_upts_inb, artvisc=self.artvisc
             )
-        elif shock_capturing == 'none':
-            self.artvisc = None
         else:
-            raise ValueError('Invalid shock capturing scheme')
+            self.artvisc = None
 
     def get_artvisc_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
