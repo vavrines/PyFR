@@ -5,7 +5,7 @@
 
 <%pyfr:kernel name='shocksensor' ndim='1'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              artvisc='out fpdtype_t[${str(nvars)}]'>
+              artvisc='out fpdtype_t[${nvars}]'>
 
 
 
