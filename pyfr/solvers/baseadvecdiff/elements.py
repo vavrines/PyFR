@@ -13,6 +13,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             bufs |= {'scal_qpts', 'vect_qpts'}
 
         bufs |= {'scal_upts_cpy'}
+        bufs |= {'vect_upts_cpy'}
 
         return bufs
 
@@ -29,6 +30,10 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 
         kernels['copy_soln'] = lambda: self._be.kernel(
                 'copy', self._scal_upts_cpy, self.scal_upts_inb
+            )
+
+        kernels['copy_grads'] = lambda: self._be.kernel(
+                'copy', self._vect_upts_cpy, self._vect_upts
             )
         
         kernels['_copy_fpts'] = lambda: kernel(
