@@ -3,10 +3,10 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
 <%pyfr:kernel name='add_visc' ndim='2'
-              grads='inout fpdtype_t[${ndims}][${str(nvars)}]'
+              grads='inout fpdtype_t[${str(ndims)}][${str(nvars)}]'
               revvisc='in fpdtype_t[${str(nvars)}]'>
 
-% for i, j in pyfr.ndrange(ndims, nvars):
+% for i,j in pyfr.ndrange(ndims, nvars):
 	grads[${i}][${j}] *= revvisc[${j}];
 % endfor
 

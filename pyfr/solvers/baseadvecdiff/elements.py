@@ -95,17 +95,18 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             # Obtain the scalar variable to be used for shock sensing
             shockvar = self.convarmap[self.ndims].index(self.shockvar)
 
-            # Obtain the degrees of the polynomial modes in the basis
-            ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
+            ename = self.basis.name
+            weights = get_quadrule(ename, self.cfg.get(f'solver-elements-{ename}', 'soln-pts'), self.nupts).wts
+            weights /= np.sum(weights)
 
             # Template arguments
             tplargs = dict(
                 nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
                 c=self.cfg.items_as('solver-rev-viscosity', float),
-                order=self.basis.order, ubdegs=ubdegs,
-                invvdm=self.basis.ubasis.invvdm.T
+                weights=weights
             )
 
+            self.artvisc = None
             # Allocate space for the artificial viscosity vector
             self.revvisc = self._be.matrix((1, self.nvars, self.neles),
                                            extent=nonce + 'artvisc', tags=tags)
@@ -118,7 +119,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             # Apply the sensor to estimate the required artificial viscosity
             kernels['shocksensor'] = lambda: self._be.kernel(
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
-                u=self.scal_upts_inb, artvisc=self.artvisc
+                du=self._scal_upts_cpy, revvisc=self.revvisc
             )
         else:
             self.artvisc = None
