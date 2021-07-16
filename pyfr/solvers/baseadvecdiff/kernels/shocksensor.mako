@@ -4,17 +4,25 @@
 
 <%pyfr:kernel name='shocksensor' ndim='1'
               du='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              revvisc='out fpdtype_t[${str(nvars)}]'>
+              revvisc='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              rcpdjac='in fpdtype_t[${str(nupts)}]'>
 
+// Calculate average solution defect
 fpdtype_t int_du[${nvars}];
 % for i,j in pyfr.ndrange(nupts, nvars):
     int_du[${j}] += ${weights[i]}*abs(du[${i}][${j}]);
 % endfor
 
-fpdtype_t mu = ${c['mu_max']};
+// Calculate grid size
+fpdtype_t h = 0.0;
+% for i in range(nupts):
+    h += ${weights[i]}*(1.0/rcpdjac[${i}]);
+% endfor
+h = pow(h, ${1.0/ndims});
 
-% for i in range(nvars):
-    revvisc[${i}] = mu;
+
+% for i,j in pyfr.ndrange(nupts, nvars):
+    revvisc[${i}][${j}] = min(${vis_coeffs[j]}*int_du[${j}]*h*h*${1.0/dt_rev}, ${c['mu_max']});
 % endfor
 
 

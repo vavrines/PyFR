@@ -2,7 +2,8 @@
 
 from pyfr.backends.base.kernels import ComputeMetaKernel
 from pyfr.solvers.baseadvec import BaseAdvectionElements
-
+from pyfr.quadrules import get_quadrule
+import numpy as np
 
 class BaseAdvectionDiffusionElements(BaseAdvectionElements):
     @property
@@ -99,16 +100,19 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             weights = get_quadrule(ename, self.cfg.get(f'solver-elements-{ename}', 'soln-pts'), self.nupts).wts
             weights /= np.sum(weights)
 
+            dt_rev = self.cfg.get('solver-rev-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt'))
+            vis_coeffs = self.cfg.get('solver-rev-viscosity', 'vis_coeffs', [1.0]*self.nvars)
+
             # Template arguments
             tplargs = dict(
                 nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
                 c=self.cfg.items_as('solver-rev-viscosity', float),
-                weights=weights
+                weights=weights, dt_rev=dt_rev, vis_coeffs=vis_coeffs
             )
 
             self.artvisc = None
             # Allocate space for the artificial viscosity vector
-            self.revvisc = self._be.matrix((1, self.nvars, self.neles),
+            self.revvisc = self._be.matrix((self.nupts, self.nvars, self.neles),
                                            extent=nonce + 'artvisc', tags=tags)
 
             kernels['add_visc'] = lambda: self._be.kernel(
@@ -119,7 +123,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             # Apply the sensor to estimate the required artificial viscosity
             kernels['shocksensor'] = lambda: self._be.kernel(
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
-                du=self._scal_upts_cpy, revvisc=self.revvisc
+                du=self._scal_upts_cpy, revvisc=self.revvisc,
+                rcpdjac=self.rcpdjac_at('upts')
             )
         else:
             self.artvisc = None

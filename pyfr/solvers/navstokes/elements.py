@@ -21,10 +21,11 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         if visc_corr not in {'sutherland', 'none'}:
             raise ValueError('Invalid viscosity-correction option')
 
+        dt_rev = self.cfg.get('solver-rev-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt'))
         tplargs = dict(ndims=self.ndims, nvars=self.nvars,
                        shock_capturing=shock_capturing, visc_corr=visc_corr,
                        c=self.cfg.items_as('constants', float),
-                       srcex=self._src_exprs)
+                       srcex=self._src_exprs, dt_rev=dt_rev)
 
         if 'flux' in self.antialias:
             self.kernels['tdisf_inv'] = lambda: self._be.kernel(
