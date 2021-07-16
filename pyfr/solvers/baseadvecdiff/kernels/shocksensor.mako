@@ -9,8 +9,11 @@
 
 // Calculate average solution defect
 fpdtype_t int_du[${nvars}];
+% for j in range(nvars):
+    int_du[${j}] = 0.0;
+% endfor
 % for i,j in pyfr.ndrange(nupts, nvars):
-    int_du[${j}] += ${weights[i]}*abs(du[${i}][${j}]);
+    int_du[${j}] += ${weights[i]}*fabs(du[${i}][${j}]);
 % endfor
 
 // Calculate grid size
@@ -22,7 +25,7 @@ h = pow(h, ${1.0/ndims});
 
 
 % for i,j in pyfr.ndrange(nupts, nvars):
-    revvisc[${i}][${j}] = min(${vis_coeffs[j]}*int_du[${j}]*h*h*${1.0/dt_rev}, ${c['mu_max']});
+    revvisc[${i}][${j}] = fmin(${c_mu*vis_coeffs[j]}*int_du[${j}]*h*h*${1.0/dt_rev}, ${c['mu_max']});
 % endfor
 
 

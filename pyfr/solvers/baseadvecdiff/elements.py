@@ -100,14 +100,16 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             weights = get_quadrule(ename, self.cfg.get(f'solver-elements-{ename}', 'soln-pts'), self.nupts).wts
             weights /= np.sum(weights)
 
-            dt_rev = self.cfg.get('solver-rev-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt'))
-            vis_coeffs = self.cfg.get('solver-rev-viscosity', 'vis_coeffs', [1.0]*self.nvars)
+            dt_rev = float(self.cfg.get('solver-rev-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt')))
+            c_mu = float(self.cfg.get('solver-rev-viscosity', 'c_mu', 1.0))
+            vis_coeffs = self.cfg.getliteral('solver-rev-viscosity', 'vis_coeffs', [1.0]*self.nvars)
 
             # Template arguments
             tplargs = dict(
                 nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
                 c=self.cfg.items_as('solver-rev-viscosity', float),
-                weights=weights, dt_rev=dt_rev, vis_coeffs=vis_coeffs
+                weights=weights, dt_rev=dt_rev, vis_coeffs=vis_coeffs,
+                c_mu=c_mu
             )
 
             self.artvisc = None
