@@ -22,6 +22,8 @@ class VTKWriter(BaseWriter):
         self.dtype = np.dtype(args.precision).type
         self.divisor = args.divisor or max(1, self.cfg.getint('solver', 'order'))
 
+        self.aux = 'aux' in args.outf
+
         # Solutions need a separate processing pipeline to other data
         if self.dataprefix == 'soln':
             self._pre_proc_fields = self._pre_proc_fields_soln
@@ -58,6 +60,8 @@ class VTKWriter(BaseWriter):
                     )
 
     def _pre_proc_fields_soln(self, name, mesh, soln):
+        if self.aux:
+            return np.array(soln)
         # Convert from conservative to primitive variables
         return np.array(self.elementscls.con_to_pri(soln, self.cfg))
 

@@ -71,9 +71,9 @@ class NativeWriter(object):
                     elif rank == root:
                         mpi_info.append((name, mrank, fshape, fdtype))
 
-    def write(self, data, metadata, tcurr):
+    def write(self, data, metadata, tcurr, aux=False):
         # Determine the output path
-        path = self._get_output_path(tcurr)
+        path = self._get_output_path(tcurr, aux)
 
         # Delegate to _write to do the actual outputting
         self._write(path, data, metadata)
@@ -101,9 +101,11 @@ class NativeWriter(object):
 
         return nout
 
-    def _get_output_path(self, tcurr):
+    def _get_output_path(self, tcurr, aux=False):
         # Substitute {t} and {n} for the current time and output number
         fname = self.basename.format(t=tcurr, n=self.nout)
+        if aux:
+            fname = fname.split('.pyfrs')[0] + '-aux.pyfrs'
 
         return os.path.join(self.basedir, fname)
 

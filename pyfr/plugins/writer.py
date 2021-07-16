@@ -51,8 +51,13 @@ class WriterPlugin(PostactionMixin, RegionMixin, BasePlugin):
         # Add in any required region data
         data = self._add_region_data(soln)
 
+        auxdata = []
+        for key in intg.system.ele_map:
+            auxdata.append(intg.system.ele_map[key].revvisc.get())
+
         # Write out the file
         solnfname = self._writer.write(data, metadata, intg.tcurr)
+        solnfname_aux = self._writer.write(auxdata, metadata, intg.tcurr, True)
 
         # If a post-action has been registered then invoke it
         self._invoke_postaction(mesh=intg.system.mesh.fname, soln=solnfname,

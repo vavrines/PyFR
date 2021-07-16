@@ -37,7 +37,7 @@ class BaseStdIntegrator(BaseCommon, BaseIntegrator):
         self.completed_step_handlers = proxylist(self._get_plugins())
 
         # Delete the memory-intensive elements map from the system
-        del self.system.ele_map
+        # del self.system.ele_map
 
     @property
     def soln(self):
