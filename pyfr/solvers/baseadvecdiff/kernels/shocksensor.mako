@@ -21,7 +21,7 @@ fpdtype_t h = 0.0;
 % for i in range(nupts):
     h += ${weights[i]}*(1.0/rcpdjac[${i}]);
 % endfor
-h = pow(h, ${1.0/ndims});
+h = pow(h, ${1.0/ndims})/${order + 1};
 
 
 % for i,j in pyfr.ndrange(nupts, nvars):

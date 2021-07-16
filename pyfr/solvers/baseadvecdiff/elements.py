@@ -109,7 +109,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
                 c=self.cfg.items_as('solver-rev-viscosity', float),
                 weights=weights, dt_rev=dt_rev, vis_coeffs=vis_coeffs,
-                c_mu=c_mu
+                c_mu=c_mu, order=self.basis.order
             )
 
             self.artvisc = None
