@@ -14,7 +14,6 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             bufs |= {'scal_qpts', 'vect_qpts'}
 
         bufs |= {'scal_upts_cpy'}
-        bufs |= {'vect_upts_cpy'}
 
         return bufs
 
@@ -31,10 +30,6 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 
         kernels['copy_soln'] = lambda: self._be.kernel(
                 'copy', self._scal_upts_cpy, self.scal_upts_inb
-            )
-
-        kernels['copy_grads'] = lambda: self._be.kernel(
-                'copy', self._vect_upts_cpy, self._vect_upts
             )
         
         kernels['_copy_fpts'] = lambda: kernel(
@@ -86,12 +81,11 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 
         # Shock capturing
         shock_capturing = self.cfg.get('solver', 'shock-capturing', 'none')
-        if shock_capturing == 'rev-viscosity':
+        if shock_capturing == 'artificial-viscosity':
             tags = {'align'}
 
             # Register the kernels
             self._be.pointwise.register('pyfr.solvers.baseadvecdiff.kernels.shocksensor')
-            self._be.pointwise.register('pyfr.solvers.baseadvecdiff.kernels.add_visc')
 
             # Obtain the scalar variable to be used for shock sensing
             shockvar = self.convarmap[self.ndims].index(self.shockvar)
@@ -100,32 +94,26 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             weights = get_quadrule(ename, self.cfg.get(f'solver-elements-{ename}', 'soln-pts'), self.nupts).wts
             weights /= np.sum(weights)
 
-            dt_rev = float(self.cfg.get('solver-rev-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt')))
-            c_mu = float(self.cfg.get('solver-rev-viscosity', 'c_mu', 1.0))
-            vis_coeffs = self.cfg.getliteral('solver-rev-viscosity', 'vis_coeffs', [1.0]*self.nvars)
+            dt_rev = float(self.cfg.get('solver-artificial-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt')))
+            c_mu = float(self.cfg.get('solver-artificial-viscosity', 'c_mu', 1.0))
+            vis_coeffs = self.cfg.getliteral('solver-artificial-viscosity', 'vis_coeffs', [1.0]*self.nvars)
 
             # Template arguments
             tplargs = dict(
                 nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
-                c=self.cfg.items_as('solver-rev-viscosity', float),
+                c=self.cfg.items_as('solver-artificial-viscosity', float),
                 weights=weights, dt_rev=dt_rev, vis_coeffs=vis_coeffs,
                 c_mu=c_mu, order=self.basis.order
             )
 
-            self.artvisc = None
             # Allocate space for the artificial viscosity vector
-            self.revvisc = self._be.matrix((self.nupts, self.nvars, self.neles),
+            self.artvisc = self._be.matrix((self.nupts, self.nvars, self.neles),
                                            extent=nonce + 'artvisc', tags=tags)
-
-            kernels['add_visc'] = lambda: self._be.kernel(
-                'add_visc', tplargs=tplargs, dims=[self.nupts, self.neles], 
-                grads=self._vect_upts_cpy, revvisc=self.revvisc
-            )
 
             # Apply the sensor to estimate the required artificial viscosity
             kernels['shocksensor'] = lambda: self._be.kernel(
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
-                du=self._scal_upts_cpy, revvisc=self.revvisc,
+                du=self._scal_upts_cpy, artvisc=self.artvisc,
                 rcpdjac=self.rcpdjac_at('upts')
             )
         else:

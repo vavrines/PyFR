@@ -11,7 +11,7 @@
 <%pyfr:kernel name='bccflux_inv_f' ndim='1'
               ul='inout view fpdtype_t[${str(nvars)}]'
               gradul='in view fpdtype_t[${str(ndims)}][${str(nvars)}]'
-              artviscl='in view fpdtype_t'
+              artviscl='in view fpdtype_t[${str(nvars)}]'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
     ${pyfr.expand('bc_common_flux_state_f', 'ul', 'gradul', 'artviscl', 'nl', 'magnl')};

@@ -4,7 +4,7 @@
 
 <%pyfr:kernel name='shocksensor' ndim='1'
               du='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              revvisc='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              artvisc='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'>
 
 // Calculate average solution defect
@@ -25,8 +25,7 @@ h = pow(h, ${1.0/ndims})/${order + 1};
 
 
 % for i,j in pyfr.ndrange(nupts, nvars):
-    revvisc[${i}][${j}] = fmin(${c_mu*vis_coeffs[j]}*int_du[${j}]*h*h*${1.0/dt_rev}, ${c['mu_max']});
+    artvisc[${i}][${j}] = fmin(${c_mu*vis_coeffs[j]}*int_du[${j}]*h*h*${1.0/dt_rev}, ${c['mu_max']});
 % endfor
-
 
 </%pyfr:kernel>

@@ -9,7 +9,7 @@
 <%pyfr:kernel name='tflux_inv' ndim='2'
               u='in fpdtype_t[${str(nvars)}]'
               smats='in fpdtype_t[${str(ndims)}][${str(ndims)}]'
-              artvisc='in broadcast fpdtype_t'
+              artvisc='in fpdtype_t[${str(nvars)}]'
               f='inout fpdtype_t[${str(ndims)}][${str(nvars)}]'>
     // Compute the flux (F = Fi + Fv)
     fpdtype_t ftemp[${ndims}][${nvars}];

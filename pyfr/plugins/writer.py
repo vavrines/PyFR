@@ -2,6 +2,7 @@
 
 from pyfr.inifile import Inifile
 from pyfr.plugins.base import BasePlugin, PostactionMixin, RegionMixin
+import numpy as np 
 
 
 class WriterPlugin(PostactionMixin, RegionMixin, BasePlugin):
@@ -53,7 +54,8 @@ class WriterPlugin(PostactionMixin, RegionMixin, BasePlugin):
 
         auxdata = []
         for key in intg.system.ele_map:
-            auxdata.append(intg.system.ele_map[key].revvisc.get())
+            av = intg.system.ele_map[key].artvisc.get()
+            auxdata.append(av)
 
         # Write out the file
         solnfname = self._writer.write(data, metadata, intg.tcurr)
