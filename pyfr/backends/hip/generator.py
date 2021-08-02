@@ -1,44 +1,41 @@
 # -*- coding: utf-8 -*-
 
+from math import prod
+
 from pyfr.backends.base.generator import BaseKernelGenerator
 
 
 class HIPKernelGenerator(BaseKernelGenerator):
+    block1d = None
+    block2d = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         # Specialise
         if self.ndim == 1:
-            self._ix = (
-                'int _x = hipBlockIdx_x*hipBlockDim_x + hipThreadIdx_x;'
-            )
             self._limits = 'if (_x < _nx)'
         else:
-            self._ix = (
-                'int _x = hipBlockIdx_x*hipBlockDim_x + hipThreadIdx_x;'
-                'int _y = hipBlockIdx_y*hipBlockDim_y + hipThreadIdx_y;'
-            )
-            self._limits = 'if (_x < _nx && _y < _ny)'
+            self._limits = 'for (int _y = 0; _x < _nx && _y < _ny; _y++)'
 
     def render(self):
-        # Kernel spec
         spec = self._render_spec()
 
-        # Iteration indicies and limits
-        ix, limits = self._ix, self._limits
-
-        # Combine
         return f'''{spec}
                {{
-                   {ix}
+                   int _x = hipBlockIdx_x*hipBlockDim_x + hipThreadIdx_x;
                    #define X_IDX (_x)
                    #define X_IDX_AOSOA(v, nv) SOA_IX(X_IDX, v, nv)
-                   {limits}
+                   #define BLK_IDX 0
+                   #define BCAST_BLK(i, ld) i
+                   {self._limits}
                    {{
                        {self.body}
                    }}
                    #undef X_IDX
                    #undef X_IDX_AOSOA
+                   #undef BLK_IDX
+                   #undef BCAST_BLK
                }}'''
 
     def _render_spec(self):
@@ -67,4 +64,8 @@ class HIPKernelGenerator(BaseKernelGenerator):
                 if self.needs_ldim(va):
                     kargs.append(f'int ld{va.name}')
 
-        return '__global__ void {0}({1})'.format(self.name, ', '.join(kargs))
+        # Determine the launch bounds for the kernel
+        nthrds = prod(self.block1d if self.ndim == 1 else self.block2d)
+        kattrs = f'__global__ __launch_bounds__({nthrds})'
+
+        return '{0} void {1}({2})'.format(kattrs, self.name, ', '.join(kargs))

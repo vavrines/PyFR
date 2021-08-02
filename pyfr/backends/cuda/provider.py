@@ -17,7 +17,7 @@ class CUDAKernelProvider(BaseKernelProvider):
     def _build_kernel(self, name, src, argtypes):
         # Compile the source code and retrieve the function
         mod = SourceModule(self.backend, src)
-        return mod.get_function(name, argtypes, prefer_l1=True)
+        return mod.get_function(name, argtypes)
 
 
 class CUDAPointwiseKernelProvider(CUDAKernelProvider,
@@ -31,20 +31,18 @@ class CUDAPointwiseKernelProvider(CUDAKernelProvider,
         if len(dims) == 1:
             block = (cfg.getint('backend-cuda', 'block-1d', '64'), 1, 1)
         else:
-            block = cfg.getliteral('backend-cuda', 'block-2d', '128, 1')
-            block += (1,)
+            block = (cfg.getint('backend-cuda', 'block-2d', '128'), 1, 1)
 
         # Use this to compute the grid size
-        grid = get_grid_for_block(block, *dims[::-1])
+        grid = get_grid_for_block(block, dims[-1])
 
         class PointwiseKernel(ComputeKernel):
             if any(isinstance(arg, str) for arg in arglst):
                 def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.cuda_stream_comp,
+                    fun.exec_async(grid, block, queue.stream_comp,
                                    *[kwargs.get(ka, ka) for ka in arglst])
             else:
                 def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.cuda_stream_comp,
-                                   *arglst)
+                    fun.exec_async(grid, block, queue.stream_comp, *arglst)
 
         return PointwiseKernel()

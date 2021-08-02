@@ -19,7 +19,7 @@ class LibWrapper(object):
             fn.restype = fret
             fn.argtypes = fargs
 
-            if fret is not None:
+            if fret == ctypes.c_int:
                 fn.errcheck = self._errcheck
 
             setattr(self, self._transname(fname), fn)
@@ -33,6 +33,7 @@ class LibWrapper(object):
                 raise self._statuses[status]
             except KeyError:
                 raise self._statuses['*']
+
 
 def get_libc_function(fn):
     if sys.platform == 'win32':

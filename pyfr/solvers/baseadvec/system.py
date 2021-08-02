@@ -22,7 +22,10 @@ class BaseAdvectionSystem(BaseSystem):
 
         if ('eles', 'copy_soln') in kernels:
             q1.enqueue(kernels['eles', 'copy_soln'])
-        q1.enqueue(kernels['eles', 'tdisf'])
+        if ('eles', 'qptsu') in kernels:
+            q1.enqueue(kernels['eles', 'qptsu'])
+        q1.enqueue(kernels['eles', 'tdisf_curved'])
+        q1.enqueue(kernels['eles', 'tdisf_linear'])
         q1.enqueue(kernels['eles', 'tdivtpcorf'])
         q1.enqueue(kernels['iint', 'comm_flux'])
         q1.enqueue(kernels['bcint', 'comm_flux'], t=t)

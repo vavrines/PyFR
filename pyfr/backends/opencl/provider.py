@@ -37,7 +37,7 @@ class OpenCLPointwiseKernelProvider(OpenCLKernelProvider,
         if len(dims) == 1:
             ls = (cfg.getint('backend-opencl', 'local-size-1d', '64'),)
         else:
-            ls = cfg.getliteral('backend-opencl', 'local-size-2d', '128, 1')
+            ls = (cfg.getint('backend-opencl', 'local-size-2d', '128'),)
 
         # Global work size
         gs = tuple(gi - gi % -li for gi, li in zip(dims[::-1], ls))
@@ -47,10 +47,10 @@ class OpenCLPointwiseKernelProvider(OpenCLKernelProvider,
                 def run(self, queue, **kwargs):
                     narglst = [kwargs.get(ka, ka) for ka in arglst]
                     narglst = [getattr(arg, 'data', arg) for arg in narglst]
-                    fun(queue.cl_queue_comp, gs, ls, *narglst)
+                    fun(queue.cmd_q_comp, gs, ls, *narglst)
             else:
                 def run(self, queue, **kwargs):
                     narglst = [getattr(arg, 'data', arg) for arg in arglst]
-                    fun(queue.cl_queue_comp, gs, ls, *narglst)
+                    fun(queue.cmd_q_comp, gs, ls, *narglst)
 
         return PointwiseKernel()

@@ -9,17 +9,18 @@ from pyfr.ctypesutil import LibWrapper
 
 
 # Possible HIP exception types
-HIPError = type('HIPError', (Exception,), {})
-HIPInvalidValue = type('HIPInvalidValue', (HIPError,), {})
-HIPNotInitialized = type('HIPNotInitialized', (HIPError,), {})
-HIPOutOfMemory = type('HIPOutOfMemory', (HIPError,), {})
-HIPInsufficientDriver = type('HIPInsufficientDriver', (HIPError,), {})
-HIPPriorLaunchFailure = type('HIPPriorLaunchFailure', (HIPError,), {})
-HIPECCNotCorrectable = type('HIPECCNotCorrectable', (HIPError,), {})
-HIPFileNotFound = type('HIPFileNotFound', (HIPError,), {})
-HIPNotFound = type('HIPNotFound', (HIPError,), {})
-HIPIllegalAddress = type('HIPIllegalAddress', (HIPError,), {})
-HIPLaunchFailure = type('HIPLaunchFailure', (HIPError,), {})
+class HIPError(Exception): pass
+class HIPInvalidValue(HIPError): pass
+class HIPNotInitialized(HIPError): pass
+class HIPOutOfMemory(HIPError): pass
+class HIPInsufficientDriver(HIPError): pass
+class HIPPriorLaunchFailure(HIPError): pass
+class HIPInvalidDevice(HIPError): pass
+class HIPECCNotCorrectable(HIPError): pass
+class HIPFileNotFound(HIPError): pass
+class HIPNotFound(HIPError): pass
+class HIPIllegalAddress(HIPError): pass
+class HIPLaunchFailure(HIPError): pass
 
 
 class HIPDevProps(Structure):
@@ -108,6 +109,7 @@ class HIPWrappers(LibWrapper):
         3: HIPNotInitialized,
         35: HIPInsufficientDriver,
         53: HIPPriorLaunchFailure,
+        101: HIPInvalidDevice,
         214: HIPECCNotCorrectable,
         301: HIPFileNotFound,
         500: HIPNotFound,
