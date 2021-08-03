@@ -15,7 +15,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         self.eles_scal_upts_outb.active = foutbank
 
 
-        q1.enqueue(kernels['eles', 'enforce_positivity_interior'])
+        # q1.enqueue(kernels['eles', 'enforce_positivity_interior'])
         # Copy solution to self._scal_upts_cpy
         q1.enqueue(kernels['eles', 'copy_soln'])
 
@@ -88,7 +88,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         if ('eles', 'gradcoru_qpts') in kernels:
             q1.enqueue(kernels['eles', 'gradcoru_qpts'])
             
-        q1.enqueue(kernels['eles', 'enforce_positivity_interior'])
+        # q1.enqueue(kernels['eles', 'enforce_positivity_interior'])
         q1.enqueue(kernels['eles', 'tdisf_vis'])
         q1.enqueue(kernels['eles', 'tdivtpcorf'])
         q1.enqueue(kernels['iint', 'comm_flux_vis'])
