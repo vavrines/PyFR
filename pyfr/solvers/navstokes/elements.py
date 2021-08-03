@@ -15,17 +15,20 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.get_du')
         self._be.pointwise.register('pyfr.solvers.baseadvec.kernels.negdivconf_f')
         self._be.pointwise.register('pyfr.solvers.baseadvec.kernels.negdivconf_b')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.enforce_positivity')
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
         if visc_corr not in {'sutherland', 'none'}:
             raise ValueError('Invalid viscosity-correction option')
 
-        dt_rev = float(self.cfg.get('solver-rev-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt')))
+        dt_rev = float(self.cfg.get('solver-artificial-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt')))
+        mu_max = float(self.cfg.get('solver-artificial-viscosity', 'mu_max'))
         tplargs = dict(ndims=self.ndims, nvars=self.nvars,
                        shock_capturing=shock_capturing, visc_corr=visc_corr,
                        c=self.cfg.items_as('constants', float),
-                       srcex=self._src_exprs, dt_rev=dt_rev)
+                       srcex=self._src_exprs, dt_rev=dt_rev,
+                       mu_max=mu_max)
 
         if 'flux' in self.antialias:
             self.kernels['tdisf_inv'] = lambda: self._be.kernel(
@@ -68,3 +71,14 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             dims=[self.nupts, self.neles], u_orig=self._scal_upts_cpy, 
             u_rev=self.scal_upts_inb
         )
+
+        self.kernels['enforce_positivity_interface'] = lambda: self._be.kernel(
+            'enforce_positivity', tplargs=tplargs,
+            dims=[self.nupts, self.neles], u=self._scal_fpts
+        )
+
+        self.kernels['enforce_positivity_interior'] = lambda: self._be.kernel(
+            'enforce_positivity', tplargs=tplargs,
+            dims=[self.nupts, self.neles], u=self.scal_upts_inb
+        )
+

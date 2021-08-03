@@ -15,9 +15,11 @@ class TplargsMixin(object):
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         visc_corr = self.cfg.get('solver', 'viscosity-correction')
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
+        mu_max = float(self.cfg.get('solver-artificial-viscosity', 'mu_max'))
         self._tplargs = dict(ndims=self.ndims, nvars=self.nvars,
                              rsolver=rsolver, visc_corr=visc_corr,
-                             shock_capturing=shock_capturing, c=self.c)
+                             shock_capturing=shock_capturing, c=self.c,
+                             mu_max=mu_max)
 
 
 class NavierStokesIntInters(TplargsMixin, BaseAdvectionDiffusionIntInters):

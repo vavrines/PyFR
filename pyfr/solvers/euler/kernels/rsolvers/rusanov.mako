@@ -18,6 +18,8 @@
     fpdtype_t a = sqrt(${0.25*c['gamma']}*(pl + pr)/(ul[0] + ur[0]))
                 + 0.25*fabs(nv);
 
+    a = fmax(0.0, a);
+
     // Output
 % for i in range(nvars):
     nf[${i}] = 0.5*(${' + '.join('n[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
@@ -40,6 +42,8 @@
     // Estimate the maximum wave speed / 2
     fpdtype_t a = sqrt(${0.25*c['gamma']}*(pl + pr)/(ul[0] + ur[0]))
                 + 0.25*fabs(nv);
+                
+    a = fmax(0.0, a);
 
     // Output
 % for i in range(nvars):
