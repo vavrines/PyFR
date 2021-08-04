@@ -27,6 +27,8 @@
     // Estimate the maximum eigenvalue of the quasi-linear system
     fpdtype_t lambda = fabs(mnv)
                      + sqrt(0.5*(c2pmBB2 + sqrt(c2pmBB2*c2pmBB2 - 4*c2*mBn*mBn)));
+    lambda = fmax(${lambda_min}, lambda);
+    
     // Output
 % for i in range(nvars):
     nf[${i}] = 0.5*(${' + '.join('n[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
@@ -61,6 +63,8 @@
     // Estimate the maximum eigenvalue of the quasi-linear system
     fpdtype_t lambda = fabs(mnv)
                      + sqrt(0.5*(c2pmBB2 + sqrt(c2pmBB2*c2pmBB2 - 4*c2*mBn*mBn)));
+    lambda = fmax(${lambda_min}, lambda);
+
     // Output
 % for i in range(nvars):
     nf[${i}] = 0.5*(${' + '.join('n[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
