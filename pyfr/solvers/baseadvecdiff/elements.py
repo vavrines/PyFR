@@ -97,7 +97,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             dt_rev = float(self.cfg.get('solver-artificial-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt')))
             c_mu = float(self.cfg.get('solver-artificial-viscosity', 'c_mu'))
             vis_coeffs = self.cfg.getliteral('solver-artificial-viscosity', 'vis_coeffs', [1.0]*self.nvars)
-            vis_method = self.cfg.getliteral('solver-artificial-viscosity', 'vis_method')
+            vis_method = self.cfg.get('solver-artificial-viscosity', 'vis_method')
 
             # Template arguments
             tplargs = dict(
