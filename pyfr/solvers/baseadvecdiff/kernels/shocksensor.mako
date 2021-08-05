@@ -26,19 +26,19 @@ fpdtype_t h = 0.0;
 % endfor
 h = pow(h, ${1.0/ndims})/${order + 1};
 
-$ if vis_method == 'pointwise':
+% if vis_method == 'pointwise':
   % for i,j in pyfr.ndrange(nupts, nvars):
       artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*abs(du[${i}][${j}])*h*h*${1.0/dt_rev};
   % endfor
-$ elif vis_method == 'max':
+% elif vis_method == 'max':
   % for i,j in pyfr.ndrange(nupts, nvars):
       artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*max_du[${j}]*h*h*${1.0/dt_rev};
   % endfor
-$ elif vis_method == 'mean':
+% elif vis_method == 'mean':
   % for i,j in pyfr.ndrange(nupts, nvars):
       artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*int_du[${j}]*h*h*${1.0/dt_rev};
   % endfor
-$ elif vis_method == 'constant':
+% elif vis_method == 'constant':
   % for i,j in pyfr.ndrange(nupts, nvars):
       artvisc[${i}][${j}] = ${vis_coeffs[j]*c['mu_max']};
   % endfor
