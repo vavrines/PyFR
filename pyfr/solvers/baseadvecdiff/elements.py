@@ -95,15 +95,16 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             weights /= np.sum(weights)
 
             dt_rev = float(self.cfg.get('solver-artificial-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt')))
-            c_mu = float(self.cfg.get('solver-artificial-viscosity', 'c_mu', 1.0))
+            c_mu = float(self.cfg.get('solver-artificial-viscosity', 'c_mu'))
             vis_coeffs = self.cfg.getliteral('solver-artificial-viscosity', 'vis_coeffs', [1.0]*self.nvars)
+            vis_method = self.cfg.getliteral('solver-artificial-viscosity', 'vis_method')
 
             # Template arguments
             tplargs = dict(
                 nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
                 c=self.cfg.items_as('solver-artificial-viscosity', float),
                 weights=weights, dt_rev=dt_rev, vis_coeffs=vis_coeffs,
-                c_mu=c_mu, order=self.basis.order
+                c_mu=c_mu, order=self.basis.order, vis_method=vis_method
             )
 
             # Allocate space for the artificial viscosity vector
