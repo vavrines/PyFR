@@ -88,7 +88,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             self._be.pointwise.register('pyfr.solvers.baseadvecdiff.kernels.shocksensor')
 
             # Obtain the scalar variable to be used for shock sensing
-            shockvar = self.convarmap[self.ndims].index(self.shockvar)
+            shockvar = 0
 
             ename = self.basis.name
             weights = get_quadrule(ename, self.cfg.get(f'solver-elements-{ename}', 'soln-pts'), self.nupts).wts
