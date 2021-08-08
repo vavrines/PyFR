@@ -12,11 +12,12 @@
     ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr')};
 
     // Sum the left and right velocities and take the normal
-    fpdtype_t nv = ${pyfr.dot('n[{i}]', 'vl[{i}] + vr[{i}]', i=ndims)};
+    fpdtype_t nvl = ${pyfr.dot('n[{i}]', 'vl[{i}]', i=ndims)};
+    fpdtype_t nvr = ${pyfr.dot('n[{i}]', 'vr[{i}]', i=ndims)};
 
     // Estimate the maximum wave speed / 2
-    fpdtype_t a_l = sqrt(${0.25*c['gamma']}*pl/ul[0]);
-    fpdtype_t a_r = sqrt(${0.25*c['gamma']}*pr/ur[0]);
+    fpdtype_t a_l = sqrt(${0.25*c['gamma']}*pl/ul[0]) + 0.5*fabs(nvl);
+    fpdtype_t a_r = sqrt(${0.25*c['gamma']}*pr/ur[0]) + 0.5*fabs(nvr);
     fpdtype_t a = fmax(${lambda_min}, fmax(a_l, a_r));
 
     // Output
@@ -36,11 +37,12 @@
     ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr')};
 
     // Sum the left and right velocities and take the normal
-    fpdtype_t nv = ${pyfr.dot('n[{i}]', 'vl[{i}] + vr[{i}]', i=ndims)};
+    fpdtype_t nvl = ${pyfr.dot('n[{i}]', 'vl[{i}]', i=ndims)};
+    fpdtype_t nvr = ${pyfr.dot('n[{i}]', 'vr[{i}]', i=ndims)};
 
     // Estimate the maximum wave speed / 2
-    fpdtype_t a_l = sqrt(${0.25*c['gamma']}*pl/ul[0]);
-    fpdtype_t a_r = sqrt(${0.25*c['gamma']}*pr/ur[0]);
+    fpdtype_t a_l = sqrt(${0.25*c['gamma']}*pl/ul[0]) + 0.5*fabs(nvl);
+    fpdtype_t a_r = sqrt(${0.25*c['gamma']}*pr/ur[0]) + 0.5*fabs(nvr);
     fpdtype_t a = fmax(${lambda_min}, fmax(a_l, a_r));
 
     // Output
