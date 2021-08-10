@@ -28,6 +28,7 @@
     ul[${i}] = magnl*(ficomm[${i}]);
 % endfor
 </%pyfr:macro>
+
 <%pyfr:macro name='bc_common_flux_state_b' params='ul, gradul, artviscl, nl, magnl'>
     // Ghost state r
     fpdtype_t ur[${nvars}];
@@ -41,3 +42,6 @@
     ul[${i}] = magnl*(ficomm[${i}]);
 % endfor
 </%pyfr:macro>
+
+
+<%pyfr:alias name='bc_common_flux_state_vis' func='bc_common_flux_state_f'/>

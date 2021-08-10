@@ -5,3 +5,6 @@
 <%include file='pyfr.solvers.euler.kernels.bcs.sup-out-fn'/>
 <%pyfr:alias name='bc_ldg_state' func='bc_rsolve_state'/>
 <%pyfr:alias name='bc_ldg_grad_state' func='bc_common_grad_copy'/>
+
+<%pyfr:alias name='bc_rsolve_state_inv' func='bc_rsolve_state'/>
+<%pyfr:alias name='bc_rsolve_state_vis' func='bc_rsolve_state'/>

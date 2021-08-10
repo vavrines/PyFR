@@ -9,3 +9,7 @@
     ur[${nvars - 1}] = ${c['p']}/${c['gamma'] - 1} +
                        0.5*(1.0/ur[0])*${pyfr.dot('ur[{i}]', i=(1, ndims + 1))};
 </%pyfr:macro>
+
+
+<%pyfr:alias name='bc_rsolve_state_inv' func='bc_rsolve_state'/>
+<%pyfr:alias name='bc_rsolve_state_vis' func='bc_rsolve_state'/>

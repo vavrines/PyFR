@@ -6,3 +6,6 @@
     ur[${i}] = ul[${i}];
 % endfor
 </%pyfr:macro>
+
+<%pyfr:alias name='bc_rsolve_state_inv' func='bc_rsolve_state'/>
+<%pyfr:alias name='bc_rsolve_state_vis' func='bc_rsolve_state'/>

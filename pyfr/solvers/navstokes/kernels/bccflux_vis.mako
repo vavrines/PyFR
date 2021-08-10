@@ -14,6 +14,6 @@
               artviscl='in view fpdtype_t[${str(nvars)}]'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
-    ${pyfr.expand('bc_common_flux_state_f', 'ul', 'gradul', 'artviscl', 'nl', 'magnl')};
+    ${pyfr.expand('bc_common_flux_state_vis', 'ul', 'gradul', 'artviscl', 'nl', 'magnl')};
 
 </%pyfr:kernel>
