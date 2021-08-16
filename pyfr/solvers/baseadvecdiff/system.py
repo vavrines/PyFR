@@ -78,7 +78,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['eles', 'gradcoru_fpts'])
 
         q1.enqueue(kernels['mpiint', 'vect_fpts_pack'])
-        if ('eles', 'shocksensor') in kernels:
+        if ('eles', 'shockvar') in kernels:
             q2.enqueue(kernels['mpiint', 'artvisc_fpts_send'])
             q2.enqueue(kernels['mpiint', 'artvisc_fpts_recv'])
             q2.enqueue(kernels['mpiint', 'artvisc_fpts_unpack'])
