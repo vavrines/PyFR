@@ -74,9 +74,6 @@ class NavierStokesMPIInters(TplargsMixin, BaseAdvectionDiffusionMPIInters):
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux_inv_f')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux_inv_b')
 
-        if self.c['ldg-beta'] != 0.5:
-            raise ValueError('MPI inters requires beta = 0.5 for AV.')
-
         self.kernels['con_u'] = lambda: be.kernel(
             'mpiconu', tplargs=self._tplargs, dims=[self.ninterfpts],
             ulin=self._scal_lhs, urin=self._scal_rhs, ulout=self._vect_lhs
