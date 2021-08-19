@@ -126,5 +126,6 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
     def get_artvisc_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
         rmap = self._srtd_face_fpts[fidx][eidx]
+        rmap = (0,)*nfp
         cmap = (eidx,)*nfp
         return (self.artvisc.mid,)*nfp, rmap, cmap
