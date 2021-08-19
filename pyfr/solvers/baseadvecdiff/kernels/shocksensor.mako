@@ -37,7 +37,6 @@ h = pow(h, ${1.0/ndims})/${order + 1};
         artvisc[${i}][${j}] = ${vis_coeffs[j]*c['mu_max']};
     % endif
     artvisc[${i}][${j}] = artvisc[${i}][${j}] < ${cutoff} ? 0.0 : artvisc[${i}][${j}];
-    artvisc[${i}][${j}] = 
 % endfor
 
 </%pyfr:kernel>
