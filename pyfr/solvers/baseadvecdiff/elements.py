@@ -101,13 +101,17 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             vis_coeffs = self.cfg.getliteral('solver-artificial-viscosity', 'vis_coeffs', [1.0]*self.nvars)
             vis_method = self.cfg.get('solver-artificial-viscosity', 'vis_method')
 
+            sensor_type = self.cfg.get('solver-artificial-viscosity', 'sensor', 'rev')
+            ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
+
             # Template arguments
             tplargs = dict(
                 nvars=self.nvars, nupts=self.nupts, ndims=self.ndims,
                 c=self.cfg.items_as('solver-artificial-viscosity', float),
                 weights=weights, dt_rev=dt_rev, vis_coeffs=vis_coeffs,
                 c_mu=c_mu, order=self.basis.order, vis_method=vis_method,
-                cutoff=cutoff, exp_fac=exp_fac
+                cutoff=cutoff, exp_fac=exp_fac, 
+                ubdegs=ubdegs, invvdm=self.basis.ubasis.invvdm.T
             )
 
             # Allocate space for the artificial viscosity vector
