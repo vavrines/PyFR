@@ -13,7 +13,7 @@ fpdtype_t h = 0.0;
 % endfor
 h = pow(h, ${1.0/ndims})/${order + 1};
 
-% if sensor == 'rev':
+% if sensor_type == 'rev':
     // Calculate average solution defect
     fpdtype_t int_du[${nvars}];
     fpdtype_t max_du[${nvars}];
@@ -40,7 +40,7 @@ h = pow(h, ${1.0/ndims})/${order + 1};
         % endif
         artvisc[${i}][${j}] = artvisc[${i}][${j}] < ${cutoff} ? 0.0 : artvisc[${i}][${j}];
     % endfor
-% elif sensor == 'modal':
+% elif sensor_type == 'modal':
     <% se0 = math.log10(c['s0']) %>
     // Smoothness indicator
     fpdtype_t totEn, pnEn, tmp, mu, se;
