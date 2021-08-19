@@ -59,7 +59,7 @@ h = pow(h, ${1.0/ndims})/${order + 1};
         // Compute cell-wise artificial viscosity
         mu = (se < ${se0 - c['kappa']})
                      ? 0.0
-                     : ${0.5*c['max-artvisc']}*(1.0 + sin(${0.5*math.pi/c['kappa']}*(se - ${se0})));
+                     : ${0.5*c['eps']}*h*(1.0 + sin(${0.5*math.pi/c['kappa']}*(se - ${se0})));
         mu = (se < ${se0 + c['kappa']}) ? mu : ${c['max-artvisc']};
 
         % for i in range(nupts):
