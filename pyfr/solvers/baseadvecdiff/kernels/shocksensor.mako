@@ -5,6 +5,7 @@
 <%pyfr:kernel name='shocksensor' ndim='1'
               du='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               artvisc='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              gradu='in fpdtype_t[${str(nupts)}][${str(nvars*ndims)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'>
 // Calculate grid size
 fpdtype_t h = 0.0;
@@ -67,5 +68,78 @@ h = pow(h, ${1.0/ndims})/${order + 1};
         % endfor
     % endfor
 % endif 
+
+% if scaling_type == 'ducros':
+    fpdtype_t int_dscale = 0.0;
+    fpdtype_t max_dscale = 0.0;
+    fpdtype_t dscale;
+
+    % if ndims == 2: 
+        fpdtype_t rcprho, divrho, u_y, v_x, vort_mag_squared;
+        % for i in range(nupts):
+            rcprho = 1.0/u[${i}][0];
+            divrho = gradu[${i}][${0 + 0*ndims}] + gradu[${i}][${1 + 0*ndims}];
+
+            u_y = rcprho*(gradu[${i}][${1 + 1*ndims}] - rcprho*u[${i}][1]*gradu[${i}][${1 + 0*ndims}]);
+            v_x = rcprho*(gradu[${i}][${0 + 2*ndims}] - rcprho*u[${i}][2]*gradu[${i}][${0 + 0*ndims}]);
+
+            vort_mag_squared = pow(v_x - u_y, 2.0);
+
+            dscale = (pow(divrho, 2.0))/(pow(divrho, 2.0) + vort_mag_squared + ${1e-6});
+
+            int_dscale += ${weights[i]}*dscale;
+            max_dscale = fmax(max_dscale, dscale);
+
+            % if vis_method == 'pointwise':
+                % for j in range(nvars):
+                    artvisc[${i}][${j}] *= dscale;
+                % endfor
+            % endif 
+        % endfor
+
+    % elif ndims == 3:
+        fpdtype_t rcprho, divrho, u_y, u_z, v_x, v_z, w_x, w_y, vort_x, vort_y, vort_z, vort_mag_squared;
+        % for i in range(nupts):
+            rcprho = 1/u[${i}][0];
+            divrho = gradu[${i}][${0 + 0*ndims}] + gradu[${i}][${1 + 0*ndims}] + gradu[${i}][${2 + 0*ndims}];
+
+            u_y = rcprho*(gradu[${i}][${1 + 1*ndims}] - rcprho*u[${i}][1]*gradu[${i}][${1 + 0*ndims}]);
+            u_z = rcprho*(gradu[${i}][${2 + 1*ndims}] - rcprho*u[${i}][1]*gradu[${i}][${2 + 0*ndims}]);
+
+            v_x = rcprho*(gradu[${i}][${0 + 2*ndims}] - rcprho*u[${i}][2]*gradu[${i}][${0 + 0*ndims}]);
+            v_z = rcprho*(gradu[${i}][${2 + 2*ndims}] - rcprho*u[${i}][2]*gradu[${i}][${2 + 0*ndims}]);
+
+            w_x = rcprho*(gradu[${i}][${0 + 3*ndims}] - rcprho*u[${i}][3]*gradu[${i}][${0 + 0*ndims}]);
+            w_y = rcprho*(gradu[${i}][${1 + 3*ndims}] - rcprho*u[${i}][3]*gradu[${i}][${1 + 0*ndims}]);
+
+            vort_x = w_y - v_z;
+            vort_y = u_z - w_x;
+            vort_z = v_x - u_y;
+            vort_mag_squared = vort_x*vort_x + vort_y*vort_y + vort_z*vort_z;
+
+            dscale = (pow(divrho, 2.0))/(pow(divrho, 2.0) + vort_mag_squared + ${1e-6});
+
+            int_dscale += ${weights[i]}*dscale;
+            max_dscale = fmax(max_dscale, dscale);
+
+            % if vis_method == 'pointwise':
+                % for j in range(nvars):
+                    artvisc[${i}][${j}] *= dscale;
+                % endfor
+            % endif 
+            
+        % endfor
+    % endif
+
+
+    % for i,j in pyfr.ndrange(nupts, nvars):
+        % if vis_method == 'max':
+            artvisc[${i}][${j}] *= max_dscale;
+        % elif vis_method == 'mean':
+            artvisc[${i}][${j}] *= int_dscale;
+        % endif
+    % endfor
+
+% endif
 
 </%pyfr:kernel>

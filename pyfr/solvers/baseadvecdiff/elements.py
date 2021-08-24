@@ -102,6 +102,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             vis_method = self.cfg.get('solver-artificial-viscosity', 'vis_method')
 
             sensor_type = self.cfg.get('solver-artificial-viscosity', 'sensor', 'rev')
+            scaling_type = self.cfg.get('solver-artificial-viscosity', 'scaling', None)
             ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
 
             # Template arguments
@@ -123,7 +124,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             kernels['shocksensor'] = lambda: self._be.kernel(
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
                 du=self._scal_upts_cpy, artvisc=self.artvisc,
-                rcpdjac=self.rcpdjac_at('upts')
+                gradu=self._vect_upts, rcpdjac=self.rcpdjac_at('upts')
             )
         else:
             self.artvisc = None
