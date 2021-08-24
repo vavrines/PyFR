@@ -39,7 +39,6 @@
         % endif
 
         scale = (divu*divu)/(divu*divu + vort_mag_squared + ${1e-6});
-        scale = fmax(0.0, fmin(scale, 1.0));
     % endif 
 
     % for i, j in pyfr.ndrange(ndims, nvars):
