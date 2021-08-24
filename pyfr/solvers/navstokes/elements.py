@@ -24,11 +24,12 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         dt_rev = float(self.cfg.get('solver-artificial-viscosity', 'dt_rev', self.cfg.get('solver-time-integrator', 'dt')))
         mu_max = float(self.cfg.get('solver-artificial-viscosity', 'mu_max'))
+        scaling_type = self.cfg.get('solver-artificial-viscosity', 'scaling', None)
         tplargs = dict(ndims=self.ndims, nvars=self.nvars,
                        shock_capturing=shock_capturing, visc_corr=visc_corr,
                        c=self.cfg.items_as('constants', float),
                        srcex=self._src_exprs, dt_rev=dt_rev,
-                       mu_max=mu_max)
+                       mu_max=mu_max, scaling_type=scaling_type)
 
         if 'flux' in self.antialias:
             self.kernels['tdisf_inv'] = lambda: self._be.kernel(
