@@ -113,7 +113,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 c_mu=c_mu, order=self.basis.order, vis_method=vis_method,
                 cutoff=cutoff, exp_fac=exp_fac, 
                 ubdegs=ubdegs, invvdm=self.basis.ubasis.invvdm.T,
-                sensor_type=sensor_type
+                sensor_type=sensor_type,
+                scaling_type=scaling_type
             )
 
             # Allocate space for the artificial viscosity vector
