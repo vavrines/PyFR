@@ -79,10 +79,10 @@ h = pow(h, ${1.0/ndims})/${order + 1};
         fpdtype_t rcprho, divrho, u_y, v_x, vort_mag_squared;
         % for i in range(nupts):
             rcprho = 1.0/u[${i}][0];
-            divrho = gradu[${i}][${0*ndims + 0}] + gradu[${i}][${1*ndims + 0}];
+            divrho = gradu[${i}][${0 + 0*ndims}] + gradu[${i}][${1 + 0*ndims}];
 
-            u_y = rcprho*(gradu[${i}][${1*ndims + 1}] - rcprho*u[${i}][1]*gradu[${i}][${1*ndims + 0}]);
-            v_x = rcprho*(gradu[${i}][${0*ndims + 2}] - rcprho*u[${i}][2]*gradu[${i}][${0*ndims + 0}]);
+            u_y = rcprho*(gradu[${i}][${1 + 1*ndims}] - rcprho*u[${i}][1]*gradu[${i}][${1 + 0*ndims}]);
+            v_x = rcprho*(gradu[${i}][${0 + 2*ndims}] - rcprho*u[${i}][2]*gradu[${i}][${0 + 0*ndims}]);
 
             vort_mag_squared = pow(v_x - u_y, 2.0);
 
@@ -102,16 +102,16 @@ h = pow(h, ${1.0/ndims})/${order + 1};
         fpdtype_t rcprho, divrho, u_y, u_z, v_x, v_z, w_x, w_y, vort_x, vort_y, vort_z, vort_mag_squared;
         % for i in range(nupts):
             rcprho = 1/u[${i}][0];
-            divrho = gradu[${i}][${0*ndims + 0}] + gradu[${i}][${1*ndims + 0}] + gradu[${i}][${2*ndims + 0}];
+            divrho = gradu[${i}][${0 + 0*ndims}] + gradu[${i}][${1 + 0*ndims}] + gradu[${i}][${2 + 0*ndims}];
 
-            u_y = rcprho*(gradu[${i}][${1*ndims + 1}] - rcprho*u[${i}][1]*gradu[${i}][${1*ndims + 0}]);
-            u_z = rcprho*(gradu[${i}][${2*ndims + 1}] - rcprho*u[${i}][1]*gradu[${i}][${2*ndims + 0}]);
+            u_y = rcprho*(gradu[${i}][${1 + 1*ndims}] - rcprho*u[${i}][1]*gradu[${i}][${1 + 0*ndims}]);
+            u_z = rcprho*(gradu[${i}][${2 + 1*ndims}] - rcprho*u[${i}][1]*gradu[${i}][${2 + 0*ndims}]);
 
-            v_x = rcprho*(gradu[${i}][${0*ndims + 2}] - rcprho*u[${i}][2]*gradu[${i}][${0*ndims + 0}]);
-            v_z = rcprho*(gradu[${i}][${2*ndims + 2}] - rcprho*u[${i}][2]*gradu[${i}][${2*ndims + 0}]);
+            v_x = rcprho*(gradu[${i}][${0 + 2*ndims}] - rcprho*u[${i}][2]*gradu[${i}][${0 + 0*ndims}]);
+            v_z = rcprho*(gradu[${i}][${2 + 2*ndims}] - rcprho*u[${i}][2]*gradu[${i}][${2 + 0*ndims}]);
 
-            w_x = rcprho*(gradu[${i}][${0*ndims + 3}] - rcprho*u[${i}][3]*gradu[${i}][${0*ndims + 0}]);
-            w_y = rcprho*(gradu[${i}][${1*ndims + 3}] - rcprho*u[${i}][3]*gradu[${i}][${1*ndims + 0}]);
+            w_x = rcprho*(gradu[${i}][${0 + 3*ndims}] - rcprho*u[${i}][3]*gradu[${i}][${0 + 0*ndims}]);
+            w_y = rcprho*(gradu[${i}][${1 + 3*ndims}] - rcprho*u[${i}][3]*gradu[${i}][${1 + 0*ndims}]);
 
             vort_x = w_y - v_z;
             vort_y = u_z - w_x;
