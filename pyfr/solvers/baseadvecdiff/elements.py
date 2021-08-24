@@ -125,7 +125,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             kernels['shocksensor'] = lambda: self._be.kernel(
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
                 du=self._scal_upts_cpy, artvisc=self.artvisc,
-                gradu=self._vect_upts, rcpdjac=self.rcpdjac_at('upts')
+                gradu=self._vect_upts, uu=self.scal_upts_inb,
+                rcpdjac=self.rcpdjac_at('upts')
             )
         else:
             self.artvisc = None

@@ -6,6 +6,7 @@
               du='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               artvisc='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
               gradu='in fpdtype_t[${str(nupts)}][${str(nvars*ndims)}]'
+              u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'>
 // Calculate grid size
 fpdtype_t h = 0.0;
@@ -127,7 +128,7 @@ h = pow(h, ${1.0/ndims})/${order + 1};
                     artvisc[${i}][${j}] *= dscale;
                 % endfor
             % endif 
-            
+
         % endfor
     % endif
 
