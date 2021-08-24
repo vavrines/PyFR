@@ -42,7 +42,7 @@
 
     fpdtype_t fvr[${ndims}][${nvars}] = {{0}};
     ${pyfr.expand('viscous_flux_add', 'ur', 'gradur', 'fvr')};
-    ${pyfr.expand('artificial_viscosity_add', 'gradur', 'fvr', 'artviscl')};
+    ${pyfr.expand('artificial_viscosity_add', 'gradur', 'ur', 'fvr', 'artviscl')};
 
     // Inviscid (Riemann solve) state
     ${pyfr.expand('bc_rsolve_state_vis', 'ul', 'nl', 'ur')};
