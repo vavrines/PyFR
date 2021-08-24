@@ -7,30 +7,25 @@
     % if scaling_type == 'ducros':
         % if ndims == 2:
             fpdtype_t rcprho = 1/u[0];
+            fpdtype_t divrho = grad_uin[0][0] + grad_uin[1][0];
 
-            fpdtype_t u_x = rcprho*(grad_uin[0][1] - rcprho*u[1]*grad_uin[0][0]);
             fpdtype_t u_y = rcprho*(grad_uin[1][1] - rcprho*u[1]*grad_uin[1][0]);
             fpdtype_t v_x = rcprho*(grad_uin[0][2] - rcprho*u[2]*grad_uin[0][0]);
-            fpdtype_t v_y = rcprho*(grad_uin[1][2] - rcprho*u[2]*grad_uin[1][0]);
 
-            fpdtype_t divu = u_x + v_y;
             fpdtype_t vort_mag_squared = pow(v_x - u_y, 2.0);
         % elif ndims == 3:
             fpdtype_t rcprho = 1/u[0];
+            fpdtype_t divrho = grad_uin[0][0] + grad_uin[1][0] + grad_uin[2][0];
 
-            fpdtype_t u_x = rcprho*(grad_uin[0][1] - rcprho*u[1]*grad_uin[0][0]);
             fpdtype_t u_y = rcprho*(grad_uin[1][1] - rcprho*u[1]*grad_uin[1][0]);
             fpdtype_t u_z = rcprho*(grad_uin[2][1] - rcprho*u[1]*grad_uin[2][0]);
 
             fpdtype_t v_x = rcprho*(grad_uin[0][2] - rcprho*u[2]*grad_uin[0][0]);
-            fpdtype_t v_y = rcprho*(grad_uin[1][2] - rcprho*u[2]*grad_uin[1][0]);
             fpdtype_t v_z = rcprho*(grad_uin[2][2] - rcprho*u[2]*grad_uin[2][0]);
 
             fpdtype_t w_x = rcprho*(grad_uin[0][3] - rcprho*u[3]*grad_uin[0][0]);
             fpdtype_t w_y = rcprho*(grad_uin[1][3] - rcprho*u[3]*grad_uin[1][0]);
-            fpdtype_t w_z = rcprho*(grad_uin[2][3] - rcprho*u[3]*grad_uin[2][0]);
 
-            fpdtype_t divu = u_x + v_y + w_z;
             fpdtype_t vort_x = w_y - v_z;
             fpdtype_t vort_y = u_z - w_x;
             fpdtype_t vort_z = v_x - u_y;
@@ -38,7 +33,7 @@
             fpdtype_t vort_mag_squared = vort_x*vort_x + vort_y*vort_y + vort_z*vort_z;
         % endif
 
-        scale = (divu*divu)/(divu*divu + vort_mag_squared + ${1e-6});
+        scale = (divrho*divrho)/(divrho*divrho + vort_mag_squared + ${1e-6});
     % endif 
 
     % for i, j in pyfr.ndrange(ndims, nvars):

@@ -14,7 +14,7 @@
     fpdtype_t ftemp[${ndims}][${nvars}];
     ${pyfr.expand('inviscid_flux', 'u', 'ftemp')};
     ${pyfr.expand('viscous_flux_add', 'u', 'f', 'ftemp')};
-    ${pyfr.expand('artificial_viscosity_add', 'f', 'u', 'ftemp', 'artvisc')};
+    ${pyfr.expand('artificial_viscosity_add', 'f', 'ftemp', 'artvisc')};
 
     // Transform the fluxes
 % for i, j in pyfr.ndrange(ndims, nvars):
