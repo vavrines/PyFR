@@ -86,6 +86,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 
             # Register the kernels
             self._be.pointwise.register('pyfr.solvers.baseadvecdiff.kernels.shocksensor')
+            self._be.pointwise.register('pyfr.solvers.baseadvecdiff.kernels.ducros')
 
             # Obtain the scalar variable to be used for shock sensing
             shockvar = 0
@@ -102,6 +103,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             vis_method = self.cfg.get('solver-artificial-viscosity', 'vis_method')
 
             sensor_type = self.cfg.get('solver-artificial-viscosity', 'sensor', 'rev')
+            scaling_type = self.cfg.get('solver-artificial-viscosity', 'scaling', None)
             ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
 
             # Template arguments
@@ -112,19 +114,32 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 c_mu=c_mu, order=self.basis.order, vis_method=vis_method,
                 cutoff=cutoff, exp_fac=exp_fac, 
                 ubdegs=ubdegs, invvdm=self.basis.ubasis.invvdm.T,
-                sensor_type=sensor_type
+                sensor_type=sensor_type, scaling_type=scaling_type
             )
+
 
             # Allocate space for the artificial viscosity vector
             self.artvisc = self._be.matrix((self.nupts, self.nvars, self.neles),
                                            extent=nonce + 'artvisc', tags=tags)
 
+            self.ducrosscale = self._be.matrix((self.nupts, 1, self.neles),
+                                           extent=nonce + 'ducrosscale', tags=tags)
+            # Compute Ducros sensor
+            kernels['ducros'] = lambda: self._be.kernel(
+                'ducros', tplargs=tplargs, dims=[self.nupts, self.neles],
+                u=self.scal_upts_inb, gradu=self._vect_upts,
+                dscale=self.ducrosscale
+            )
+
             # Apply the sensor to estimate the required artificial viscosity
             kernels['shocksensor'] = lambda: self._be.kernel(
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
                 du=self._scal_upts_cpy, artvisc=self.artvisc,
-                rcpdjac=self.rcpdjac_at('upts')
+                rcpdjac=self.rcpdjac_at('upts'), dscale=self.ducrosscale
             )
+
+
+
         else:
             self.artvisc = None
 

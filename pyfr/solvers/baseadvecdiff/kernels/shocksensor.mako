@@ -5,7 +5,8 @@
 <%pyfr:kernel name='shocksensor' ndim='1'
               du='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               artvisc='out fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              rcpdjac='in fpdtype_t[${str(nupts)}]'>
+              rcpdjac='in fpdtype_t[${str(nupts)}]'
+              dscale='in fpdtype_t[${str(nupts)}]'>
 // Calculate grid size
 fpdtype_t h = 0.0;
 % for i in range(nupts):
@@ -26,20 +27,42 @@ h = pow(h, ${1.0/ndims})/${order + 1};
         max_du[${j}] = max(max_du[${j}], fabs(du[${i}][${j}]));
     % endfor
 
+    // Calculate average Ducros scaling
+    % if scaling_type == 'ducros':
+        fpdtype_t max_dscale, int_dscale;
 
+        % for i in range(nupts):
+            int_dscale = ${weights[i]}*dscale[${i}];
+            max_dscale = max(max_dscale, dscale[${i}]);
+        % endfor
 
-    % for i,j in pyfr.ndrange(nupts, nvars):
-        % if vis_method == 'pointwise':
-            artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*pow(abs(du[${i}][${j}]), ${exp_fac})*h*h*${1.0/dt_rev};
-        % elif vis_method == 'max':
-            artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*pow(max_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
-        % elif vis_method == 'mean':
-            artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*pow(int_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
-        % elif vis_method == 'constant':
-            artvisc[${i}][${j}] = ${vis_coeffs[j]*c['mu_max']};
-        % endif
-        artvisc[${i}][${j}] = artvisc[${i}][${j}] < ${cutoff} ? 0.0 : artvisc[${i}][${j}];
-    % endfor
+        % for i,j in pyfr.ndrange(nupts, nvars):
+            % if vis_method == 'pointwise':
+                artvisc[${i}][${j}] = dscale[${i}]*${c_mu*vis_coeffs[j]}*pow(abs(du[${i}][${j}]), ${exp_fac})*h*h*${1.0/dt_rev};
+            % elif vis_method == 'max':
+                artvisc[${i}][${j}] = max_dscale*${c_mu*vis_coeffs[j]}*pow(max_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
+            % elif vis_method == 'mean':
+                artvisc[${i}][${j}] = int_dscale*${c_mu*vis_coeffs[j]}*pow(int_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
+            % elif vis_method == 'constant':
+                artvisc[${i}][${j}] = int_dscale*${vis_coeffs[j]*c['mu_max']};
+            % endif
+            artvisc[${i}][${j}] = artvisc[${i}][${j}] < ${cutoff} ? 0.0 : artvisc[${i}][${j}];
+        % endfor
+        
+    % else:
+        % for i,j in pyfr.ndrange(nupts, nvars):
+            % if vis_method == 'pointwise':
+                artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*pow(abs(du[${i}][${j}]), ${exp_fac})*h*h*${1.0/dt_rev};
+            % elif vis_method == 'max':
+                artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*pow(max_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
+            % elif vis_method == 'mean':
+                artvisc[${i}][${j}] = ${c_mu*vis_coeffs[j]}*pow(int_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
+            % elif vis_method == 'constant':
+                artvisc[${i}][${j}] = ${vis_coeffs[j]*c['mu_max']};
+            % endif
+            artvisc[${i}][${j}] = artvisc[${i}][${j}] < ${cutoff} ? 0.0 : artvisc[${i}][${j}];
+        % endfor
+    % endif
 % elif sensor_type == 'modal':
     <% se0 = math.log10(c['s0']) %>
     // Smoothness indicator
