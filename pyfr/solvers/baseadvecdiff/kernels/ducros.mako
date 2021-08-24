@@ -41,6 +41,6 @@
 % endif
 
 dscale = (divu*divu)/(divu*divu + vort_mag_squared + ${1e-6});
-dscale = fmax(0.0, fmin(scale, 1.0));
+dscale = fmax(0.0, fmin(dscale, 1.0));
 
 </%pyfr:kernel>
