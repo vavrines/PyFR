@@ -40,7 +40,7 @@
     fpdtype_t vort_mag_squared = vort_x*vort_x + vort_y*vort_y + vort_z*vort_z;
 % endif
 
-dscale = (divu*divu)/(divu*divu + vort_mag_squared + ${1e-6});
+dscale = ${dfac}*(divu*divu)/(divu*divu + vort_mag_squared + ${1e-6});
 dscale = fmax(0.0, fmin(dscale, 1.0));
 
 </%pyfr:kernel>
