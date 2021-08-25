@@ -38,13 +38,13 @@ h = pow(h, ${1.0/ndims})/${order + 1};
 
         % for i,j in pyfr.ndrange(nupts, nvars):
             % if vis_method == 'pointwise':
-                artvisc[${i}][${j}] = dscale[${i}]*${c_mu*vis_coeffs[j]}*pow(abs(du[${i}][${j}]), ${exp_fac})*h*h*${1.0/dt_rev};
+                artvisc[${i}][${j}] = (${1.0-duc_coeffs[j]} +  ${duc_coeffs[j]}*dscale[${i}])*${c_mu*vis_coeffs[j]}*pow(abs(du[${i}][${j}]), ${exp_fac})*h*h*${1.0/dt_rev};
             % elif vis_method == 'max':
-                artvisc[${i}][${j}] = max_dscale*${c_mu*vis_coeffs[j]}*pow(max_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
+                artvisc[${i}][${j}] = (${1.0-duc_coeffs[j]} +  ${duc_coeffs[j]}*max_dscale)*${c_mu*vis_coeffs[j]}*pow(max_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
             % elif vis_method == 'mean':
-                artvisc[${i}][${j}] = int_dscale*${c_mu*vis_coeffs[j]}*pow(int_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
+                artvisc[${i}][${j}] = (${1.0-duc_coeffs[j]} +  ${duc_coeffs[j]}*int_dscale)*${c_mu*vis_coeffs[j]}*pow(int_du[${j}], ${exp_fac})*h*h*${1.0/dt_rev};
             % elif vis_method == 'constant':
-                artvisc[${i}][${j}] = int_dscale*${vis_coeffs[j]*c['mu_max']};
+                artvisc[${i}][${j}] = (${1.0-duc_coeffs[j]} +  ${duc_coeffs[j]}*int_dscale)*${vis_coeffs[j]*c['mu_max']};
             % endif
             artvisc[${i}][${j}] = artvisc[${i}][${j}] < ${cutoff} ? 0.0 : artvisc[${i}][${j}];
         % endfor
