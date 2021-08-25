@@ -158,9 +158,13 @@ class BaseElements(object):
         elif 'scal_qpts' in sbufs:
             self._scal_qpts = salloc('scal_qpts', nqpts)
 
+
         # Allocate additional scalar scratch space
         if 'scal_upts_cpy' in sbufs:
             self._scal_upts_cpy = salloc('scal_upts_cpy', nupts)
+
+        if 'artvisc_fpts' in sbufs:
+            self.artvisc_fpts = salloc('artvisc_fpts', nfpts)
 
         # Allocate additional vector scratch space
         if 'vect_upts_cpy' in sbufs:

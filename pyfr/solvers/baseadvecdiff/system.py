@@ -80,6 +80,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         if ('eles', 'shocksensor') in kernels:
             q1.enqueue(kernels['eles', 'ducros'])
             q1.enqueue(kernels['eles', 'shocksensor'])
+            q1.enqueue(kernels['eles', 'disav'])
             q1.enqueue(kernels['mpiint', 'artvisc_fpts_pack'])
             
         if ('eles', 'shocksensor') in kernels:

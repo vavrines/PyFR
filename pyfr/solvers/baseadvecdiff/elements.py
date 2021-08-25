@@ -13,7 +13,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
         if 'flux' in self.antialias:
             bufs |= {'scal_qpts', 'vect_qpts'}
 
-        bufs |= {'scal_upts_cpy'}
+        bufs |= {'scal_upts_cpy', 'artvisc_fpts'}
 
         return bufs
 
@@ -140,6 +140,11 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 rcpdjac=self.rcpdjac_at('upts'), dscale=self.ducrosscale
             )
 
+            kernels['disav'] = lambda: self._be.kernel(
+                'mul', self.opmat('M0'), self.artvisc,
+                out=self.artvisc_fpts
+            )
+
 
 
         else:
@@ -148,6 +153,6 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
     def get_artvisc_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
         rmap = self._srtd_face_fpts[fidx][eidx]
-        rmap = (0,)*nfp
         cmap = (eidx,)*nfp
-        return (self.artvisc.mid,)*nfp, rmap, cmap
+
+        return (self.artvisc_fpts.mid,)*nfp, rmap, cmap
