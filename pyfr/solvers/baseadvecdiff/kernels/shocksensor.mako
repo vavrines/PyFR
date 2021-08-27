@@ -16,6 +16,10 @@ fpdtype_t h = 0.0;
         h += ${weights[i]}*(1.0/rcpdjac[${i}]);
     % endfor
     h = pow(h, ${1.0/ndims})/${order + 1};
+% elif h_scale == 'vol':
+    % for i in range(nupts):
+        h += ${weights[i]}*(1.0/rcpdjac[${i}]);
+    % endfor
 % endif
 
 % if sensor_type == 'rev':
