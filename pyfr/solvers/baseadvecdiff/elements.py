@@ -106,6 +106,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             scaling_type = self.cfg.get('solver-artificial-viscosity', 'scaling', None)
             dfac = float(self.cfg.get('solver-artificial-viscosity', 'dfac', 1.0))
             duc_coeffs = self.cfg.getliteral('solver-artificial-viscosity', 'duc_coeffs', [1.0]*self.nvars)
+            h_scale = self.cfg.get('solver-artificial-viscosity', 'h_scale', 'mean')
             ubdegs = [sum(dd) for dd in self.basis.ubasis.degrees]
 
             # Template arguments
@@ -117,7 +118,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 cutoff=cutoff, exp_fac=exp_fac, 
                 ubdegs=ubdegs, invvdm=self.basis.ubasis.invvdm.T,
                 sensor_type=sensor_type, scaling_type=scaling_type,
-                dfac=dfac, duc_coeffs=duc_coeffs
+                dfac=dfac, duc_coeffs=duc_coeffs, h_scale=h_scale
             )
 
 

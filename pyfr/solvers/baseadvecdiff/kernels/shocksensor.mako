@@ -9,10 +9,14 @@
               dscale='in fpdtype_t[${str(nupts)}]'>
 // Calculate grid size
 fpdtype_t h = 0.0;
-% for i in range(nupts):
-    h += ${weights[i]}*(1.0/rcpdjac[${i}]);
-% endfor
-h = pow(h, ${1.0/ndims})/${order + 1};
+% if h_scale == 'none':
+    h = 1.0;
+% elif h_scale == 'mean':
+    % for i in range(nupts):
+        h += ${weights[i]}*(1.0/rcpdjac[${i}]);
+    % endfor
+    h = pow(h, ${1.0/ndims})/${order + 1};
+% endif
 
 % if sensor_type == 'rev':
     // Calculate average solution defect
