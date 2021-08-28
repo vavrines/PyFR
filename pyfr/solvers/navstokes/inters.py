@@ -240,32 +240,6 @@ class NavierStokesSubInflowFtpttangBCInters(NavierStokesBaseBCInters):
 
         self.c['vc'] = velcomps[:self.ndims]
 
-class NavierStokesSubInflowFptmBCInters(NavierStokesBaseBCInters):
-    type = 'sub-in-fptm'
-    cflux_state = 'ghost'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        gamma = self.cfg.getfloat('constants', 'gamma')
-
-        # Pass boundary constants to the backend
-        self.c['pt'], = self._eval_opts(['pt'])
-        self.c['M'], = self._eval_opts(['M'])
-        self.c['Rdcp'] = (gamma - 1.0)/gamma
-
-        # Calculate u, v velocity components from the inflow angle
-        theta = self._eval_opts(['theta'])[0]*np.pi/180.0
-        velcomps = np.array([np.cos(theta), np.sin(theta), 1.0])
-
-        # Adjust u, v and calculate w velocity components for 3-D
-        if self.ndims == 3:
-            phi = self._eval_opts(['phi'])[0]*np.pi/180.0
-            velcomps[:2] *= np.sin(phi)
-            velcomps[2] *= np.cos(phi)
-
-        self.c['vc'] = velcomps[:self.ndims]
-
 
 class NavierStokesSubOutflowBCInters(NavierStokesBaseBCInters):
     type = 'sub-out-fp'
