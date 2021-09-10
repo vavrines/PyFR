@@ -37,10 +37,10 @@ fpdtype_t h = 0.0;
 
     // Calculate average Ducros scaling
     % if scaling_type == 'ducros':
-        fpdtype_t max_dscale, int_dscale;
+        fpdtype_t max_dscale, int_dscale =0;
 
         % for i in range(nupts):
-            int_dscale = ${weights[i]}*dscale[${i}];
+            int_dscale += ${weights[i]}*dscale[${i}];
             max_dscale = max(max_dscale, dscale[${i}]);
         % endfor
 
