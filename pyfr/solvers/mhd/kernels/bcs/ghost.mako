@@ -2,7 +2,6 @@
 
 <%include file='pyfr.solvers.baseadvecdiff.kernels.artvisc'/>
 <%include file='pyfr.solvers.mhd.kernels.rsolvers.${rsolver}'/>
-<%include file='pyfr.solvers.mhd.kernels.flux'/>
 
 <% tau = c['ldg-tau'] %>
 

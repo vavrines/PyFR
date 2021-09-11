@@ -3,7 +3,6 @@
 
 <%include file='pyfr.solvers.mhd.kernels.rsolvers.${rsolver}'/>
 <%include file='pyfr.solvers.mhd.kernels.bcs.common'/>
-<%include file='pyfr.solvers.mhd.kernels.flux'/>
 
 <%pyfr:macro name='bc_ldg_state' params='ul, nl, ur'>
     fpdtype_t nor = ${' + '.join('ul[{1}]*nl[{0}]'.format(i, i + 1)
