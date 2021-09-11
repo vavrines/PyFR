@@ -145,107 +145,12 @@ class MHDBaseBCInters(TplargsMixin, BaseAdvectionDiffusionBCInters):
         )
 
 
-class MHDNoSlpIsotWallBCInters(MHDBaseBCInters):
-    type = 'no-slp-isot-wall'
-    cflux_state = 'ghost'
-
-    def __init__(self, be, lhs, elemap, cfgsect, cfg):
-        super().__init__(be, lhs, elemap, cfgsect, cfg)
-
-        self.c['cpTw'], = self._eval_opts(['cpTw'])
-        self.c.update(
-            self._exp_opts('uvw'[:self.ndims], lhs,
-                           default={'u': 0, 'v': 0, 'w': 0})
-        )
-
-
-class MHDNoSlpAdiaWallBCInters(MHDBaseBCInters):
-    type = 'no-slp-adia-wall'
-    cflux_state = 'ghost'
-
-
 class MHDSlpAdiaWallBCInters(MHDBaseBCInters):
-    type = 'slp-adia-wall'
+    type = 'diode'
     cflux_state = None
 
 
-class MHDCharRiemInvBCInters(MHDBaseBCInters):
-    type = 'char-riem-inv'
+class MHDFreeBCInters(MHDBaseBCInters):
+    type = 'free'
     cflux_state = 'ghost'
 
-    def __init__(self, be, lhs, elemap, cfgsect, cfg):
-        super().__init__(be, lhs, elemap, cfgsect, cfg)
-
-        tplc = self._exp_opts(
-            ['rho', 'p', 'u', 'v', 'w'][:self.ndims + 2], lhs
-        )
-        self.c.update(tplc)
-
-
-class MHDSupInflowBCInters(MHDBaseBCInters):
-    type = 'sup-in-fa'
-    cflux_state = 'ghost'
-
-    def __init__(self, be, lhs, elemap, cfgsect, cfg):
-        super().__init__(be, lhs, elemap, cfgsect, cfg)
-
-        tplc = self._exp_opts(
-            ['rho', 'p', 'u', 'v', 'w'][:self.ndims + 2], lhs
-        )
-        self.c.update(tplc)
-
-
-class MHDSupOutflowBCInters(MHDBaseBCInters):
-    type = 'sup-out-fn'
-    cflux_state = 'ghost'
-
-
-class MHDSubInflowFrvBCInters(MHDBaseBCInters):
-    type = 'sub-in-frv'
-    cflux_state = 'ghost'
-
-    def __init__(self, be, lhs, elemap, cfgsect, cfg):
-        super().__init__(be, lhs, elemap, cfgsect, cfg)
-
-        tplc = self._exp_opts(
-            ['rho', 'u', 'v', 'w'][:self.ndims + 1], lhs,
-            default={'u': 0, 'v': 0, 'w': 0}
-        )
-        self.c.update(tplc)
-
-
-class MHDSubInflowFtpttangBCInters(MHDBaseBCInters):
-    type = 'sub-in-ftpttang'
-    cflux_state = 'ghost'
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        gamma = self.cfg.getfloat('constants', 'gamma')
-
-        # Pass boundary constants to the backend
-        self.c['cpTt'], = self._eval_opts(['cpTt'])
-        self.c['pt'], = self._eval_opts(['pt'])
-        self.c['Rdcp'] = (gamma - 1.0)/gamma
-
-        # Calculate u, v velocity components from the inflow angle
-        theta = self._eval_opts(['theta'])[0]*np.pi/180.0
-        velcomps = np.array([np.cos(theta), np.sin(theta), 1.0])
-
-        # Adjust u, v and calculate w velocity components for 3-D
-        if self.ndims == 3:
-            phi = self._eval_opts(['phi'])[0]*np.pi/180.0
-            velcomps[:2] *= np.sin(phi)
-            velcomps[2] *= np.cos(phi)
-
-        self.c['vc'] = velcomps[:self.ndims]
-
-
-class MHDSubOutflowBCInters(MHDBaseBCInters):
-    type = 'sub-out-fp'
-    cflux_state = 'ghost'
-
-    def __init__(self, be, lhs, elemap, cfgsect, cfg):
-        super().__init__(be, lhs, elemap, cfgsect, cfg)
-
-        self.c.update(self._exp_opts(['p'], lhs))
