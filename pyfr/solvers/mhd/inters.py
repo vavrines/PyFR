@@ -154,3 +154,15 @@ class MHDFreeBCInters(MHDBaseBCInters):
     type = 'free'
     cflux_state = 'ghost'
 
+
+class MHDFixedBCInters(MHDBaseBCInters):
+    type = 'fixed'
+    cflux_state = None
+
+    def __init__(self, be, lhs, elemap, cfgsect, cfg):
+        super().__init__(be, lhs, elemap, cfgsect, cfg)
+
+        tplc = self._exp_opts(
+            ['rho', 'p', 'u', 'v', 'Bx', 'By', 'w', 'Bz'][:self.ndims + 4], lhs
+        )
+        self.c.update(tplc)
