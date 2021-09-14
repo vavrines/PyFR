@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
-<%include file='pyfr.solvers.mhd.kernels.rsolvers.${rsolver}'/>
 <%include file='pyfr.solvers.mhd.kernels.bcs.common'/>
 
 <%pyfr:macro name='bc_rsolve_state' params='ul, nl, ur' externs='ploc, t'>
@@ -9,7 +8,7 @@
                                  for i in range(ndims))};
     ur[0] = ul[0];
     % for i in range(ndims):
-        ur[${i + 1}] = ul[${i + 1}] - fmax(0.0, 2*nor*nl[${i}]);
+        ur[${i + 1}] = ul[${i + 1}] - fmin(0.0, 2*nor*nl[${i}]);
     % endfor
     ur[${nvars - 1}] = ul[${nvars - 1}];
 </%pyfr:macro>
