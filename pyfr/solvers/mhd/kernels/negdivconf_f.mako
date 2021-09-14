@@ -19,7 +19,7 @@ fpdtype_t rcprho = 1.0/u[0];
 
     // Compute B·v
     fpdtype_t Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=2)};
-    fpdtype_t divB = u[5];
+    fpdtype_t divB = -rcpdjac*u[5];
 
     // Untransform the divergences and apply the source terms
     // Density
@@ -42,7 +42,7 @@ fpdtype_t rcprho = 1.0/u[0];
 
     // Compute B·v
     fpdtype_t Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=3)};
-    fpdtype_t divB = u[7];
+    fpdtype_t divB = rcpdjac*u[7];
 
     // Untransform the divergences and apply the source terms
     // Density
