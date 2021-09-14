@@ -10,6 +10,11 @@ from pyfr.solvers.mhd.inters import (MHDBaseBCInters,
 class MHDSystem(BaseAdvectionDiffusionSystem):
     name = 'mhd'
 
+    elementscls = MHDElements
+    intinterscls = MHDIntInters
+    mpiinterscls = MHDMPIInters
+    bbcinterscls = MHDBaseBCInters
+
     def rhs(self, t, uinbank, foutbank):
         runall = self.backend.runall
         q1, q2 = self._queues
