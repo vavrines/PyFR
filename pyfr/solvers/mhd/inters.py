@@ -147,7 +147,7 @@ class MHDBaseBCInters(TplargsMixin, BaseAdvectionDiffusionBCInters):
 
 class MHDSlpAdiaWallBCInters(MHDBaseBCInters):
     type = 'diode'
-    cflux_state = None
+    cflux_state = 'ghost'
 
 
 class MHDFreeBCInters(MHDBaseBCInters):
