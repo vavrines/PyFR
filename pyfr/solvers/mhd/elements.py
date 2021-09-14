@@ -89,7 +89,7 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.negdivconf_mhd')
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.negdivconf_f')
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.negdivconf_b')
-        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.enforce_positivity')
+        self._be.pointwise.register('pyfr.solvers.mhd.kernels.enforce_positivity')
 
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
