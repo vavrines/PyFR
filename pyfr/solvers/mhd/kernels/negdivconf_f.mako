@@ -54,7 +54,7 @@ fpdtype_t rcprho = 1.0/u[0];
     // Magnetic field
     tdivtconf[4] = -rcpdjac*(divB*v[0] + tdivtconf[4]) + ${srcex[4]};
     tdivtconf[5] = -rcpdjac*(divB*v[1] + tdivtconf[5]) + ${srcex[5]};
-    tdivtconf[6] = -rcpdjac*(divB*v[3] + tdivtconf[6]) + ${srcex[6]};
+    tdivtconf[6] = -rcpdjac*(divB*v[2] + tdivtconf[6]) + ${srcex[6]};
     // DivB
     tdivtconf[7] = 0.0; 
     // Energy
