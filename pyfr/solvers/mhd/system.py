@@ -118,5 +118,6 @@ class MHDSystem(BaseAdvectionDiffusionSystem):
 
         q1.enqueue(kernels['mpiint', 'comm_flux_vis'])
         q1.enqueue(kernels['eles', 'tdivtconf'])
+        q1.enqueue(kernels['eles', 'copy_soln'])
         q1.enqueue(kernels['eles', 'negdivconf'], t=t)
         runall([q1])
