@@ -2,7 +2,7 @@
 <%inherit file='base'/>
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
-<%pyfr:kernel name='negdivconf' ndim='2'
+<%pyfr:kernel name='negdivconf_mhd' ndim='2'
               t='scalar fpdtype_t'
               tdivtconf='inout fpdtype_t[${str(nvars)}]'
               ploc='in fpdtype_t[${str(ndims)}]'
