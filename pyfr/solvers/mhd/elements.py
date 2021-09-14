@@ -128,17 +128,11 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 f=self._vect_upts, artvisc=self.artvisc
             )
 
-        solnupts = self._scal_upts_cpy if solnsrc else None
 
-        if solnsrc:
-            kernels['copy_soln'] = lambda: self._be.kernel(
-                'copy', self._scal_upts_cpy, self.scal_upts_inb
-            )
-        
         self.kernels['negdivconf'] = lambda: self._be.kernel(
             'negdivconf_mhd', tplargs=tplargs,
             dims=[self.nupts, self.neles], tdivtconf=self.scal_upts_outb,
-            rcpdjac=self.rcpdjac_at('upts'), ploc=self.ploc_at('upts'), u=solnupts
+            rcpdjac=self.rcpdjac_at('upts'), ploc=self.ploc_at('upts'), u=self.scal_upts_inb
         )
 
         self.kernels['negdivconf_f'] = lambda: self._be.kernel(
