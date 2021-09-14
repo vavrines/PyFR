@@ -86,8 +86,8 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.tflux_inv')
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.tflux_vis')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.get_du')
-        self._be.pointwise.register('pyfr.solvers.baseadvec.kernels.negdivconf_f')
-        self._be.pointwise.register('pyfr.solvers.baseadvec.kernels.negdivconf_b')
+        self._be.pointwise.register('pyfr.solvers.mhd.kernels.negdivconf_f')
+        self._be.pointwise.register('pyfr.solvers.mhd.kernels.negdivconf_b')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.enforce_positivity')
 
 
@@ -128,6 +128,11 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             )
 
 
+        self.kernels['negdivconf'] = lambda: self._be.kernel(
+            'negdivconf', tplargs=tplargs,
+            dims=[self.nupts, self.neles], tdivtconf=self.scal_upts_outb,
+            rcpdjac=self.rcpdjac_at('upts'), ploc=self.ploc_at('upts'), u=self.scal_upts_inb
+        )
 
         self.kernels['negdivconf_f'] = lambda: self._be.kernel(
             'negdivconf_f', tplargs=tplargs,
