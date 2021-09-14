@@ -10,7 +10,19 @@
 u[0] = fmax(${tol}, u[0]);
 fpdtype_t invrho = 1.0/u[0];
 % if ndims == 2:
-    fpdtype_t E = u[3];
+    fpdtype_t E = u[6];
+
+    // Compute the velocities
+    fpdtype_t rhov[${ndims}], B[${ndims}];
+    % for i in range(ndims):
+        rhov[${i}] = u[${i + 1}];
+        B[${i}] = u[${i + 3}];
+    % endfor
+    fpdtype_t p = ${c['gamma'] - 1}*(E - 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)}) - 0.5*(${pyfr.dot('B[{i}]', i=ndims)}));
+    u[6] = p > ${tol} ? u[6] : ${tol/(c['gamma'] - 1)} + 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)}) + 0.5*(${pyfr.dot('B[{i}]', i=ndims)});
+
+% elif ndims == 3:
+    fpdtype_t E = u[8];
 
     // Compute the velocities
     fpdtype_t rhov[${ndims}], B[${ndims}];
@@ -18,21 +30,9 @@ fpdtype_t invrho = 1.0/u[0];
         rhov[${i}] = u[${i + 1}];
         B[${i}] = u[${i + 4}];
     % endfor
-    fpdtype_t p = ${c['gamma'] - 1}*(E - 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)}) - 0.5*(${pyfr.dot('B[{i}]', i=ndims)}));
-    u[3] = p > ${tol} ? u[3] : ${tol/(c['gamma'] - 1)} + 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)}) + 0.5*(${pyfr.dot('B[{i}]', i=ndims)});
-
-% elif ndims == 3:
-    fpdtype_t E = u[4];
-
-    // Compute the velocities
-    fpdtype_t rhov[${ndims}], B[${ndims}];
-    % for i in range(ndims):
-        rhov[${i}] = u[${i + 1}];
-        B[${i}] = u[${i + 5}];
-    % endfor
 
     fpdtype_t p = ${c['gamma'] - 1}*(E - 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)}) - 0.5*(${pyfr.dot('B[{i}]', i=ndims)}));
-    u[4] = p > ${tol} ? u[4] : ${tol/(c['gamma'] - 1)} + 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)}) + 0.5*(${pyfr.dot('B[{i}]', i=ndims)});
+    u[8] = p > ${tol} ? u[8] : ${tol/(c['gamma'] - 1)} + 0.5*invrho*(${pyfr.dot('rhov[{i}]', i=ndims)}) + 0.5*(${pyfr.dot('B[{i}]', i=ndims)});
 
 % endif
 

@@ -9,7 +9,7 @@
         fpdtype_t rhou = s[1], rhov = s[2];
         fpdtype_t Bx = s[3], By = s[4];
         //fpdtype_t divB = s[5];
-        fpdtype_t E = s[6], ent = s[7];
+        fpdtype_t E = s[6];
 
         // Reciprocal of rho
         fpdtype_t invrho = 1.0/rho;
@@ -33,7 +33,6 @@
         f[0][4] = By*v[0] - Bx*v[1];
         f[0][5] = Bx;
         f[0][6] = v[0]*(E + p + BdotB2) - Bx*Bdotv;
-        f[0][7] = v[0]*ent;
 
         // F_y
         f[1][0] = rhov;
@@ -43,8 +42,6 @@
         f[1][4] = 0;
         f[1][5] = By;
         f[1][6] = v[1]*(E + p + BdotB2) - By*Bdotv;
-        f[1][7] = v[1]*ent;
-
 
     % elif ndims == 3:
         // Extract the variables
@@ -52,7 +49,7 @@
         fpdtype_t rhou = s[1], rhov = s[2], rhow = s[3];
         fpdtype_t Bx = s[4], By = s[5], Bz = s[6];
         //fpdtype_t divB = s[7];
-        fpdtype_t E = s[8], ent = s[9];
+        fpdtype_t E = s[8];
 
         // Reciprocal of rho
         fpdtype_t invrho = 1.0/rho;
@@ -79,7 +76,6 @@
         f[0][6] = Bz*v[0] - Bx*v[2];
         f[0][7] = Bx;
         f[0][8] = v[0]*(E + p + BdotB2) - Bx*Bdotv;
-        f[0][9] = v[0]*ent;
 
         // F_y
         f[1][0] = rhov;
@@ -91,7 +87,6 @@
         f[1][6] = Bz*v[1] - By*v[2];
         f[1][7] = By;
         f[1][8] = v[1]*(E + p + BdotB2) - By*Bdotv;
-        f[1][9] = v[1]*ent;
 
         // F_z
         f[2][0] = rhow;
@@ -103,7 +98,6 @@
         f[2][6] = 0;
         f[2][7] = Bz;
         f[2][8] = v[2]*(E + p + BdotB2) - Bz*Bdotv;
-        f[2][9] = v[2]*ent;
     % endif
 </%pyfr:macro>
 
