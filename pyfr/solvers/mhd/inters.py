@@ -145,13 +145,17 @@ class MHDBaseBCInters(TplargsMixin, BaseAdvectionDiffusionBCInters):
         )
 
 
-class MHDSlpAdiaWallBCInters(MHDBaseBCInters):
+class MHDDiodeBCInters(MHDBaseBCInters):
     type = 'diode'
     cflux_state = 'ghost'
 
 
 class MHDFreeBCInters(MHDBaseBCInters):
     type = 'free'
+    cflux_state = 'ghost'
+
+class MHDWallBCInters(MHDBaseBCInters):
+    type = 'wall'
     cflux_state = 'ghost'
 
 
