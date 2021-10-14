@@ -74,7 +74,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             'correct_pressure', tplargs=tplargs,
             dims=[self.neles], uoutb=self.scal_upts_outb,
             uinb=self.scal_upts_inb, rcpdjac=self.rcpdjac_at('upts'),
-            ufpts=self._scal_fpts_cpy, ucpy=self._scal_upts_cpy
+            ufpts=self._scal_fpts_cpy
         )
 
 # Inverse of interior Laplacian matrix

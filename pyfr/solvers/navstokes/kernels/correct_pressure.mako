@@ -5,7 +5,6 @@
 <%pyfr:kernel name='correct_pressure' ndim='1'
               uoutb='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               uinb='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              ucpy='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               ufpts='in fpdtype_t[${str(nfpts)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'>
 
