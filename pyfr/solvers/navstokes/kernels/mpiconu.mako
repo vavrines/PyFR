@@ -16,5 +16,12 @@
                 + ulin[${i}]*${0.5 - c['ldg-beta']};
 % endif
 % endfor
+
+% if rsolver == 'centered':
+    fpdtype_t p;
+    p = 0.5*(ulin[${ndims}] + urin[${ndims}]);
+    ulout[${ndims}] = p;
+% endif
+
 </%pyfr:kernel>
 

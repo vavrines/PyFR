@@ -7,13 +7,12 @@ from pyfr.solvers.baseadvec import BaseAdvectionElements
 class BaseAdvectionDiffusionElements(BaseAdvectionElements):
     @property
     def _scratch_bufs(self):
-        bufs = {'scal_fpts', 'vect_fpts', 'vect_upts'}
+        bufs = {'scal_fpts', 'vect_fpts', 'vect_upts', 'scal_fpts_cpy'}
 
         if 'flux' in self.antialias:
             bufs |= {'scal_qpts', 'vect_qpts'}
 
-        if self._soln_in_src_exprs:
-            bufs |= {'scal_upts_cpy'}
+        bufs |= {'scal_upts_cpy'}
 
         return bufs
 
@@ -31,8 +30,17 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
         kernels['_copy_fpts'] = lambda: kernel(
             'copy', self._vect_fpts.slice(0, self.nfpts), self._scal_fpts
         )
+
+        kernels['copy_fpts2'] = lambda: kernel(
+            'copy', self._scal_fpts_cpy, self._scal_fpts
+        )
+
         kernels['tgradpcoru_upts'] = lambda: kernel(
             'mul', self.opmat('M4 - M6*M0'), self.scal_upts_inb,
+            out=self._vect_upts
+        )
+        kernels['tgradpcoru_upts_outb'] = lambda: kernel(
+            'mul', self.opmat('M4 - M6*M0'), self.scal_upts_outb,
             out=self._vect_upts
         )
 

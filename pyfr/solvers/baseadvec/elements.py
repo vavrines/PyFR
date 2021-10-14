@@ -53,6 +53,11 @@ class BaseAdvectionElements(BaseElements):
                 out=self._scal_fpts
             )
 
+        kernels['disu_outb'] = lambda: self._be.kernel(
+            'mul', self.opmat('M0'), self.scal_upts_outb,
+            out=self._scal_fpts
+        )
+
         # First flux correction kernel
         if fluxaa:
             kernels['tdivtpcorf'] = lambda: self._be.kernel(
@@ -75,10 +80,9 @@ class BaseAdvectionElements(BaseElements):
         plocupts = self.ploc_at('upts') if plocsrc else None
         solnupts = self._scal_upts_cpy if solnsrc else None
 
-        if solnsrc:
-            kernels['copy_soln'] = lambda: self._be.kernel(
-                'copy', self._scal_upts_cpy, self.scal_upts_inb
-            )
+        kernels['copy_soln'] = lambda: self._be.kernel(
+            'copy', self._scal_upts_cpy, self.scal_upts_inb
+        )
 
         kernels['negdivconf'] = lambda: self._be.kernel(
             'negdivconf', tplargs=srctplargs,

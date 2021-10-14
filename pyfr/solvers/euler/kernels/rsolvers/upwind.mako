@@ -10,14 +10,20 @@
     ${pyfr.expand('inviscid_flux', 'ur', 'fr')};
 
     // Sum the left and right velocities and take the normal
-    fpdtype_t nvl = ${pyfr.dot('n[{i}]', 'ul[{i}]', i=ndims)};
-    fpdtype_t nvr = ${pyfr.dot('n[{i}]', 'ur[{i}]', i=ndims)};
-    fpdtype_t nv = max(abs(nvl), abs(nvr));
+    fpdtype_t nv = ${pyfr.dot('n[{i}]', 'ul[{i}] + ur[{i}]', i=ndims)};
 
-    // Output
-% for i in range(nvars):
-    nf[${i}] = 0.5*(${' + '.join('n[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
-                                 .format(i=i, j=j) for j in range(ndims))})
-             + 0.5*nv*(ul[${i}] - ur[${i}]);
-% endfor
+    if (nv <= 0) {
+        % for i in range(nvars):
+            nf[${i}] = (${' + '.join('n[{j}]*fl[{j}][{i}]'
+                                 .format(i=i, j=j) for j in range(ndims))});
+        % endfor
+    }
+    else {
+        % for i in range(nvars):
+            nf[${i}] = (${' + '.join('n[{j}]*fr[{j}][{i}]'
+                                 .format(i=i, j=j) for j in range(ndims))});
+        % endfor
+    }
+	
+
 </%pyfr:macro>

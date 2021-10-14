@@ -32,10 +32,14 @@ class NavierStokesIntInters(TplargsMixin, BaseAdvectionDiffusionIntInters):
                 [ele.kernels['_copy_fpts']() for ele in elemap.values()]
             )
 
+        assert self.c['ldg-beta'] == 0.0
+        assert self.c['ldg-tau'] == 0.0
+
         self.kernels['con_u'] = lambda: be.kernel(
             'intconu', tplargs=self._tplargs, dims=[self.ninterfpts],
             ulin=self._scal_lhs, urin=self._scal_rhs,
-            ulout=self._vect_lhs, urout=self._vect_rhs
+            ulout=self._vect_lhs, urout=self._vect_rhs,
+            nl=self._norm_pnorm_lhs
         )
         self.kernels['comm_flux'] = lambda: be.kernel(
             'intcflux', tplargs=self._tplargs, dims=[self.ninterfpts],

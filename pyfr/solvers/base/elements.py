@@ -161,6 +161,8 @@ class BaseElements(object):
         # Allocate additional scalar scratch space
         if 'scal_upts_cpy' in sbufs:
             self._scal_upts_cpy = salloc('scal_upts_cpy', nupts)
+        if 'scal_fpts_cpy' in sbufs:
+            self._scal_fpts_cpy = salloc('scal_fpts_cpy', nfpts)
 
         # Allocate required vector scratch space
         if 'vect_upts' in sbufs:

@@ -18,4 +18,5 @@
                                               for k in range(ndims))});
 % endfor
 % endfor
+
 </%pyfr:kernel>
