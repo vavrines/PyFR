@@ -3,8 +3,8 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
 <%pyfr:kernel name='intconu' ndim='1'
-              ulin='in view fpdtype_t[${str(nvars)}]'
-              urin='in view fpdtype_t[${str(nvars)}]'
+              ulin='inout view fpdtype_t[${str(nvars)}]'
+              urin='inout view fpdtype_t[${str(nvars)}]'
               ulout='out view fpdtype_t[${str(nvars)}]'
               urout='out view fpdtype_t[${str(nvars)}]'
               nl='in fpdtype_t[${str(ndims)}]'>
@@ -19,13 +19,7 @@
 % endif
 % endfor
 
-% if rsolver == 'upwind':
-    fpdtype_t nv = ${pyfr.dot('nl[{i}]', 'ulin[{i}] + urin[{i}]', i=ndims)};
-    fpdtype_t p = nv >= 0 ? ulin[${ndims}] : urin[${ndims}];
-% else:
-    fpdtype_t p;
-    p = 0.5*(ulin[${ndims}] + urin[${ndims}]);
-% endif
+fpdtype_t p = 0.5*(ulin[${ndims}] + urin[${ndims}]);
 
 ulin[${ndims}] = p;
 urin[${ndims}] = p;

@@ -3,8 +3,8 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
 <%pyfr:kernel name='mpiconu' ndim='1'
-              ulin='in view fpdtype_t[${str(nvars)}]'
-              urin='in mpi fpdtype_t[${str(nvars)}]'
+              ulin='inout view fpdtype_t[${str(nvars)}]'
+              urin='inout mpi fpdtype_t[${str(nvars)}]'
               ulout='out view fpdtype_t[${str(nvars)}]'>
 % for i in range(nvars):
 % if c['ldg-beta'] == -0.5:
@@ -17,11 +17,10 @@
 % endif
 % endfor
 
-% if rsolver == 'centered':
-    fpdtype_t p;
-    p = 0.5*(ulin[${ndims}] + urin[${ndims}]);
-    ulout[${ndims}] = p;
-% endif
+fpdtype_t p = 0.5*(ulin[${ndims}] + urin[${ndims}]);
+ulin[${ndims}] = p;
+urin[${ndims}] = p;
+ulout[${ndims}] = p;
 
 </%pyfr:kernel>
 
