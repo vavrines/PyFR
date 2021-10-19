@@ -113,7 +113,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 M += (sxx*sxz + syx*syz + szx*szz)*Mxz # XZ
                 M += (sxy*sxx + syy*syx + szy*szx)*Mxy # YX
                 M += (sxy*sxy + syy*syy + szy*szy)*Myy # YY
-                M += (sxy*sxx + syy*syz + szy*szz)*Myz # YZ
+                M += (sxy*sxz + syy*syz + szy*szz)*Myz # YZ
                 M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
                 M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
                 M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
@@ -161,7 +161,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 M += (sxx*sxz + syx*syz + szx*szz)*Mxz # XZ
                 M += (sxy*sxx + syy*syx + szy*szx)*Mxy # YX
                 M += (sxy*sxy + syy*syy + szy*szy)*Myy # YY
-                M += (sxy*sxx + syy*syz + szy*szz)*Myz # YZ
+                M += (sxy*sxz + syy*syz + szy*szz)*Myz # YZ
                 M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
                 M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
                 M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
