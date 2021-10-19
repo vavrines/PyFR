@@ -9,4 +9,5 @@
               ulout='out view fpdtype_t[${str(nvars)}]'
               nlin='in fpdtype_t[${str(ndims)}]'>
     ${pyfr.expand('bc_ldg_state', 'ulin', 'nlin', 'ulout')};
+    ulin[${ndims}] = ulout[${ndims}];
 </%pyfr:kernel>
