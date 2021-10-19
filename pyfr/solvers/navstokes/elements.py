@@ -83,30 +83,31 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         if self.ndims == 2:
             for eidx in range(nelems):
-                sxx = smats[0, :, 0, eidx]
-                sxy = smats[1, :, 0, eidx]
-                syx = smats[0, :, 1, eidx]
-                syy = smats[1, :, 1, eidx]
+                sxx = smats[0, :, 0, eidx]*rcpdjac[:, eidx]
+                sxy = smats[1, :, 0, eidx]*rcpdjac[:, eidx]
+                syx = smats[0, :, 1, eidx]*rcpdjac[:, eidx]
+                syy = smats[1, :, 1, eidx]*rcpdjac[:, eidx]
 
                 M =  (sxx*sxx + syx*syx)*Mxx # XX
                 M += (sxx*sxy + syx*syy)*Mxy # XY
                 M += (sxy*sxx + syy*syx)*Mxy # YX
                 M += (sxy*sxy + syy*syy)*Myy # YY
-                M = (M.T*rcpdjac[:, eidx]**2).T
+                M = M.T
                 invLapMat[:,:,eidx] = np.linalg.inv(M)
         elif self.ndims == 3:
             for eidx in range(nelems):
                 # Need to scale rows instead of columns? Use Transpose?
                 # Smats correct order?
-                sxx = smats[0, :, 0, eidx]
-                sxy = smats[1, :, 0, eidx]
-                sxz = smats[2, :, 0, eidx]
-                syx = smats[0, :, 1, eidx]
-                syy = smats[1, :, 1, eidx]
-                syz = smats[2, :, 1, eidx]
-                szx = smats[0, :, 2, eidx]
-                szy = smats[1, :, 2, eidx]
-                szz = smats[2, :, 2, eidx]
+                sxx = smats[0, :, 0, eidx]*rcpdjac[:, eidx]
+                sxy = smats[1, :, 0, eidx]*rcpdjac[:, eidx]
+                sxz = smats[2, :, 0, eidx]*rcpdjac[:, eidx]
+                syx = smats[0, :, 1, eidx]*rcpdjac[:, eidx]
+                syy = smats[1, :, 1, eidx]*rcpdjac[:, eidx]
+                syz = smats[2, :, 1, eidx]*rcpdjac[:, eidx]
+                szx = smats[0, :, 2, eidx]*rcpdjac[:, eidx]
+                szy = smats[1, :, 2, eidx]*rcpdjac[:, eidx]
+                szz = smats[2, :, 2, eidx]*rcpdjac[:, eidx]
+
 
                 M =  (sxx*sxx + syx*syx + szx*szx)*Mxx # XX
                 M += (sxx*sxy + syx*syy + szx*szy)*Mxy # XY
@@ -117,7 +118,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
                 M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
                 M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
-                M = (M.T*rcpdjac[:, eidx]**2).T
+                M = M.T
                 invLapMat[:,:,eidx] = np.linalg.inv(M)
         return invLapMat
 
