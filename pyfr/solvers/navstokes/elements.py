@@ -117,17 +117,16 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
                 M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
                 M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
-                M = M*np.outer(rcpdjac[:, eidx], rcpdjac[:, eidx])
+                M = (M.T*rcpdjac[:, eidx]**2).T
                 invLapMat[:,:,eidx] = np.linalg.inv(M)
         return invLapMat
 
     def makeFluxLapMats(self, refmats):
         [Mxx, Mxy, Mxz, Myy, Myz, Mzz] = refmats
-        rcpdjacu = self.rcpdjac_at_np('upts') # (nupts, nelems)
-        rcpdjacf = self.rcpdjac_at_np('fpts') # (nfpts, nelems)
+        rcpdjac = self.rcpdjac_at_np('upts') # (nfpts, nelems)
         smats = self.smat_at_np('fpts') # (ndims, nfpts, ndims, nelems)
 
-        [_, nelems] = np.shape(rcpdjacu)
+        [_, nelems] = np.shape(rcpdjac)
         LapMat = np.zeros((self.nupts, self.nfpts, nelems))
 
         if self.ndims == 2:
@@ -166,7 +165,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
                 M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
                 M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
-                M = M*np.outer(rcpdjacu[:, eidx], rcpdjacf[:, eidx])
+                M = (M.T*rcpdjac[:, eidx]**2).T
                 LapMat[:,:,eidx] = M
         return LapMat
 #  Interior Laplacian matrix
