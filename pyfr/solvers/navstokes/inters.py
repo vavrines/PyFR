@@ -98,6 +98,10 @@ class NavierStokesBaseBCInters(TplargsMixin, BaseAdvectionDiffusionBCInters):
         )
 
 
+class NavierStokesNoSlpWallBCInters(NavierStokesBaseBCInters):
+    type = 'no-slp-wall'
+    cflux_state = 'ghost'
+
 
 class NavierStokesSlpAdiaWallBCInters(NavierStokesBaseBCInters):
     type = 'slp-adia-wall'
@@ -143,7 +147,7 @@ class NavierStokesSubInflowFrvBCInters(NavierStokesBaseBCInters):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
         tplc = self._exp_opts(
-            ['rho', 'u', 'v', 'w'][:self.ndims + 1], lhs,
+            ['u', 'v', 'w'][:self.ndims], lhs,
             default={'u': 0, 'v': 0, 'w': 0}
         )
         self.c.update(tplc)

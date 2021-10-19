@@ -18,5 +18,4 @@
 
 <%pyfr:macro name='bc_ldg_grad_state' params='ul, nl, grad_ul, grad_ur'>
     ${pyfr.expand('bc_common_grad_copy', 'ul', 'nl', 'grad_ul', 'grad_ur')};
-% endif
 </%pyfr:macro>
