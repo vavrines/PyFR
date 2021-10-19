@@ -21,8 +21,6 @@
 
 fpdtype_t p = 0.5*(ulin[${ndims}] + urin[${ndims}]);
 
-ulin[${ndims}] = p;
-urin[${ndims}] = p;
 ulout[${ndims}] = p;
 urout[${ndims}] = p;
 

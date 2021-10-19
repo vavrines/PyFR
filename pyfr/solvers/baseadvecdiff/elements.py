@@ -32,7 +32,7 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
         )
 
         kernels['copy_fpts2'] = lambda: kernel(
-            'copy', self._scal_fpts_cpy, self._scal_fpts
+            'copy', self._scal_fpts_cpy, self._vect_fpts.slice(0, self.nfpts)
         )
 
         kernels['tgradpcoru_upts'] = lambda: kernel(
