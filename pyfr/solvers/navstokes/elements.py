@@ -84,8 +84,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         if self.ndims == 2:
             for eidx in range(nelems):
                 sxx = smats[0, :, 0, eidx]
-                sxy = smats[0, :, 1, eidx]
-                syx = smats[1, :, 0, eidx]
+                sxy = smats[1, :, 0, eidx]
+                syx = smats[0, :, 1, eidx]
                 syy = smats[1, :, 1, eidx]
 
                 M =  (sxx*sxx + syx*syx)*Mxx # XX
@@ -99,13 +99,13 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 # Need to scale rows instead of columns? Use Transpose?
                 # Smats correct order?
                 sxx = smats[0, :, 0, eidx]
-                sxy = smats[0, :, 1, eidx]
-                sxz = smats[0, :, 2, eidx]
-                syx = smats[1, :, 0, eidx]
+                sxy = smats[1, :, 0, eidx]
+                sxz = smats[2, :, 0, eidx]
+                syx = smats[0, :, 1, eidx]
                 syy = smats[1, :, 1, eidx]
-                syz = smats[1, :, 2, eidx]
-                szx = smats[2, :, 0, eidx]
-                szy = smats[2, :, 1, eidx]
+                syz = smats[2, :, 1, eidx]
+                szx = smats[0, :, 2, eidx]
+                szy = smats[1, :, 2, eidx]
                 szz = smats[2, :, 2, eidx]
 
                 M =  (sxx*sxx + syx*syx + szx*szx)*Mxx # XX
@@ -132,8 +132,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         if self.ndims == 2:
             for eidx in range(nelems):
                 sxx = smats[0, :, 0, eidx]
-                sxy = smats[0, :, 1, eidx]
-                syx = smats[1, :, 0, eidx]
+                sxy = smats[1, :, 0, eidx]
+                syx = smats[0, :, 1, eidx]
                 syy = smats[1, :, 1, eidx]
 
                 M =  (sxx*sxx + syx*syx)*Mxx # XX
@@ -147,13 +147,13 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 # Need to scale rows instead of columns? Use Transpose?
                 # Smats correct order?
                 sxx = smats[0, :, 0, eidx]
-                sxy = smats[0, :, 1, eidx]
-                sxz = smats[0, :, 2, eidx]
-                syx = smats[1, :, 0, eidx]
+                sxy = smats[1, :, 0, eidx]
+                sxz = smats[2, :, 0, eidx]
+                syx = smats[0, :, 1, eidx]
                 syy = smats[1, :, 1, eidx]
-                syz = smats[1, :, 2, eidx]
-                szx = smats[2, :, 0, eidx]
-                szy = smats[2, :, 1, eidx]
+                syz = smats[2, :, 1, eidx]
+                szx = smats[0, :, 2, eidx]
+                szy = smats[1, :, 2, eidx]
                 szz = smats[2, :, 2, eidx]
 
                 M =  (sxx*sxx + syx*syx + szx*szx)*Mxx # XX
