@@ -287,8 +287,8 @@ def refFluxLapMat(self):
             valsa[0] = 1.0
             valsb = np.zeros(p+3) # Positive faces
             valsb[-1] = 1.0
-            valsc = np.zeros(p+3) # Transverse
-            valsc[idx+1] = 1.0
+            valsc = np.zeros(p+1) # Transverse
+            valsc[idx] = 1.0
 
             laga = interpolate.lagrange(dfrpts, valsa)
             dlaga = laga.deriv()
@@ -337,10 +337,10 @@ def refFluxLapMat(self):
                 valsa[0] = 1.0
                 valsb = np.zeros(p+3) # Positive faces
                 valsb[-1] = 1.0
-                valsc = np.zeros(p+3) # Transverse 1
-                valsc[aidx+1] = 1.0
-                valsd = np.zeros(p+3) # Transverse 2
-                valsd[bidx+1] = 1.0
+                valsc = np.zeros(p+1) # Transverse 1
+                valsc[aidx] = 1.0
+                valsd = np.zeros(p+1) # Transverse 2
+                valsd[bidx] = 1.0
 
                 laga = interpolate.lagrange(dfrpts, valsa)
                 dlaga = laga.deriv()
