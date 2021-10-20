@@ -74,7 +74,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         )
 
     def makeSolLapMats(self, refmats):
-        [Mxx, Mxy, Mxz, Myy, Myz, Mzz] = refmats
+        [Mxx, Mxy, Mxz, Myy, Myz, Mzz, Mxl, Myl, Mzl, Mxh, Myh, Mzh] = refmats
         rcpdjac = self.rcpdjac_at_np('upts') # (nupts, nelems)
         smats = self.smat_at_np('upts') # (ndims, nupts, ndims, nelems)
 
@@ -118,12 +118,27 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
                 M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
                 M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
+
+
+                M += ((sxx*Mxl@sxx)*Mxh.T).T + ((sxx*Mxl@sxy)*Myh.T).T + ((sxx*Mxl@sxz)*Mzh.T).T 
+                M += ((sxy*Myl@sxx)*Mxh.T).T + ((sxy*Myl@sxy)*Myh.T).T + ((sxy*Myl@sxz)*Mzh.T).T 
+                M += ((sxz*Mzl@sxx)*Mxh.T).T + ((sxz*Mzl@sxy)*Myh.T).T + ((sxz*Mzl@sxz)*Mzh.T).T 
+
+                M += ((syx*Mxl@syx)*Mxh.T).T + ((syx*Mxl@syy)*Myh.T).T + ((syx*Mxl@syz)*Mzh.T).T 
+                M += ((syy*Myl@syx)*Mxh.T).T + ((syy*Myl@syy)*Myh.T).T + ((syy*Myl@syz)*Mzh.T).T 
+                M += ((syz*Mzl@syx)*Mxh.T).T + ((syz*Mzl@syy)*Myh.T).T + ((syz*Mzl@syz)*Mzh.T).T 
+
+                M += ((szx*Mxl@szx)*Mxh.T).T + ((szx*Mxl@szy)*Myh.T).T + ((szx*Mxl@szz)*Mzh.T).T 
+                M += ((szy*Myl@szx)*Mxh.T).T + ((szy*Myl@szy)*Myh.T).T + ((szy*Myl@szz)*Mzh.T).T 
+                M += ((szz*Mzl@szx)*Mxh.T).T + ((szz*Mzl@szy)*Myh.T).T + ((szz*Mzl@szz)*Mzh.T).T
+
+
                 M = M.T
                 invLapMat[:,:,eidx] = np.linalg.inv(M)
         return invLapMat
 
     def makeFluxLapMats(self, refmats):
-        [Mxx, Mxy, Mxz, Myy, Myz, Mzz] = refmats
+        [Mxx, Mxy, Mxz, Myy, Myz, Mzz, Mx, My, Mz] = refmats
         rcpdjac = self.rcpdjac_at_np('upts') # (nfpts, nelems)
         smats = self.smat_at_np('fpts') # (ndims, nfpts, ndims, nelems)
 
@@ -166,6 +181,19 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
                 M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
                 M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
+
+                M -= ((sxx*Mx@sxx)*Mx.T).T + ((sxx*Mx@sxy)*My.T).T + ((sxx*Mx@sxz)*Mz.T).T 
+                M -= ((sxy*My@sxx)*Mx.T).T + ((sxy*My@sxy)*My.T).T + ((sxy*My@sxz)*Mz.T).T 
+                M -= ((sxz*Mz@sxx)*Mx.T).T + ((sxz*Mz@sxy)*My.T).T + ((sxz*Mz@sxz)*Mz.T).T 
+
+                M -= ((syx*Mx@syx)*Mx.T).T + ((syx*Mx@syy)*My.T).T + ((syx*Mx@syz)*Mz.T).T 
+                M -= ((syy*My@syx)*Mx.T).T + ((syy*My@syy)*My.T).T + ((syy*My@syz)*Mz.T).T 
+                M -= ((syz*Mz@syx)*Mx.T).T + ((syz*Mz@syy)*My.T).T + ((syz*Mz@syz)*Mz.T).T 
+
+                M -= ((szx*Mx@szx)*Mx.T).T + ((szx*Mx@szy)*My.T).T + ((szx*Mx@szz)*Mz.T).T 
+                M -= ((szy*My@szx)*Mx.T).T + ((szy*My@szy)*My.T).T + ((szy*My@szz)*Mz.T).T 
+                M -= ((szz*Mz@szx)*Mx.T).T + ((szz*Mz@szy)*My.T).T + ((szz*Mz@szz)*Mz.T).T
+
                 M = (M.T*rcpdjac[:, eidx]**2).T
                 LapMat[:,:,eidx] = M
         return LapMat
@@ -179,6 +207,13 @@ def refSolLapMat(self):
     Myy = np.zeros((self.nupts, self.nupts)) 
     Myz = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
     Mzz = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
+
+    Mxl = np.zeros((self.nupts, self.nupts)) 
+    Myl = np.zeros((self.nupts, self.nupts)) 
+    Mzl = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
+    Mxh = np.zeros((self.nupts, self.nupts)) 
+    Myh = np.zeros((self.nupts, self.nupts)) 
+    Mzh = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
 
     dfrpts = np.zeros(p+3)
     dfrpts[0] = -1.
@@ -203,12 +238,28 @@ def refSolLapMat(self):
                 dlagj = lagj.deriv()
                 ddlagj = lagj.deriv().deriv()
 
+                valsil = np.zeros(p+1)
+                valsil[i] = 1.0
+                lagil = interpolate.lagrange(upts_1d, valsil)
+                dlagil = lagil.deriv()
+
+                valsjl = np.zeros(p+1)
+                valsjl[j] = 1.0
+                lagjl = interpolate.lagrange(upts_1d, valsjl)
+                dlagjl = lagjl.deriv()
+
 
                 for q in range(p+1):
                     for r in range(p+1):
                         Mxx[uidx(q,r), n] += ddlagi(upts_1d[q])*lagj(upts_1d[r])
                         Myy[uidx(q,r), n] += lagi(upts_1d[q])*ddlagj(upts_1d[r])
                         Mxy[uidx(q,r), n] += dlagi(upts_1d[q])*dlagj(upts_1d[r])
+
+                        Mxl[uidx(q,r), n] += dlagil(upts_1d[q])*lagjl(upts_1d[r])
+                        Myl[uidx(q,r), n] += lagil(upts_1d[q])*dlagjl(upts_1d[r])
+
+                        Mxh[uidx(q,r), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])
+                        Myh[uidx(q,r), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])
 
                 n += 1
 
@@ -239,6 +290,22 @@ def refSolLapMat(self):
                     dlagk = lagk.deriv()
                     ddlagk = lagk.deriv().deriv()
 
+
+                    valsil = np.zeros(p+1)
+                    valsil[i] = 1.0
+                    lagil = interpolate.lagrange(upts_1d, valsil)
+                    dlagil = lagil.deriv()
+
+                    valsjl = np.zeros(p+1)
+                    valsjl[j] = 1.0
+                    lagjl = interpolate.lagrange(upts_1d, valsjl)
+                    dlagjl = lagjl.deriv()
+
+                    valskl = np.zeros(p+1)
+                    valskl[k] = 1.0
+                    lagkl = interpolate.lagrange(upts_1d, valskl)
+                    dlagkl = lagkl.deriv()
+
                     for q in range(p+1):
                         for r in range(p+1):
                             for s in range(p+1):
@@ -249,9 +316,17 @@ def refSolLapMat(self):
                                 Myz[uidx(q,r,s), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])*dlagk(upts_1d[s])
                                 Mzz[uidx(q,r,s), n] += lagi(upts_1d[q])*lagj(upts_1d[r])*ddlagk(upts_1d[s])
 
+                                Mxl[uidx(q,r,s), n] += dlagil(upts_1d[q])*lagjl(upts_1d[r])*lagkl(upts_1d[s])
+                                Myl[uidx(q,r,s), n] += lagil(upts_1d[q])*dlagjl(upts_1d[r])*lagkl(upts_1d[s])
+                                Mzl[uidx(q,r,s), n] += lagil(upts_1d[q])*lagjl(upts_1d[r])*dlagkl(upts_1d[s])
+
+                                Mxh[uidx(q,r,s), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])*lagk(upts_1d[s])
+                                Myh[uidx(q,r,s), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])*lagk(upts_1d[s])
+                                Mzh[uidx(q,r,s), n] += lagi(upts_1d[q])*lagj(upts_1d[r])*dlagk(upts_1d[s])
+
                     n += 1
 
-    return [Mxx, Mxy, Mxz, Myy, Myz, Mzz]
+    return [Mxx, Mxy, Mxz, Myy, Myz, Mzz, Mxl, Myl, Mzl, Mxh, Myh, Mzh]
 
 # Interface Laplacian matrix
 def refFluxLapMat(self):
@@ -266,6 +341,10 @@ def refFluxLapMat(self):
     Myy = np.zeros((self.nupts, self.nfpts)) 
     Myz = np.zeros((self.nupts, self.nfpts)) if self.ndims == 3 else None
     Mzz = np.zeros((self.nupts, self.nfpts)) if self.ndims == 3 else None
+
+    Mx = np.zeros((self.nupts, self.nfpts)) 
+    My = np.zeros((self.nupts, self.nfpts)) 
+    Mz = np.zeros((self.nupts, self.nfpts)) if self.ndims == 3 else None
 
     dfrpts = np.zeros(p+3)
     dfrpts[0] = -1.
@@ -403,6 +482,28 @@ def refFluxLapMat(self):
                             Mzz[uidx(q,r,s), faceidx(3, aidx, bidx)] += lagc(upts_1d[q])*lagb(upts_1d[r])*ddlagd(upts_1d[s])
                             Mzz[uidx(q,r,s), faceidx(4, aidx, bidx)] += laga(upts_1d[q])*lagc(upts_1d[r])*ddlagd(upts_1d[s])
                             Mzz[uidx(q,r,s), faceidx(5, aidx, bidx)] += lagc(upts_1d[q])*lagd(upts_1d[r])*ddlagb(upts_1d[s])
+
+
+                            Mx[uidx(q,r,s), faceidx(0, aidx, bidx)] += dlagc(upts_1d[q])*lagd(upts_1d[r])*laga(upts_1d[s])
+                            Mx[uidx(q,r,s), faceidx(1, aidx, bidx)] += dlagc(upts_1d[q])*laga(upts_1d[r])*lagd(upts_1d[s])
+                            Mx[uidx(q,r,s), faceidx(2, aidx, bidx)] += dlagb(upts_1d[q])*lagc(upts_1d[r])*lagd(upts_1d[s])
+                            Mx[uidx(q,r,s), faceidx(3, aidx, bidx)] += dlagc(upts_1d[q])*lagb(upts_1d[r])*lagd(upts_1d[s])
+                            Mx[uidx(q,r,s), faceidx(4, aidx, bidx)] += dlaga(upts_1d[q])*lagc(upts_1d[r])*lagd(upts_1d[s])
+                            Mx[uidx(q,r,s), faceidx(5, aidx, bidx)] += dlagc(upts_1d[q])*lagd(upts_1d[r])*lagb(upts_1d[s])
+
+                            My[uidx(q,r,s), faceidx(0, aidx, bidx)] += lagc(upts_1d[q])*dlagd(upts_1d[r])*laga(upts_1d[s])
+                            My[uidx(q,r,s), faceidx(1, aidx, bidx)] += lagc(upts_1d[q])*dlaga(upts_1d[r])*lagd(upts_1d[s])
+                            My[uidx(q,r,s), faceidx(2, aidx, bidx)] += lagb(upts_1d[q])*dlagc(upts_1d[r])*lagd(upts_1d[s])
+                            My[uidx(q,r,s), faceidx(3, aidx, bidx)] += lagc(upts_1d[q])*dlagb(upts_1d[r])*lagd(upts_1d[s])
+                            My[uidx(q,r,s), faceidx(4, aidx, bidx)] += laga(upts_1d[q])*dlagc(upts_1d[r])*lagd(upts_1d[s])
+                            My[uidx(q,r,s), faceidx(5, aidx, bidx)] += lagc(upts_1d[q])*dlagd(upts_1d[r])*lagb(upts_1d[s])
+
+                            Mz[uidx(q,r,s), faceidx(0, aidx, bidx)] += lagc(upts_1d[q])*lagd(upts_1d[r])*dlaga(upts_1d[s])
+                            Mz[uidx(q,r,s), faceidx(1, aidx, bidx)] += lagc(upts_1d[q])*laga(upts_1d[r])*dlagd(upts_1d[s])
+                            Mz[uidx(q,r,s), faceidx(2, aidx, bidx)] += lagb(upts_1d[q])*lagc(upts_1d[r])*dlagd(upts_1d[s])
+                            Mz[uidx(q,r,s), faceidx(3, aidx, bidx)] += lagc(upts_1d[q])*lagb(upts_1d[r])*dlagd(upts_1d[s])
+                            Mz[uidx(q,r,s), faceidx(4, aidx, bidx)] += laga(upts_1d[q])*lagc(upts_1d[r])*dlagd(upts_1d[s])
+                            Mz[uidx(q,r,s), faceidx(5, aidx, bidx)] += lagc(upts_1d[q])*lagd(upts_1d[r])*dlagb(upts_1d[s])
                         
-    return [Mxx, Mxy, Mxz, Myy, Myz, Mzz]
+    return [Mxx, Mxy, Mxz, Myy, Myz, Mzz, Mx, My, Mz]
 
