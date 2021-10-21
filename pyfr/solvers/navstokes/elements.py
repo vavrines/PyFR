@@ -21,10 +21,12 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
         dt = self.cfg.get('solver-time-integrator', 'dt')
 
-        refsollapmats = refSolLapMat(self)
-        reffluxlapmats = refFluxLapMat(self)
-        self.invLapMat = self._be.const_matrix(self.makeSolLapMats(refsollapmats), tags={'align'})
-        self.fluxLapMat = self._be.const_matrix(self.makeFluxLapMats(reffluxlapmats), tags={'align'})
+        [Dx, Dy, Dz] = DFRGradMat(self)
+        [Sx, Sy, Sz] = SolGradMat(self)
+        [Fx, Fy, Fz] = FluxGradMat(self)
+
+        self.invLapMat = self._be.const_matrix(self.makeSolLapMats(Dx, Dy, Dz, Sx, Sy, Sz), tags={'align'})
+        self.fluxLapMat = self._be.const_matrix(self.makeFluxLapMats(Dx, Dy, Dz, Fx, Fy, Fz), tags={'align'})
 
         if visc_corr not in {'sutherland', 'none'}:
             raise ValueError('Invalid viscosity-correction option')
@@ -73,147 +75,145 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             ufpts=self._scal_fpts_cpy, ILM=self.invLapMat, FLM=self.fluxLapMat
         )
 
-    def makeSolLapMats(self, refmats):
-        [Mxx, Mxy, Mxz, Myy, Myz, Mzz, Mxl, Myl, Mzl, Mxh, Myh, Mzh] = refmats
-        rcpdjac = self.rcpdjac_at_np('upts') # (nupts, nelems)
-        smats = self.smat_at_np('upts') # (ndims, nupts, ndims, nelems)
+    def makeSolLapMats(self, Dx, Dy, Dz, Sx, Sy, Sz):
+        urcpdjac = self.rcpdjac_at_np('upts') # (nupts, nelems)
+        frcpdjac = self.rcpdjac_at_np('fpts') # (nfpts, nelems)
+        drcpdjac = np.concatenate((urcpdjac, frcpdjac), axis=0)
+        usmats = self.smat_at_np('upts') # (ndims, nupts, ndims, nelems)
+        fsmats = self.smat_at_np('fpts') # (ndims, nfpts, ndims, nelems)
+        dsmats = np.concatenate((usmats, fsmats), axis=1)
 
-        [_, nelems] = np.shape(rcpdjac)
+        [_, nelems] = np.shape(urcpdjac)
         invLapMat = np.zeros((self.nupts, self.nupts, nelems))
 
         if self.ndims == 2:
             for eidx in range(nelems):
-                sxx = smats[0, :, 0, eidx]*rcpdjac[:, eidx]
-                sxy = smats[1, :, 0, eidx]*rcpdjac[:, eidx]
-                syx = smats[0, :, 1, eidx]*rcpdjac[:, eidx]
-                syy = smats[1, :, 1, eidx]*rcpdjac[:, eidx]
+                sxx = usmats[0, :, 0, eidx]
+                sxy = usmats[1, :, 0, eidx]
+                syx = usmats[0, :, 1, eidx]
+                syy = usmats[1, :, 1, eidx]
 
-                M =  (sxx*sxx + syx*syx)*Mxx # XX
-                M += (sxx*sxy + syx*syy)*Mxy # XY
-                M += (sxy*sxx + syy*syx)*Mxy # YX
-                M += (sxy*sxy + syy*syy)*Myy # YY
-                M = M.T
+                Mx = (drcpdjac[:, eidx]*(sxx*Sx + sxy*Sy).T).T
+                My = (drcpdjac[:, eidx]*(syx*Sx + syy*Sy).T).T
+
+                sxx = dsmats[0, :, 0, eidx]
+                sxy = dsmats[1, :, 0, eidx]
+                syx = dsmats[0, :, 1, eidx]
+                syy = dsmats[1, :, 1, eidx]
+
+
+                Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy).T).T @ Mx
+                Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy).T).T @ My
+
+                M = Mxx + Myy
                 invLapMat[:,:,eidx] = np.linalg.inv(M)
         elif self.ndims == 3:
             for eidx in range(nelems):
-                # Need to scale rows instead of columns? Use Transpose?
-                # Smats correct order?
-                sxx = smats[0, :, 0, eidx]*rcpdjac[:, eidx]
-                sxy = smats[1, :, 0, eidx]*rcpdjac[:, eidx]
-                sxz = smats[2, :, 0, eidx]*rcpdjac[:, eidx]
-                syx = smats[0, :, 1, eidx]*rcpdjac[:, eidx]
-                syy = smats[1, :, 1, eidx]*rcpdjac[:, eidx]
-                syz = smats[2, :, 1, eidx]*rcpdjac[:, eidx]
-                szx = smats[0, :, 2, eidx]*rcpdjac[:, eidx]
-                szy = smats[1, :, 2, eidx]*rcpdjac[:, eidx]
-                szz = smats[2, :, 2, eidx]*rcpdjac[:, eidx]
+                sxx = usmats[0, :, 0, eidx]
+                sxy = usmats[1, :, 0, eidx]
+                sxz = usmats[2, :, 0, eidx]
+                syx = usmats[0, :, 1, eidx]
+                syy = usmats[1, :, 1, eidx]
+                syz = usmats[2, :, 1, eidx]
+                szx = usmats[0, :, 2, eidx]
+                szy = usmats[1, :, 2, eidx]
+                szz = usmats[2, :, 2, eidx]
+
+                Mx = (drcpdjac[:, eidx]*(sxx*Sx + sxy*Sy + sxz*Sz).T).T
+                My = (drcpdjac[:, eidx]*(syx*Sx + syy*Sy + syz*Sz).T).T
+                Mz = (drcpdjac[:, eidx]*(szx*Sx + szy*Sy + szz*Sz).T).T
+
+                sxx = dsmats[0, :, 0, eidx]
+                sxy = dsmats[1, :, 0, eidx]
+                sxz = dsmats[2, :, 0, eidx]
+                syx = dsmats[0, :, 1, eidx]
+                syy = dsmats[1, :, 1, eidx]
+                syz = dsmats[2, :, 1, eidx]
+                szx = dsmats[0, :, 2, eidx]
+                szy = dsmats[1, :, 2, eidx]
+                szz = dsmats[2, :, 2, eidx]
 
 
-                M =  (sxx*sxx + syx*syx + szx*szx)*Mxx # XX
-                M += (sxx*sxy + syx*syy + szx*szy)*Mxy # XY
-                M += (sxx*sxz + syx*syz + szx*szz)*Mxz # XZ
-                M += (sxy*sxx + syy*syx + szy*szx)*Mxy # YX
-                M += (sxy*sxy + syy*syy + szy*szy)*Myy # YY
-                M += (sxy*sxz + syy*syz + szy*szz)*Myz # YZ
-                M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
-                M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
-                M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
+                Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy + sxz*Dz).T).T @ Mx
+                Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy + syz*Dz).T).T @ My
+                Mzz = (urcpdjac[:, eidx]*(szx*Dx + szy*Dy + szz*Dz).T).T @ Mz
 
-
-                M += ((sxx*Mxl@sxx)*Mxh.T).T + ((sxx*Mxl@sxy)*Myh.T).T + ((sxx*Mxl@sxz)*Mzh.T).T 
-                M += ((sxy*Myl@sxx)*Mxh.T).T + ((sxy*Myl@sxy)*Myh.T).T + ((sxy*Myl@sxz)*Mzh.T).T 
-                M += ((sxz*Mzl@sxx)*Mxh.T).T + ((sxz*Mzl@sxy)*Myh.T).T + ((sxz*Mzl@sxz)*Mzh.T).T 
-
-                M += ((syx*Mxl@syx)*Mxh.T).T + ((syx*Mxl@syy)*Myh.T).T + ((syx*Mxl@syz)*Mzh.T).T 
-                M += ((syy*Myl@syx)*Mxh.T).T + ((syy*Myl@syy)*Myh.T).T + ((syy*Myl@syz)*Mzh.T).T 
-                M += ((syz*Mzl@syx)*Mxh.T).T + ((syz*Mzl@syy)*Myh.T).T + ((syz*Mzl@syz)*Mzh.T).T 
-
-                M += ((szx*Mxl@szx)*Mxh.T).T + ((szx*Mxl@szy)*Myh.T).T + ((szx*Mxl@szz)*Mzh.T).T 
-                M += ((szy*Myl@szx)*Mxh.T).T + ((szy*Myl@szy)*Myh.T).T + ((szy*Myl@szz)*Mzh.T).T 
-                M += ((szz*Mzl@szx)*Mxh.T).T + ((szz*Mzl@szy)*Myh.T).T + ((szz*Mzl@szz)*Mzh.T).T
-
-
-                M = M.T
+                M = Mxx + Myy + Mzz
                 invLapMat[:,:,eidx] = np.linalg.inv(M)
         return invLapMat
 
-    def makeFluxLapMats(self, refmats):
-        [Mxx, Mxy, Mxz, Myy, Myz, Mzz, Mx, My, Mz] = refmats
-        rcpdjac = self.rcpdjac_at_np('upts') # (nfpts, nelems)
-        smats = self.smat_at_np('fpts') # (ndims, nfpts, ndims, nelems)
+    def makeFluxLapMats(self, Dx, Dy, Dz, Fx, Fy, Fz):
+        urcpdjac = self.rcpdjac_at_np('upts') # (nupts, nelems)
+        frcpdjac = self.rcpdjac_at_np('fpts') # (nfpts, nelems)
+        drcpdjac = np.concatenate((urcpdjac, frcpdjac), axis=0)
+        usmats = self.smat_at_np('upts') # (ndims, nupts, ndims, nelems)
+        fsmats = self.smat_at_np('fpts') # (ndims, nfpts, ndims, nelems)
+        dsmats = np.concatenate((usmats, fsmats), axis=1)
 
-        [_, nelems] = np.shape(rcpdjac)
+        [_, nelems] = np.shape(urcpdjac)
         LapMat = np.zeros((self.nupts, self.nfpts, nelems))
 
         if self.ndims == 2:
             for eidx in range(nelems):
-                sxx = smats[0, :, 0, eidx]
-                sxy = smats[1, :, 0, eidx]
-                syx = smats[0, :, 1, eidx]
-                syy = smats[1, :, 1, eidx]
+                sxx = fsmats[0, :, 0, eidx]
+                sxy = fsmats[1, :, 0, eidx]
+                syx = fsmats[0, :, 1, eidx]
+                syy = fsmats[1, :, 1, eidx]
 
-                M =  (sxx*sxx + syx*syx)*Mxx # XX
-                M += (sxx*sxy + syx*syy)*Mxy # XY
-                M += (sxy*sxx + syy*syx)*Mxy # YX
-                M += (sxy*sxy + syy*syy)*Myy # YY
-                M = (M.T*rcpdjac[:, eidx]**2).T
-                LapMat[:,:,eidx] = M
+                Mx = (drcpdjac[:, eidx]*(sxx*Fx + sxy*Fy).T).T
+                My = (drcpdjac[:, eidx]*(syx*Fx + syy*Fy).T).T
+
+                sxx = dsmats[0, :, 0, eidx]
+                sxy = dsmats[1, :, 0, eidx]
+                syx = dsmats[0, :, 1, eidx]
+                syy = dsmats[1, :, 1, eidx]
+
+
+                Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy).T).T @ Mx
+                Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy).T).T @ My
+
+                LapMat[:,:,eidx] = Mxx + Myy
         elif self.ndims == 3:
             for eidx in range(nelems):
-                # Need to scale rows instead of columns? Use Transpose?
-                # Smats correct order?
-                sxx = smats[0, :, 0, eidx]
-                sxy = smats[1, :, 0, eidx]
-                sxz = smats[2, :, 0, eidx]
-                syx = smats[0, :, 1, eidx]
-                syy = smats[1, :, 1, eidx]
-                syz = smats[2, :, 1, eidx]
-                szx = smats[0, :, 2, eidx]
-                szy = smats[1, :, 2, eidx]
-                szz = smats[2, :, 2, eidx]
+                sxx = fsmats[0, :, 0, eidx]
+                sxy = fsmats[1, :, 0, eidx]
+                sxz = fsmats[2, :, 0, eidx]
+                syx = fsmats[0, :, 1, eidx]
+                syy = fsmats[1, :, 1, eidx]
+                syz = fsmats[2, :, 1, eidx]
+                szx = fsmats[0, :, 2, eidx]
+                szy = fsmats[1, :, 2, eidx]
+                szz = fsmats[2, :, 2, eidx]
 
-                M =  (sxx*sxx + syx*syx + szx*szx)*Mxx # XX
-                M += (sxx*sxy + syx*syy + szx*szy)*Mxy # XY
-                M += (sxx*sxz + syx*syz + szx*szz)*Mxz # XZ
-                M += (sxy*sxx + syy*syx + szy*szx)*Mxy # YX
-                M += (sxy*sxy + syy*syy + szy*szy)*Myy # YY
-                M += (sxy*sxz + syy*syz + szy*szz)*Myz # YZ
-                M += (sxz*sxx + syz*syx + szz*szx)*Mxz # ZX
-                M += (sxz*sxy + syz*syy + szz*szy)*Myz # ZY
-                M += (sxz*sxz + syz*syz + szz*szz)*Mzz # ZZ
+                Mx = (drcpdjac[:, eidx]*(sxx*Fx + sxy*Fy + sxz*Fz).T).T
+                My = (drcpdjac[:, eidx]*(syx*Fx + syy*Fy + syz*Fz).T).T
+                Mz = (drcpdjac[:, eidx]*(szx*Fx + szy*Fy + szz*Fz).T).T
 
-                M -= ((sxx*Mx@sxx)*Mx.T).T + ((sxx*Mx@sxy)*My.T).T + ((sxx*Mx@sxz)*Mz.T).T 
-                M -= ((sxy*My@sxx)*Mx.T).T + ((sxy*My@sxy)*My.T).T + ((sxy*My@sxz)*Mz.T).T 
-                M -= ((sxz*Mz@sxx)*Mx.T).T + ((sxz*Mz@sxy)*My.T).T + ((sxz*Mz@sxz)*Mz.T).T 
+                sxx = dsmats[0, :, 0, eidx]
+                sxy = dsmats[1, :, 0, eidx]
+                sxz = dsmats[2, :, 0, eidx]
+                syx = dsmats[0, :, 1, eidx]
+                syy = dsmats[1, :, 1, eidx]
+                syz = dsmats[2, :, 1, eidx]
+                szx = dsmats[0, :, 2, eidx]
+                szy = dsmats[1, :, 2, eidx]
+                szz = dsmats[2, :, 2, eidx]
 
-                M -= ((syx*Mx@syx)*Mx.T).T + ((syx*Mx@syy)*My.T).T + ((syx*Mx@syz)*Mz.T).T 
-                M -= ((syy*My@syx)*Mx.T).T + ((syy*My@syy)*My.T).T + ((syy*My@syz)*Mz.T).T 
-                M -= ((syz*Mz@syx)*Mx.T).T + ((syz*Mz@syy)*My.T).T + ((syz*Mz@syz)*Mz.T).T 
 
-                M -= ((szx*Mx@szx)*Mx.T).T + ((szx*Mx@szy)*My.T).T + ((szx*Mx@szz)*Mz.T).T 
-                M -= ((szy*My@szx)*Mx.T).T + ((szy*My@szy)*My.T).T + ((szy*My@szz)*Mz.T).T 
-                M -= ((szz*Mz@szx)*Mx.T).T + ((szz*Mz@szy)*My.T).T + ((szz*Mz@szz)*Mz.T).T
+                Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy + sxz*Dz).T).T @ Mx
+                Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy + syz*Dz).T).T @ My
+                Mzz = (urcpdjac[:, eidx]*(szx*Dx + szy*Dy + szz*Dz).T).T @ Mz
 
-                M = (M.T*rcpdjac[:, eidx]**2).T
-                LapMat[:,:,eidx] = M
+                LapMat[:,:,eidx] = Mxx + Myy + Mzz
         return LapMat
-#  Interior Laplacian matrix
-def refSolLapMat(self):
+
+# Compute gradients from points defined on DFR points (upts + fpts)
+def DFRGradMat(self):
     p = self.basis.ubasis.order-1
     upts_1d = self.basis.ubasis.pts[:p+1,0] # Hack
-    Mxx = np.zeros((self.nupts, self.nupts)) 
-    Mxy = np.zeros((self.nupts, self.nupts)) 
-    Mxz = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
-    Myy = np.zeros((self.nupts, self.nupts)) 
-    Myz = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
-    Mzz = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
-
-    Mxl = np.zeros((self.nupts, self.nupts)) 
-    Myl = np.zeros((self.nupts, self.nupts)) 
-    Mzl = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
-    Mxh = np.zeros((self.nupts, self.nupts)) 
-    Myh = np.zeros((self.nupts, self.nupts)) 
-    Mzh = np.zeros((self.nupts, self.nupts)) if self.ndims == 3 else None
+    Mx = np.zeros((self.nupts, self.nupts+self.nfpts)) 
+    My = np.zeros((self.nupts, self.nupts+self.nfpts)) 
+    Mz = np.zeros((self.nupts, self.nupts+self.nfpts)) if self.ndims == 3 else None
 
     dfrpts = np.zeros(p+3)
     dfrpts[0] = -1.
@@ -224,42 +224,174 @@ def refSolLapMat(self):
         n = 0
         uidx = lambda i, j: i + j*(p+1)
 
+        # Interior solution points
         for j in range(p+1):
             for i in range(p+1):
                 valsi = np.zeros(p+3)
                 valsi[i+1] = 1.0
                 lagi = interpolate.lagrange(dfrpts, valsi)
                 dlagi = lagi.deriv()
-                ddlagi = lagi.deriv().deriv()
 
                 valsj = np.zeros(p+3)
                 valsj[j+1] = 1.0
                 lagj = interpolate.lagrange(dfrpts, valsj)
                 dlagj = lagj.deriv()
-                ddlagj = lagj.deriv().deriv()
 
-                valsil = np.zeros(p+1)
-                valsil[i] = 1.0
-                lagil = interpolate.lagrange(upts_1d, valsil)
-                dlagil = lagil.deriv()
+                for q in range(p+1):
+                    for r in range(p+1):
+                        Mx[uidx(q,r), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])
+                        My[uidx(q,r), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])
 
-                valsjl = np.zeros(p+1)
-                valsjl[j] = 1.0
-                lagjl = interpolate.lagrange(upts_1d, valsjl)
-                dlagjl = lagjl.deriv()
+                n += 1
+        # Flux points
+
+            # QUAD FACE ORDERING:
+            # 0 -> y = -1
+            # 1 -> x =  1
+            # 2 -> y =  1
+            # 3 -> x = -1
+        for face in range(4):
+            for idx in range(p+1):
+                # If negative face
+                if face in [0,3]:
+                    vals = np.zeros(p+3)
+                    vals[0] = 1.0
+                # If positive face
+                elif face in [1,2]:
+                    vals = np.zeros(p+3)
+                    vals[-1] = 1.0
+
+                lag = interpolate.lagrange(dfrpts, vals)
+                dlag = lag.deriv()
 
 
                 for q in range(p+1):
                     for r in range(p+1):
-                        Mxx[uidx(q,r), n] += ddlagi(upts_1d[q])*lagj(upts_1d[r])
-                        Myy[uidx(q,r), n] += lagi(upts_1d[q])*ddlagj(upts_1d[r])
-                        Mxy[uidx(q,r), n] += dlagi(upts_1d[q])*dlagj(upts_1d[r])
+                        # If x-faces
+                        if face in [1,3]:
+                            Mx[uidx(q,r), n] += dlag(upts_1d[q]) if r == idx else 0
+                        # If y-faces
+                        elif face in [0,2]:
+                            My[uidx(q,r), n] += dlag(upts_1d[r]) if q == idx else 0
 
-                        Mxl[uidx(q,r), n] += dlagil(upts_1d[q])*lagjl(upts_1d[r])
-                        Myl[uidx(q,r), n] += lagil(upts_1d[q])*dlagjl(upts_1d[r])
+                n += 1
 
-                        Mxh[uidx(q,r), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])
-                        Myh[uidx(q,r), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])
+    elif self.ndims == 3:
+        n = 0
+        uidx = lambda i, j, k: i + j*(p+1) + k*(p+1)**2
+
+        # Interior solution points
+        for k in range(p+1):
+            for j in range(p+1):
+                for i in range(p+1):
+                    valsi = np.zeros(p+3)
+                    valsi[i+1] = 1.0
+                    lagi = interpolate.lagrange(dfrpts, valsi)
+                    dlagi = lagi.deriv()
+
+                    valsj = np.zeros(p+3)
+                    valsj[j+1] = 1.0
+                    lagj = interpolate.lagrange(dfrpts, valsj)
+                    dlagj = lagj.deriv()
+
+                    valsk = np.zeros(p+3)
+                    valsk[k+1] = 1.0
+                    lagk = interpolate.lagrange(dfrpts, valsk)
+                    dlagk = lagk.deriv()
+
+                    for q in range(p+1):
+                        for r in range(p+1):
+                            for s in range(p+1):
+                                Mx[uidx(q,r,s), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])*lagk(upts_1d[s])
+                                My[uidx(q,r,s), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])*lagk(upts_1d[s])
+                                Mz[uidx(q,r,s), n] += lagi(upts_1d[q])*lagj(upts_1d[r])*dlagk(upts_1d[s])
+
+                    n += 1
+        # Flux points
+
+            # HEX FACE ORDERING:
+            # 0 -> z = -1
+            # 1 -> y = -1
+            # 2 -> x =  1
+            # 3 -> y =  1
+            # 4 -> x = -1
+            # 5 -> z =  1
+
+        for face in range(6):
+            for bidx in range(p+1):
+                for aidx in range(p+1):
+                    # If negative face
+                    if face in [0,1,4]:
+                        vals = np.zeros(p+3)
+                        vals[0] = 1.0
+                    # If positive face
+                    elif face in [2,3,5]:
+                        vals = np.zeros(p+3)
+                        vals[-1] = 1.0
+
+                    lag = interpolate.lagrange(dfrpts, vals)
+                    dlag = lag.deriv()
+
+                    for q in range(p+1):
+                        for r in range(p+1):
+                            for s in range(p+1):
+                                # If x-faces
+                                if face in [2,4]:
+                                    Mx[uidx(q,r,s), n] += dlag(upts_1d[q]) if r == aidx  and s == bidx else 0
+                                # If y-faces
+                                elif face in [1,3]:
+                                    My[uidx(q,r,s), n] += dlag(upts_1d[r]) if q == aidx  and s == bidx else 0
+                                # If z-faces
+                                elif face in [0,5]:
+                                    Mz[uidx(q,r,s), n] += dlag(upts_1d[s]) if q == aidx  and r == bidx else 0
+
+                    n += 1
+    return [Mx, My, Mz]
+
+
+# Compute gradients from points defined on upts (set fpts = 0)
+def SolGradMat(self):
+    p = self.basis.ubasis.order-1
+    upts_1d = self.basis.ubasis.pts[:p+1,0] # Hack
+    fpts = self.basis.fpts
+    Mx = np.zeros((self.nupts+self.nfpts, self.nupts)) 
+    My = np.zeros((self.nupts+self.nfpts, self.nupts)) 
+    Mz = np.zeros((self.nupts+self.nfpts, self.nupts)) if self.ndims == 3 else None
+
+    dfrpts = np.zeros(p+3)
+    dfrpts[0] = -1.
+    dfrpts[-1] = 1.
+    dfrpts[1:-1] = upts_1d
+
+
+    if self.ndims == 2:
+        n = 0
+        uidx = lambda i, j: i + j*(p+1)
+        faceidx = lambda face, idx: face*(p+1) + idx
+
+        for j in range(p+1):
+            for i in range(p+1):
+                valsi = np.zeros(p+3)
+                valsi[i+1] = 1.0
+                lagi = interpolate.lagrange(dfrpts, valsi)
+                dlagi = lagi.deriv()
+
+                valsj = np.zeros(p+3)
+                valsj[j+1] = 1.0
+                lagj = interpolate.lagrange(dfrpts, valsj)
+                dlagj = lagj.deriv()
+
+                for q in range(p+1):
+                    for r in range(p+1):
+                        Mx[uidx(q,r), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])
+                        My[uidx(q,r), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])
+
+                for face in range(4):
+                    for idx in range(p+1):
+                        [x,y] = fpts[faceidx(face,idx), :]
+
+                        Mx[self.nupts + faceidx(face, idx), n] += dlagi(x)*lagj(y)
+                        My[self.nupts + faceidx(face, idx), n] += lagi(x)*dlagj(y)
 
                 n += 1
 
@@ -267,6 +399,7 @@ def refSolLapMat(self):
     elif self.ndims == 3:
         n = 0
         uidx = lambda i, j, k: i + j*(p+1) + k*(p+1)**2
+        faceidx = lambda face, a_idx, b_idx: face*(p+1)**2 + a_idx + b_idx*(p+1)
 
 
         for k in range(p+1):
@@ -276,75 +409,46 @@ def refSolLapMat(self):
                     valsi[i+1] = 1.0
                     lagi = interpolate.lagrange(dfrpts, valsi)
                     dlagi = lagi.deriv()
-                    ddlagi = lagi.deriv().deriv()
 
                     valsj = np.zeros(p+3)
                     valsj[j+1] = 1.0
                     lagj = interpolate.lagrange(dfrpts, valsj)
                     dlagj = lagj.deriv()
-                    ddlagj = lagj.deriv().deriv()
 
                     valsk = np.zeros(p+3)
                     valsk[k+1] = 1.0
                     lagk = interpolate.lagrange(dfrpts, valsk)
                     dlagk = lagk.deriv()
-                    ddlagk = lagk.deriv().deriv()
 
-
-                    valsil = np.zeros(p+1)
-                    valsil[i] = 1.0
-                    lagil = interpolate.lagrange(upts_1d, valsil)
-                    dlagil = lagil.deriv()
-
-                    valsjl = np.zeros(p+1)
-                    valsjl[j] = 1.0
-                    lagjl = interpolate.lagrange(upts_1d, valsjl)
-                    dlagjl = lagjl.deriv()
-
-                    valskl = np.zeros(p+1)
-                    valskl[k] = 1.0
-                    lagkl = interpolate.lagrange(upts_1d, valskl)
-                    dlagkl = lagkl.deriv()
 
                     for q in range(p+1):
                         for r in range(p+1):
                             for s in range(p+1):
-                                Mxx[uidx(q,r,s), n] += ddlagi(upts_1d[q])*lagj(upts_1d[r])*lagk(upts_1d[s])
-                                Mxy[uidx(q,r,s), n] += dlagi(upts_1d[q])*dlagj(upts_1d[r])*lagk(upts_1d[s])
-                                Mxz[uidx(q,r,s), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])*dlagk(upts_1d[s])
-                                Myy[uidx(q,r,s), n] += lagi(upts_1d[q])*ddlagj(upts_1d[r])*lagk(upts_1d[s])
-                                Myz[uidx(q,r,s), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])*dlagk(upts_1d[s])
-                                Mzz[uidx(q,r,s), n] += lagi(upts_1d[q])*lagj(upts_1d[r])*ddlagk(upts_1d[s])
+                                Mx[uidx(q,r,s), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])*lagk(upts_1d[s])
+                                My[uidx(q,r,s), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])*lagk(upts_1d[s])
+                                Mz[uidx(q,r,s), n] += lagi(upts_1d[q])*lagj(upts_1d[r])*dlagk(upts_1d[s])
 
-                                Mxl[uidx(q,r,s), n] += dlagil(upts_1d[q])*lagjl(upts_1d[r])*lagkl(upts_1d[s])
-                                Myl[uidx(q,r,s), n] += lagil(upts_1d[q])*dlagjl(upts_1d[r])*lagkl(upts_1d[s])
-                                Mzl[uidx(q,r,s), n] += lagil(upts_1d[q])*lagjl(upts_1d[r])*dlagkl(upts_1d[s])
+                    for face in range(6):
+                        for bidx in range(p+1):
+                            for aidx in range(p+1):
+                                [x,y,z] = fpts[faceidx(face,aidx,bidx), :]
 
-                                Mxh[uidx(q,r,s), n] += dlagi(upts_1d[q])*lagj(upts_1d[r])*lagk(upts_1d[s])
-                                Myh[uidx(q,r,s), n] += lagi(upts_1d[q])*dlagj(upts_1d[r])*lagk(upts_1d[s])
-                                Mzh[uidx(q,r,s), n] += lagi(upts_1d[q])*lagj(upts_1d[r])*dlagk(upts_1d[s])
-
+                                Mx[self.nupts + faceidx(face, aidx, bidx), n] += dlagi(x)*lagj(y)*lagk(z)
+                                My[self.nupts + faceidx(face, aidx, bidx), n] += lagi(x)*dlagj(y)*lagk(z)
+                                Mz[self.nupts + faceidx(face, aidx, bidx), n] += lagi(x)*lagj(y)*dlagk(z)
                     n += 1
 
-    return [Mxx, Mxy, Mxz, Myy, Myz, Mzz, Mxl, Myl, Mzl, Mxh, Myh, Mzh]
+    return [Mx, My, Mz]
 
-# Interface Laplacian matrix
-def refFluxLapMat(self):
-    p = self.basis.ubasis.order -1
-    upts_1d = self.basis.ubasis.pts[:p+1,0] # Hack
 
+# Compute gradients from points defined on fpts (set upts = 0)
+def FluxGradMat(self):
     p = self.basis.ubasis.order-1
     upts_1d = self.basis.ubasis.pts[:p+1,0] # Hack
-    Mxx = np.zeros((self.nupts, self.nfpts)) 
-    Mxy = np.zeros((self.nupts, self.nfpts)) 
-    Mxz = np.zeros((self.nupts, self.nfpts)) if self.ndims == 3 else None
-    Myy = np.zeros((self.nupts, self.nfpts)) 
-    Myz = np.zeros((self.nupts, self.nfpts)) if self.ndims == 3 else None
-    Mzz = np.zeros((self.nupts, self.nfpts)) if self.ndims == 3 else None
 
-    Mx = np.zeros((self.nupts, self.nfpts)) 
-    My = np.zeros((self.nupts, self.nfpts)) 
-    Mz = np.zeros((self.nupts, self.nfpts)) if self.ndims == 3 else None
+    Mx = np.zeros((self.nupts+self.nfpts, self.nfpts)) 
+    My = np.zeros((self.nupts+self.nfpts, self.nfpts)) 
+    Mz = np.zeros((self.nupts+self.nfpts, self.nfpts)) if self.ndims == 3 else None
 
     dfrpts = np.zeros(p+3)
     dfrpts[0] = -1.
@@ -353,53 +457,59 @@ def refFluxLapMat(self):
 
     if self.ndims == 2:
         n = 0
+        faceidx = lambda face, idx: face*(p+1) + idx
+        uidx = lambda xidx, yidx: xidx + yidx*(p+1)
 
         # QUAD FACE ORDERING:
         # 0 -> y = -1
         # 1 -> x =  1
         # 2 -> y =  1
         # 3 -> x = -1
-        faceidx = lambda face, idx: face*(p+1) + idx
-        uidx = lambda xidx, yidx: xidx + yidx*(p+1)
+        for face in range(4):
+            for idx in range(p+1):
+                # If negative face
+                if face in [0,3]:
+                    valsa = np.zeros(p+3)
+                    valsa[0] = 1.0
+                # If positive face
+                elif face in [1,2]:
+                    valsa = np.zeros(p+3)
+                    valsa[-1] = 1.0
 
-        for idx in range(p+1):
-            valsa = np.zeros(p+3) # Negative faces
-            valsa[0] = 1.0
-            valsb = np.zeros(p+3) # Positive faces
-            valsb[-1] = 1.0
-            valsc = np.zeros(p+1) # Transverse
-            valsc[idx] = 1.0
+                laga = interpolate.lagrange(dfrpts, valsa)
+                dlaga = laga.deriv()
 
-            laga = interpolate.lagrange(dfrpts, valsa)
-            dlaga = laga.deriv()
-            ddlaga = laga.deriv().deriv()
-            lagb = interpolate.lagrange(dfrpts, valsb)
-            dlagb = lagb.deriv()
-            ddlagb = lagb.deriv().deriv()
-            lagc = interpolate.lagrange(upts_1d, valsc)
-            dlagc = lagc.deriv()
-            ddlagc = lagc.deriv().deriv()
+                valsb = np.zeros(p+1)
+                valsb[idx] = 1.0
+                lagb = interpolate.lagrange(upts_1d, valsb)
+                dlagb = lagb.deriv()
 
-            for q in range(p+1):
-                for r in range(p+1):
-                    Mxx[uidx(q,r), faceidx(0, idx)] += ddlagc(upts_1d[q])*laga(upts_1d[r])
-                    Mxx[uidx(q,r), faceidx(1, idx)] += ddlagb(upts_1d[q])*lagc(upts_1d[r])
-                    Mxx[uidx(q,r), faceidx(2, idx)] += ddlagc(upts_1d[q])*lagb(upts_1d[r])
-                    Mxx[uidx(q,r), faceidx(3, idx)] += ddlaga(upts_1d[q])*lagc(upts_1d[r])
+                for q in range(p+1):
+                    for r in range(p+1):
+                        # If x-faces
+                        if face in [1,3]:
+                            Mx[uidx(q,r), n] += dlaga(upts_1d[q]) if r == idx else 0
+                        # If y-faces
+                        elif face in [0,2]:
+                            My[uidx(q,r), n] += dlaga(upts_1d[r]) if q == idx else 0
+                for qidx in range(p+1):
+                    # If x-faces
+                    if face in [1,3]:
+                        Mx[self.nupts + faceidx(3, qidx), n] += dlaga(-1)*lagb(upts_1d[qidx])
+                        Mx[self.nupts + faceidx(1, qidx), n] += dlaga( 1)*lagb(upts_1d[qidx])
+                        My[self.nupts + faceidx(face, qidx), n] += dlagb(upts_1d[qidx])
+                    # If y-faces
+                    elif face in [0,2]:
+                        My[self.nupts + faceidx(0, qidx), n] += dlaga(-1)*lagb(upts_1d[qidx])
+                        My[self.nupts + faceidx(2, qidx), n] += dlaga( 1)*lagb(upts_1d[qidx])
+                        Mx[self.nupts + faceidx(face, qidx), n] += dlagb(upts_1d[qidx])
 
-                    Mxy[uidx(q,r), faceidx(0, idx)] += dlagc(upts_1d[q])*dlaga(upts_1d[r])
-                    Mxy[uidx(q,r), faceidx(1, idx)] += dlagb(upts_1d[q])*dlagc(upts_1d[r])
-                    Mxy[uidx(q,r), faceidx(2, idx)] += dlagc(upts_1d[q])*dlagb(upts_1d[r])
-                    Mxy[uidx(q,r), faceidx(3, idx)] += dlaga(upts_1d[q])*dlagc(upts_1d[r])
-
-                    Myy[uidx(q,r), faceidx(0, idx)] += lagc(upts_1d[q])*ddlaga(upts_1d[r])
-                    Myy[uidx(q,r), faceidx(1, idx)] += lagb(upts_1d[q])*ddlagc(upts_1d[r])
-                    Myy[uidx(q,r), faceidx(2, idx)] += lagc(upts_1d[q])*ddlagb(upts_1d[r])
-                    Myy[uidx(q,r), faceidx(3, idx)] += laga(upts_1d[q])*ddlagc(upts_1d[r])
-
+                n += 1
 
     elif self.ndims == 3:
         n = 0
+        faceidx = lambda face, a_idx, b_idx: face*(p+1)**2 + a_idx + b_idx*(p+1)
+        uidx = lambda xidx, yidx, zidx: xidx + yidx*(p+1) + zidx*((p+1)**2)
 
         # HEX FACE ORDERING:
         # 0 -> z = -1
@@ -408,102 +518,68 @@ def refFluxLapMat(self):
         # 3 -> y =  1
         # 4 -> x = -1
         # 5 -> z =  1
-        faceidx = lambda face, a_idx, b_idx: face*(p+1)**2 + a_idx + b_idx*(p+1)
-        uidx = lambda xidx, yidx, zidx: xidx + yidx*(p+1) + zidx*((p+1)**2)
 
-        for aidx in range(p+1):
+        for face in range(6):
             for bidx in range(p+1):
-                valsa = np.zeros(p+3) # Negative faces
-                valsa[0] = 1.0
-                valsb = np.zeros(p+3) # Positive faces
-                valsb[-1] = 1.0
-                valsc = np.zeros(p+1) # Transverse 1
-                valsc[aidx] = 1.0
-                valsd = np.zeros(p+1) # Transverse 2
-                valsd[bidx] = 1.0
+                for aidx in range(p+1):
+                    # If negative face
+                    if face in [0,1,4]:
+                        valsa = np.zeros(p+3)
+                        valsa[0] = 1.0
+                    # If positive face
+                    elif face in [2,3,5]:
+                        valsa = np.zeros(p+3)
+                        valsa[-1] = 1.0
 
-                laga = interpolate.lagrange(dfrpts, valsa)
-                dlaga = laga.deriv()
-                ddlaga = laga.deriv().deriv()
+                    laga = interpolate.lagrange(dfrpts, valsa)
+                    dlaga = laga.deriv()
 
-                lagb = interpolate.lagrange(dfrpts, valsb)
-                dlagb = lagb.deriv()
-                ddlagb = lagb.deriv().deriv()
+                    valsb = np.zeros(p+1)
+                    valsb[aidx] = 1.0
+                    lagb = interpolate.lagrange(upts_1d, valsb)
+                    dlagb = lagb.deriv()
 
-                lagc = interpolate.lagrange(upts_1d, valsc)
-                dlagc = lagc.deriv()
-                ddlagc = lagc.deriv().deriv()
-
-                lagd = interpolate.lagrange(upts_1d, valsd)
-                dlagd = lagd.deriv()
-                ddlagd = lagd.deriv().deriv()
-
-                for q in range(p+1):
-                    for r in range(p+1):
-                        for s in range(p+1):
-                            Mxx[uidx(q,r,s), faceidx(0, aidx, bidx)] += ddlagc(upts_1d[q])*lagd(upts_1d[r])*laga(upts_1d[s])
-                            Mxx[uidx(q,r,s), faceidx(1, aidx, bidx)] += ddlagc(upts_1d[q])*laga(upts_1d[r])*lagd(upts_1d[s])
-                            Mxx[uidx(q,r,s), faceidx(2, aidx, bidx)] += ddlagb(upts_1d[q])*lagc(upts_1d[r])*lagd(upts_1d[s])
-                            Mxx[uidx(q,r,s), faceidx(3, aidx, bidx)] += ddlagc(upts_1d[q])*lagb(upts_1d[r])*lagd(upts_1d[s])
-                            Mxx[uidx(q,r,s), faceidx(4, aidx, bidx)] += ddlaga(upts_1d[q])*lagc(upts_1d[r])*lagd(upts_1d[s])
-                            Mxx[uidx(q,r,s), faceidx(5, aidx, bidx)] += ddlagc(upts_1d[q])*lagd(upts_1d[r])*lagb(upts_1d[s])
-                    
-                            Mxy[uidx(q,r,s), faceidx(0, aidx, bidx)] += dlagc(upts_1d[q])*dlagd(upts_1d[r])*laga(upts_1d[s])
-                            Mxy[uidx(q,r,s), faceidx(1, aidx, bidx)] += dlagc(upts_1d[q])*dlaga(upts_1d[r])*lagd(upts_1d[s])
-                            Mxy[uidx(q,r,s), faceidx(2, aidx, bidx)] += dlagb(upts_1d[q])*dlagc(upts_1d[r])*lagd(upts_1d[s])
-                            Mxy[uidx(q,r,s), faceidx(3, aidx, bidx)] += dlagc(upts_1d[q])*dlagb(upts_1d[r])*lagd(upts_1d[s])
-                            Mxy[uidx(q,r,s), faceidx(4, aidx, bidx)] += dlaga(upts_1d[q])*dlagc(upts_1d[r])*lagd(upts_1d[s])
-                            Mxy[uidx(q,r,s), faceidx(5, aidx, bidx)] += dlagc(upts_1d[q])*dlagd(upts_1d[r])*lagb(upts_1d[s])
-                            
-                            Mxz[uidx(q,r,s), faceidx(0, aidx, bidx)] += dlagc(upts_1d[q])*lagd(upts_1d[r])*dlaga(upts_1d[s])
-                            Mxz[uidx(q,r,s), faceidx(1, aidx, bidx)] += dlagc(upts_1d[q])*laga(upts_1d[r])*dlagd(upts_1d[s])
-                            Mxz[uidx(q,r,s), faceidx(2, aidx, bidx)] += dlagb(upts_1d[q])*lagc(upts_1d[r])*dlagd(upts_1d[s])
-                            Mxz[uidx(q,r,s), faceidx(3, aidx, bidx)] += dlagc(upts_1d[q])*lagb(upts_1d[r])*dlagd(upts_1d[s])
-                            Mxz[uidx(q,r,s), faceidx(4, aidx, bidx)] += dlaga(upts_1d[q])*lagc(upts_1d[r])*dlagd(upts_1d[s])
-                            Mxz[uidx(q,r,s), faceidx(5, aidx, bidx)] += dlagc(upts_1d[q])*lagd(upts_1d[r])*dlagb(upts_1d[s])
-                            
-                            Myy[uidx(q,r,s), faceidx(0, aidx, bidx)] += lagc(upts_1d[q])*ddlagd(upts_1d[r])*laga(upts_1d[s])
-                            Myy[uidx(q,r,s), faceidx(1, aidx, bidx)] += lagc(upts_1d[q])*ddlaga(upts_1d[r])*lagd(upts_1d[s])
-                            Myy[uidx(q,r,s), faceidx(2, aidx, bidx)] += lagb(upts_1d[q])*ddlagc(upts_1d[r])*lagd(upts_1d[s])
-                            Myy[uidx(q,r,s), faceidx(3, aidx, bidx)] += lagc(upts_1d[q])*ddlagb(upts_1d[r])*lagd(upts_1d[s])
-                            Myy[uidx(q,r,s), faceidx(4, aidx, bidx)] += laga(upts_1d[q])*ddlagc(upts_1d[r])*lagd(upts_1d[s])
-                            Myy[uidx(q,r,s), faceidx(5, aidx, bidx)] += lagc(upts_1d[q])*ddlagd(upts_1d[r])*lagb(upts_1d[s])
-                            
-                            Myz[uidx(q,r,s), faceidx(0, aidx, bidx)] += lagc(upts_1d[q])*dlagd(upts_1d[r])*dlaga(upts_1d[s])
-                            Myz[uidx(q,r,s), faceidx(1, aidx, bidx)] += lagc(upts_1d[q])*dlaga(upts_1d[r])*dlagc(upts_1d[s])
-                            Myz[uidx(q,r,s), faceidx(2, aidx, bidx)] += lagb(upts_1d[q])*dlagc(upts_1d[r])*dlagc(upts_1d[s])
-                            Myz[uidx(q,r,s), faceidx(3, aidx, bidx)] += lagc(upts_1d[q])*dlagb(upts_1d[r])*dlagc(upts_1d[s])
-                            Myz[uidx(q,r,s), faceidx(4, aidx, bidx)] += laga(upts_1d[q])*dlagc(upts_1d[r])*dlagc(upts_1d[s])
-                            Myz[uidx(q,r,s), faceidx(5, aidx, bidx)] += lagc(upts_1d[q])*dlagd(upts_1d[r])*dlagb(upts_1d[s])
-                            
-                            Mzz[uidx(q,r,s), faceidx(0, aidx, bidx)] += lagc(upts_1d[q])*lagd(upts_1d[r])*ddlaga(upts_1d[s])
-                            Mzz[uidx(q,r,s), faceidx(1, aidx, bidx)] += lagc(upts_1d[q])*laga(upts_1d[r])*ddlagd(upts_1d[s])
-                            Mzz[uidx(q,r,s), faceidx(2, aidx, bidx)] += lagb(upts_1d[q])*lagc(upts_1d[r])*ddlagd(upts_1d[s])
-                            Mzz[uidx(q,r,s), faceidx(3, aidx, bidx)] += lagc(upts_1d[q])*lagb(upts_1d[r])*ddlagd(upts_1d[s])
-                            Mzz[uidx(q,r,s), faceidx(4, aidx, bidx)] += laga(upts_1d[q])*lagc(upts_1d[r])*ddlagd(upts_1d[s])
-                            Mzz[uidx(q,r,s), faceidx(5, aidx, bidx)] += lagc(upts_1d[q])*lagd(upts_1d[r])*ddlagb(upts_1d[s])
+                    valsc = np.zeros(p+1)
+                    valsc[bidx] = 1.0
+                    lagc = interpolate.lagrange(upts_1d, valsc)
+                    dlagc = lagc.deriv()
 
 
-                            Mx[uidx(q,r,s), faceidx(0, aidx, bidx)] += dlagc(upts_1d[q])*lagd(upts_1d[r])*laga(upts_1d[s])
-                            Mx[uidx(q,r,s), faceidx(1, aidx, bidx)] += dlagc(upts_1d[q])*laga(upts_1d[r])*lagd(upts_1d[s])
-                            Mx[uidx(q,r,s), faceidx(2, aidx, bidx)] += dlagb(upts_1d[q])*lagc(upts_1d[r])*lagd(upts_1d[s])
-                            Mx[uidx(q,r,s), faceidx(3, aidx, bidx)] += dlagc(upts_1d[q])*lagb(upts_1d[r])*lagd(upts_1d[s])
-                            Mx[uidx(q,r,s), faceidx(4, aidx, bidx)] += dlaga(upts_1d[q])*lagc(upts_1d[r])*lagd(upts_1d[s])
-                            Mx[uidx(q,r,s), faceidx(5, aidx, bidx)] += dlagc(upts_1d[q])*lagd(upts_1d[r])*lagb(upts_1d[s])
+                    for q in range(p+1):
+                        for r in range(p+1):
+                            for s in range(p+1):
+                                # If x-faces
+                                if face in [2,4]:
+                                    Mx[uidx(q,r,s), n] += dlaga(upts_1d[q]) if r == aidx  and s == bidx else 0
+                                # If y-faces
+                                elif face in [1,3]:
+                                    My[uidx(q,r,s), n] += dlaga(upts_1d[r]) if q == aidx  and s == bidx else 0
+                                # If z-faces
+                                elif face in [0,5]:
+                                    Mz[uidx(q,r,s), n] += dlaga(upts_1d[s]) if q == aidx  and r == bidx else 0
 
-                            My[uidx(q,r,s), faceidx(0, aidx, bidx)] += lagc(upts_1d[q])*dlagd(upts_1d[r])*laga(upts_1d[s])
-                            My[uidx(q,r,s), faceidx(1, aidx, bidx)] += lagc(upts_1d[q])*dlaga(upts_1d[r])*lagd(upts_1d[s])
-                            My[uidx(q,r,s), faceidx(2, aidx, bidx)] += lagb(upts_1d[q])*dlagc(upts_1d[r])*lagd(upts_1d[s])
-                            My[uidx(q,r,s), faceidx(3, aidx, bidx)] += lagc(upts_1d[q])*dlagb(upts_1d[r])*lagd(upts_1d[s])
-                            My[uidx(q,r,s), faceidx(4, aidx, bidx)] += laga(upts_1d[q])*dlagc(upts_1d[r])*lagd(upts_1d[s])
-                            My[uidx(q,r,s), faceidx(5, aidx, bidx)] += lagc(upts_1d[q])*dlagd(upts_1d[r])*lagb(upts_1d[s])
+                    for qidx in range(p+1):
+                        for ridx in range(p+1):
+                            # If x-faces
+                            if face in [2,4]:
+                                Mx[self.nupts + faceidx(4, qidx, ridx), n] += dlaga(-1)*lagb(upts_1d[qidx])*lagc(upts_1d[ridx])
+                                Mx[self.nupts + faceidx(2, qidx, ridx), n] += dlaga( 1)*lagb(upts_1d[qidx])*lagc(upts_1d[ridx])
+                                My[self.nupts + faceidx(face, qidx, ridx), n] += dlagb(upts_1d[qidx])*lagc(upts_1d[ridx])
+                                Mz[self.nupts + faceidx(face, qidx, ridx), n] += lagb(upts_1d[qidx])*dlagc(upts_1d[ridx])
+                            # If y-faces
+                            elif face in [1,3]:
+                                Mx[self.nupts + faceidx(face, qidx, ridx), n] += dlagb(upts_1d[qidx])*lagc(upts_1d[ridx])
+                                My[self.nupts + faceidx(1, qidx, ridx), n] += dlaga(-1)*lagb(upts_1d[qidx])*lagc(upts_1d[ridx])
+                                My[self.nupts + faceidx(3, qidx, ridx), n] += dlaga( 1)*lagb(upts_1d[qidx])*lagc(upts_1d[ridx])
+                                Mz[self.nupts + faceidx(face, qidx, ridx), n] += lagb(upts_1d[qidx])*dlagc(upts_1d[ridx])
+                            # If z-faces
+                            elif face in [0,5]:
+                                Mx[self.nupts + faceidx(face, qidx, ridx), n] += dlagb(upts_1d[qidx])*lagc(upts_1d[ridx])
+                                My[self.nupts + faceidx(face, qidx, ridx), n] += lagb(upts_1d[qidx])*dlagc(upts_1d[ridx])
+                                Mz[self.nupts + faceidx(0, qidx, ridx), n] += dlaga(-1)*lagb(upts_1d[qidx])*lagc(upts_1d[ridx])
+                                Mz[self.nupts + faceidx(5, qidx, ridx), n] += dlaga( 1)*lagb(upts_1d[qidx])*lagc(upts_1d[ridx])
 
-                            Mz[uidx(q,r,s), faceidx(0, aidx, bidx)] += lagc(upts_1d[q])*lagd(upts_1d[r])*dlaga(upts_1d[s])
-                            Mz[uidx(q,r,s), faceidx(1, aidx, bidx)] += lagc(upts_1d[q])*laga(upts_1d[r])*dlagd(upts_1d[s])
-                            Mz[uidx(q,r,s), faceidx(2, aidx, bidx)] += lagb(upts_1d[q])*lagc(upts_1d[r])*dlagd(upts_1d[s])
-                            Mz[uidx(q,r,s), faceidx(3, aidx, bidx)] += lagc(upts_1d[q])*lagb(upts_1d[r])*dlagd(upts_1d[s])
-                            Mz[uidx(q,r,s), faceidx(4, aidx, bidx)] += laga(upts_1d[q])*lagc(upts_1d[r])*dlagd(upts_1d[s])
-                            Mz[uidx(q,r,s), faceidx(5, aidx, bidx)] += lagc(upts_1d[q])*lagd(upts_1d[r])*dlagb(upts_1d[s])
+                    n += 1
                         
-    return [Mxx, Mxy, Mxz, Myy, Myz, Mzz, Mx, My, Mz]
+    return [Mx, My, Mz]
 
