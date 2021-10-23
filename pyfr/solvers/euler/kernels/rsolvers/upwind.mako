@@ -12,7 +12,7 @@
     // Sum the left and right velocities and take the normal
     fpdtype_t nv = ${pyfr.dot('n[{i}]', 'ul[{i}] + ur[{i}]', i=ndims)};
 
-    if (nv <= 0) {
+    if (nv >= 0) {
         % for i in range(nvars):
             nf[${i}] = (${' + '.join('n[{j}]*fl[{j}][{i}]'
                                  .format(i=i, j=j) for j in range(ndims))});
