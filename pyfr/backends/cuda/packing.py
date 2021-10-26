@@ -61,12 +61,38 @@ class CUDAPackingKernels(CUDAKernelProvider, BasePackingKernels):
     def unpack(self, mv):
         cuda = self.backend.cuda
 
+        # An exchange view is simply a regular view plus an exchange matrix
+        m, v = mv.xchgmat, mv.view
+
+        # Render the kernel template
+        src = self.backend.lookup.get_template('unpack').render()
+
+        # Build
+        kern = self._build_kernel('unpack_view', src, [np.int32]*3 + [np.intp]*4)
+
+        # Compute the grid and thread-block size
+        block = (128, 1, 1)
+        grid = get_grid_for_block(block, v.n)
+
         if self.backend.mpitype == 'cuda-aware':
             return NullComputeKernel()
         else:
             class UnpackXchgMatrixKernel(ComputeKernel):
                 def run(self, queue):
-                    cuda.memcpy_async(mv.data, mv.hdata, mv.nbytes,
+                    scomp = queue.cuda_stream_comp
+                    scopy = queue.cuda_stream_copy
+
+                    # Unpack
+                    kern.exec_async(
+                        grid, block, scomp, v.n, v.nvrow, v.nvcol, m,
+                        v.mapping, v.rstrides, v.basedata
+                    )
+
+                    # Copy the packed buffer to the host
+                    event.record(scomp)
+                    scopy.wait_for_event(event)
+
+                    cuda.memcpy_async(m.data, m.hdata, m.nbytes,
                                       queue.cuda_stream_comp)
 
             return UnpackXchgMatrixKernel()
