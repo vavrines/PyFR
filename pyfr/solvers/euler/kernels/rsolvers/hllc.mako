@@ -17,6 +17,11 @@
     fpdtype_t nvl = ${pyfr.dot('n[{i}]', 'vl[{i}]', i=ndims)};
     fpdtype_t nvr = ${pyfr.dot('n[{i}]', 'vr[{i}]', i=ndims)};
 
+    ul[0] = max(${1e-6}, ul[0]);
+    ur[0] = max(${1e-6}, ur[0]);
+    pl = max(${1e-6}, pl);
+    pr = max(${1e-6}, pr);
+
     // Compute the Roe-averaged velocity
     fpdtype_t nv = (sqrt(ul[0])*nvl + sqrt(ur[0])*nvr)
                  / (sqrt(ul[0]) + sqrt(ur[0]));
@@ -72,6 +77,11 @@
 
     ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'pl', 'vl')};
     ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr')};
+
+    ul[0] = max(${1e-6}, ul[0]);
+    ur[0] = max(${1e-6}, ur[0]);
+    pl = max(${1e-6}, pl);
+    pr = max(${1e-6}, pr);
 
     // Get the normal left and right velocities
     fpdtype_t nvl = ${pyfr.dot('n[{i}]', 'vl[{i}]', i=ndims)};

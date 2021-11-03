@@ -14,6 +14,11 @@
     ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'pl', 'vl')};
     ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr')};
 
+    ul[0] = max(${1e-6}, ul[0]);
+    ur[0] = max(${1e-6}, ur[0]);
+    pl = max(${1e-6}, pl);
+    pr = max(${1e-6}, pr);
+
     // Get the normal velocity jump
     fpdtype_t dvs = ${pyfr.dot('n[{i}]', 'vr[{i}] - vl[{i}]', i=ndims)};
 
@@ -80,6 +85,11 @@
 
     ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'pl', 'vl')};
     ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr')};
+
+    ul[0] = max(${1e-6}, ul[0]);
+    ur[0] = max(${1e-6}, ur[0]);
+    pl = max(${1e-6}, pl);
+    pr = max(${1e-6}, pr);
 
     // Get the normal velocity jump
     fpdtype_t dvs = ${pyfr.dot('n[{i}]', 'vr[{i}] - vl[{i}]', i=ndims)};
