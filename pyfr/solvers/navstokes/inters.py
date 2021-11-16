@@ -59,12 +59,12 @@ class NavierStokesMPIInters(TplargsMixin, BaseAdvectionDiffusionMPIInters):
 
         self.kernels['con_u'] = lambda: be.kernel(
             'mpiconu', tplargs=self._tplargs, dims=[self.ninterfpts],
-            ulin=self._scal_lhs, urin=self._scal_rhs, ulout=self._vect_lhs
+            ulin=self._scal_lhs, urin=self._scal_rhs, ulout=self._vect_lhs[1]
         )
         self.kernels['comm_flux'] = lambda: be.kernel(
             'mpicflux', tplargs=self._tplargs, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
-            gradul=self._vect_lhs, gradur=self._vect_rhs,
+            gradul=self._vect_lhs, gradur=self._vect_rhs[1],
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
         )

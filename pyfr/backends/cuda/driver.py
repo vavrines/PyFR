@@ -194,7 +194,11 @@ class CUDAFunction(_CUDABase):
 
     def exec_async(self, grid, block, stream, *args):
         for src, dst in zip(args, self._args):
-            dst.value = getattr(src, '_as_parameter_', src)
+            try:
+                dst.value = getattr(src, '_as_parameter_', src)
+            except:
+                dst.value = getattr(src[1], '_as_parameter_', src[1])
+
 
         self.cuda.lib.cuLaunchKernel(self, *grid, *block, 0, stream,
                                      self._arg_ptrs, None)

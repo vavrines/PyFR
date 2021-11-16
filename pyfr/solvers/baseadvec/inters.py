@@ -43,7 +43,10 @@ class BaseAdvectionMPIInters(BaseInters):
 
         # Generate the left hand view matrix and its dual
         self._scal_lhs = self._scal_xchg_view(lhs, 'get_scal_fpts_for_inter')
-        self._scal_rhs = be.xchg_matrix_for_view(self._scal_lhs)
+
+        self._scal_rhs = []
+        self._scal_rhs.append(self._scal_lhs.view)
+        self._scal_rhs.append(be.xchg_matrix_for_view(self._scal_rhs[0]))
 
         self._mag_pnorm_lhs = const_mat(lhs, 'get_mag_pnorms_for_inter')
         self._norm_pnorm_lhs = const_mat(lhs, 'get_norm_pnorms_for_inter')
@@ -56,7 +59,7 @@ class BaseAdvectionMPIInters(BaseInters):
             'send_pack', self._scal_lhs, self._rhsrank, self.MPI_TAG
         )
         self.kernels['scal_fpts_recv'] = lambda: be.kernel(
-            'recv_pack', self._scal_rhs, self._rhsrank, self.MPI_TAG
+            'recv_pack', self._scal_rhs[1], self._rhsrank, self.MPI_TAG
         )
         self.kernels['scal_fpts_unpack'] = lambda: be.kernel(
             'unpack', self._scal_rhs
