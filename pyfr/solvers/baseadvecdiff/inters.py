@@ -45,11 +45,7 @@ class BaseAdvectionDiffusionMPIInters(BaseAdvectionMPIInters):
 
         # Generate second set of view matrices
         self._vect_lhs = self._vect_xchg_view(lhs, 'get_vect_fpts_for_inter')
-
-        self._vect_rhs = []
-        self._vect_rhs.append(self._vect_lhs.view)
-        self._vect_rhs.append(be.xchg_matrix_for_view(self._vect_rhs[0]))
-
+        self._vect_rhs = be.xchg_matrix_for_view(self._vect_lhs)
 
         # Additional kernel constants
         self.c.update(cfg.items_as('solver-interfaces', float))
@@ -85,7 +81,7 @@ class BaseAdvectionDiffusionMPIInters(BaseAdvectionMPIInters):
         # If we need to recv gradients from the RHS
         if self.c['ldg-beta'] != 0.5:
             self.kernels['vect_fpts_recv'] = lambda: be.kernel(
-                'recv_pack', self._vect_rhs[1], self._rhsrank, self.MPI_TAG
+                'recv_pack', self._vect_rhs, self._rhsrank, self.MPI_TAG
             )
             self.kernels['vect_fpts_unpack'] = lambda: be.kernel(
                 'unpack', self._vect_rhs

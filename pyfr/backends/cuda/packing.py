@@ -62,7 +62,7 @@ class CUDAPackingKernels(CUDAKernelProvider, BasePackingKernels):
         cuda = self.backend.cuda
 
         # An exchange view is simply a regular view plus an exchange matrix
-        m, v = mv[1], mv[0]
+        m, v = mv.xchgmat, mv.view
 
         # Render the kernel template
         src = self.backend.lookup.get_template('unpack').render()
@@ -77,29 +77,22 @@ class CUDAPackingKernels(CUDAKernelProvider, BasePackingKernels):
         if self.backend.mpitype == 'cuda-aware':
             return NullComputeKernel()
         else:
-
-            event = cuda.create_event()
             class UnpackXchgMatrixKernel(ComputeKernel):
                 def run(self, queue):
                     scomp = queue.cuda_stream_comp
                     scopy = queue.cuda_stream_copy
 
-                    # Copy the host buffer to GPU
-                    cuda.memcpy_async(m.data, m.hdata, m.nbytes,
-                                      queue.cuda_stream_comp)
+                    # Unpack
+                    kern.exec_async(
+                        grid, block, scomp, v.n, v.nvrow, v.nvcol, m,
+                        v.mapping, v.rstrides or 0, v.basedata
+                    )
+
+                    # Copy the packed buffer to the host
                     event.record(scomp)
                     scopy.wait_for_event(event)
 
-                    # Unpack
-                    kern.exec_async(
-                       grid, block, scomp, v.n, v.nvrow, v.nvcol, m,
-                       v.mapping, v.rstrides or 0, v.basedata
-                    )
-
-                    # cuda.memcpy_async(m.data, v.basedata, m.nbytes,
-                    #                   queue.cuda_stream_comp)
-                    # event.record(scomp)
-                    # scopy.wait_for_event(event)
-
+                    cuda.memcpy_async(m.data, m.hdata, m.nbytes,
+                                      queue.cuda_stream_comp)
 
             return UnpackXchgMatrixKernel()
