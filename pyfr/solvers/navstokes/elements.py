@@ -20,7 +20,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
-        dt = self.cfg.get('solver-time-integrator', 'dt')
+        dt = float(self.cfg.get('solver-time-integrator', 'dt'))
 
         [Dx, Dy, Dz] = DFRGradMat(self)
         [Sx, Sy, Sz] = SolGradMat(self)
