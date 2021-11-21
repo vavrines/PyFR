@@ -16,6 +16,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.negdivconf_ns')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.compute_divergence')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.correct_pressure')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.rotational_correction')
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
