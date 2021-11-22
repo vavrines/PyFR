@@ -25,9 +25,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         [Sx, Sy, Sz] = SolGradMat(self)
         [Fx, Fy, Fz] = FluxGradMat(self)
 
-        SLM = self.makeSolLapMats(Dx, Dy, Dz, Sx, Sy, Sz)
-        self.solLapMat = self._be.const_matrix(SLM, tags={'align'})
-        self.invLapMat = self._be.const_matrix(self.makeInvSolLapMats(SLM), tags={'align'})
+        self.invLapMat = self._be.const_matrix(self.makeSolLapMats(Dx, Dy, Dz, Sx, Sy, Sz), tags={'align'})
         self.fluxLapMat = self._be.const_matrix(self.makeFluxLapMats(Dx, Dy, Dz, Fx, Fy, Fz), tags={'align'})
 
         if visc_corr not in {'sutherland', 'none'}:
@@ -77,12 +75,6 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             ufpts=self._scal_fpts_cpy, ILM=self.invLapMat, FLM=self.fluxLapMat
         )
 
-        self.kernels['rotational_correction'] = lambda: self._be.kernel(
-            'rotational_correction', tplargs=tplargs,
-            dims=[self.neles], uoutb=self.scal_upts_outb,
-            ufpts=self._scal_fpts, SLM=self.solLapMat, FLM=self.fluxLapMat
-        )
-
     def makeSolLapMats(self, Dx, Dy, Dz, Sx, Sy, Sz):
         urcpdjac = self.rcpdjac_at_np('upts') # (nupts, nelems)
         frcpdjac = self.rcpdjac_at_np('fpts') # (nfpts, nelems)
@@ -92,7 +84,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         dsmats = np.concatenate((usmats, fsmats), axis=1)
 
         [_, nelems] = np.shape(urcpdjac)
-        solLapMat = np.zeros((self.nupts, self.nupts, nelems))
+        invLapMat = np.zeros((self.nupts, self.nupts, nelems))
 
         if self.ndims == 2:
             for eidx in range(nelems):
@@ -114,7 +106,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy).T).T @ My
 
                 M = Mxx + Myy
-                solLapMat[:,:,eidx] = M
+                invLapMat[:,:,eidx] = np.linalg.inv(M)
         elif self.ndims == 3:
             for eidx in range(nelems):
                 sxx = usmats[0, :, 0, eidx]
@@ -147,16 +139,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 Mzz = (urcpdjac[:, eidx]*(szx*Dx + szy*Dy + szz*Dz).T).T @ Mz
 
                 M = Mxx + Myy + Mzz
-                solLapMat[:,:,eidx] = M
-        return solLapMat
-
-    def makeInvSolLapMats(self, SLM):
-        [_, _, nelems] = np.shape(SLM)
-
-        for eidx in range(nelems):
-            SLM[:,:,eidx] = np.linalg.inv(SLM[:,:,eidx])
-
-        return SLM
+                invLapMat[:,:,eidx] = np.linalg.inv(M)
+        return invLapMat
 
     def makeFluxLapMats(self, Dx, Dy, Dz, Fx, Fy, Fz):
         urcpdjac = self.rcpdjac_at_np('upts') # (nupts, nelems)

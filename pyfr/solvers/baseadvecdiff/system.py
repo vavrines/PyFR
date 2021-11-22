@@ -117,27 +117,6 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         runall([q1])
         # -------------------
 
-
-        # Compute rotational correction  -------------
-        q1.enqueue(kernels['eles', 'disu_outb'])
-        q1.enqueue(kernels['iint', 'con_u'])
-        q1.enqueue(kernels['bcint', 'con_u'], t=t)
-        if ('eles', 'shocksensor') in kernels:
-            q1.enqueue(kernels['eles', 'shocksensor'])
-            q1.enqueue(kernels['mpiint', 'artvisc_fpts_pack'])
-        q1.enqueue(kernels['eles', 'tgradpcoru_upts_outb'])
-        q2.enqueue(kernels['mpiint', 'scal_fpts_send'])
-        q2.enqueue(kernels['mpiint', 'scal_fpts_recv'])
-        q2.enqueue(kernels['mpiint', 'scal_fpts_unpack'])
-
-        runall([q1, q2])
-
-        q1.enqueue(kernels['mpiint', 'con_u'])
-        q1.enqueue(kernels['eles', 'copy_fpts'])
-        q1.enqueue(kernels['eles', 'rotational_correction'])
-        runall([q1])
-        # -------------------
-
         q1.enqueue(kernels['eles', 'correct_pressure'])
         runall([q1])
 
