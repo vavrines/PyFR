@@ -33,6 +33,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['eles', 'disu'])
         q1.enqueue(kernels['eles', 'copy_soln'])
         runall([q1])
+        q1.enqueue(kernels['eles', 'zero_interior_pressure'])
         q1.enqueue(kernels['mpiint', 'scal_fpts_pack'])
         runall([q1])
 
