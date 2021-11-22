@@ -17,7 +17,6 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.compute_divergence')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.correct_pressure')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.rotational_correction')
-        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.old_pressure_laplacian')
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
@@ -75,21 +74,14 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self.kernels['correct_pressure'] = lambda: self._be.kernel(
             'correct_pressure', tplargs=tplargs,
             dims=[self.neles], uoutb=self.scal_upts_outb,
-            uinb=self.scal_upts_inb, ucpy=self._scal_upts_cpy, ufpts=self._scal_fpts_cpy, 
-            ILM=self.invLapMat, FLM=self.fluxLapMat
+            uinb=self.scal_upts_inb, rcpdjac=self.rcpdjac_at('upts'),
+            ufpts=self._scal_fpts_cpy, ILM=self.invLapMat, FLM=self.fluxLapMat
         )
 
         self.kernels['rotational_correction'] = lambda: self._be.kernel(
             'rotational_correction', tplargs=tplargs,
             dims=[self.neles], uoutb=self.scal_upts_outb,
-            ufpts=self._scal_fpts, ucpy=self._scal_upts_cpy,
-            SLM=self.solLapMat, FLM=self.fluxLapMat
-        )
-
-        self.kernels['old_pressure_laplacian'] = lambda: self._be.kernel(
-            'old_pressure_laplacian', tplargs=tplargs,
-            dims=[self.neles], ufpts=self._scal_fpts, 
-            ucpy=self._scal_upts_cpy, SLM=self.solLapMat, FLM=self.fluxLapMat
+            ufpts=self._scal_fpts, SLM=self.solLapMat, FLM=self.fluxLapMat
         )
 
     def makeSolLapMats(self, Dx, Dy, Dz, Sx, Sy, Sz):

@@ -14,16 +14,13 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         self.eles_scal_upts_inb.active = uinbank
         self.eles_scal_upts_outb.active = foutbank
 
-        q1.enqueue(kernels['eles', 'copy_soln'])
-        self.compute_divergence(t, uinbank, foutbank)
-
         piter = self.cfg.getint('solver', 'piter', 1)
         for _ in range(piter):
             self.iterate_pressure(t, uinbank, foutbank)
             
         self.compute_rhs(t, uinbank, foutbank)
 
-    def compute_divergence(self, t, uinbank, foutbank):
+    def iterate_pressure(self, t, uinbank, foutbank):
         runall = self.backend.runall
         q1, q2 = self._queues
         kernels = self._kernels
@@ -34,7 +31,9 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         self.eles_scal_upts_outb.active = foutbank
 
         q1.enqueue(kernels['eles', 'disu'])
+        q1.enqueue(kernels['eles', 'copy_soln'])
         runall([q1])
+        q1.enqueue(kernels['eles', 'zero_interior_pressure'])
         q1.enqueue(kernels['mpiint', 'scal_fpts_pack'])
         runall([q1])
 
@@ -43,6 +42,9 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
 
         q1.enqueue(kernels['iint', 'con_u'])
         q1.enqueue(kernels['bcint', 'con_u'], t=t)
+        if ('eles', 'shocksensor') in kernels:
+            q1.enqueue(kernels['eles', 'shocksensor'])
+            q1.enqueue(kernels['mpiint', 'artvisc_fpts_pack'])
         q1.enqueue(kernels['eles', 'tgradpcoru_upts'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_send'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_recv'])
@@ -56,6 +58,10 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['eles', 'gradcoru_upts'])
         q1.enqueue(kernels['eles', 'gradcoru_fpts'])
         q1.enqueue(kernels['mpiint', 'vect_fpts_pack'])
+        if ('eles', 'shockvar') in kernels:
+            q2.enqueue(kernels['mpiint', 'artvisc_fpts_send'])
+            q2.enqueue(kernels['mpiint', 'artvisc_fpts_recv'])
+            q2.enqueue(kernels['mpiint', 'artvisc_fpts_unpack'])
 
         runall([q1, q2])
 
@@ -82,6 +88,9 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['eles', 'disu_outb'])
         q1.enqueue(kernels['iint', 'con_u'])
         q1.enqueue(kernels['bcint', 'con_u'], t=t)
+        if ('eles', 'shocksensor') in kernels:
+            q1.enqueue(kernels['eles', 'shocksensor'])
+            q1.enqueue(kernels['mpiint', 'artvisc_fpts_pack'])
         q1.enqueue(kernels['eles', 'tgradpcoru_upts_outb'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_send'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_recv'])
@@ -94,6 +103,10 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['eles', 'gradcoru_upts'])
         q1.enqueue(kernels['eles', 'gradcoru_fpts'])
         q1.enqueue(kernels['mpiint', 'vect_fpts_pack'])
+        if ('eles', 'shockvar') in kernels:
+            q2.enqueue(kernels['mpiint', 'artvisc_fpts_send'])
+            q2.enqueue(kernels['mpiint', 'artvisc_fpts_recv'])
+            q2.enqueue(kernels['mpiint', 'artvisc_fpts_unpack'])
 
         runall([q1, q2])
 
@@ -104,11 +117,15 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         runall([q1])
         # -------------------
 
-        # Compute rotational term  -------------
+
+        # Compute rotational correction  -------------
         q1.enqueue(kernels['eles', 'disu_outb'])
         q1.enqueue(kernels['iint', 'con_u'])
         q1.enqueue(kernels['bcint', 'con_u'], t=t)
-
+        if ('eles', 'shocksensor') in kernels:
+            q1.enqueue(kernels['eles', 'shocksensor'])
+            q1.enqueue(kernels['mpiint', 'artvisc_fpts_pack'])
+        q1.enqueue(kernels['eles', 'tgradpcoru_upts_outb'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_send'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_recv'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_unpack'])
@@ -116,53 +133,11 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         runall([q1, q2])
 
         q1.enqueue(kernels['mpiint', 'con_u'])
-        q1.enqueue(kernels['eles', 'copy_fpts3'])
+        q1.enqueue(kernels['eles', 'copy_fpts'])
         q1.enqueue(kernels['eles', 'rotational_correction'])
         runall([q1])
         # -------------------
 
-        # Compute old pressure Laplacian -------------
-        q1.enqueue(kernels['eles', 'disu_cpy'])
-        q1.enqueue(kernels['iint', 'con_u'])
-        q1.enqueue(kernels['bcint', 'con_u'], t=t)
-        q2.enqueue(kernels['mpiint', 'scal_fpts_send'])
-        q2.enqueue(kernels['mpiint', 'scal_fpts_recv'])
-        q2.enqueue(kernels['mpiint', 'scal_fpts_unpack'])
-
-        runall([q1, q2])
-
-        q1.enqueue(kernels['mpiint', 'con_u'])
-        q1.enqueue(kernels['eles', 'copy_fpts3'])
-        q1.enqueue(kernels['eles', 'old_pressure_laplacian'])
-        runall([q1])
-
-
-
-    def iterate_pressure(self, t, uinbank, foutbank):
-        runall = self.backend.runall
-        q1, q2 = self._queues
-        kernels = self._kernels
-
-        self._bc_inters.prepare(t)
-
-        self.eles_scal_upts_inb.active = uinbank
-        self.eles_scal_upts_outb.active = foutbank
-
-        # -------------------
-        q1.enqueue(kernels['eles', 'disu'])
-        runall([q1])
-        q1.enqueue(kernels['mpiint', 'scal_fpts_pack'])
-        runall([q1])
-
-        q1.enqueue(kernels['iint', 'con_u'])
-        q1.enqueue(kernels['bcint', 'con_u'], t=t)
-        q2.enqueue(kernels['mpiint', 'scal_fpts_send'])
-        q2.enqueue(kernels['mpiint', 'scal_fpts_recv'])
-        q2.enqueue(kernels['mpiint', 'scal_fpts_unpack'])
-        q1.enqueue(kernels['mpiint', 'con_u'])
-        runall([q1,q2])
-
-        q1.enqueue(kernels['eles', 'copy_fpts2'])
         q1.enqueue(kernels['eles', 'correct_pressure'])
         runall([q1])
 
@@ -176,12 +151,12 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         self.eles_scal_upts_inb.active = uinbank
         self.eles_scal_upts_outb.active = foutbank
 
-        # -------------------
-
         q1.enqueue(kernels['eles', 'disu'])
         q1.enqueue(kernels['mpiint', 'scal_fpts_pack'])
         runall([q1])
 
+        if ('eles', 'copy_soln') in kernels:
+            q1.enqueue(kernels['eles', 'copy_soln'])
         if ('iint', 'copy_fpts') in kernels:
             q1.enqueue(kernels['iint', 'copy_fpts'])
 
