@@ -72,7 +72,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             'correct_pressure', tplargs=tplargs,
             dims=[self.neles], uoutb=self.scal_upts_outb,
             uinb=self.scal_upts_inb, ucpy=self._scal_upts_cpy,
-            ILM=self.invLapMat, FLM=self.fluxLapMat
+            ufpts=self._scal_fpts_cpy, ILM=self.invLapMat, FLM=self.fluxLapMat
         )
 
     def makeSolLapMats(self, Dx, Dy, Dz, Sx, Sy, Sz):

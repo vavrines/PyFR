@@ -4,6 +4,7 @@
 
 <%pyfr:kernel name='correct_pressure' ndim='1'
               uoutb='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              ufpts='in fpdtype_t[${str(nfpts)}][${str(nvars)}]'
               ucpy='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               uinb='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               ILM='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
@@ -11,9 +12,11 @@
 
 
     // Set divergence
-    fpdtype_t divu[${nupts}];
+    // Calculate Laplacian of pressure from interface contributions
+    fpdtype_t divu[${nupts}], intp[${nupts}];
     % for i in range(nupts):
         divu[${i}] = uoutb[${i}][${ndims}];
+        intp[${i}] = (${' + '.join('FLM[{i}][{j}]*ufpts[{j}][{var}]'.format(i=i, j=j, var=ndims) for j in range(nfpts))})*${dt};
     % endfor
 
     // Compute pressure
@@ -21,7 +24,7 @@
 
     // Calculate DFR pressure Poisson equation (negative interface contributions)
     % for i in range(nupts):
-        q = (${' + '.join('ILM[{i}][{j}]*(divu[{j}])'.format(i=i, j=j) for j in range(nupts))})/${dt}; 
+        q = (${' + '.join('ILM[{i}][{j}]*(divu[{j}] - intp[{j}])'.format(i=i, j=j) for j in range(nupts))}); 
         P[${i}] = q + ucpy[${i}][${ndims}]; // Add to old pressure
     % endfor
 
