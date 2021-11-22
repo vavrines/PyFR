@@ -58,6 +58,11 @@ class BaseAdvectionElements(BaseElements):
             out=self._scal_fpts
         )
 
+        kernels['disu_cpy'] = lambda: self._be.kernel(
+            'mul', self.opmat('M0'), self._scal_upts_cpy,
+            out=self._scal_fpts
+        )
+
         # First flux correction kernel
         if fluxaa:
             kernels['tdivtpcorf'] = lambda: self._be.kernel(
