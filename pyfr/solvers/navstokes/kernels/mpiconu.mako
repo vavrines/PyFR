@@ -20,5 +20,7 @@
 fpdtype_t p = 0.5*(ulin[${ndims}] + urin[${ndims}]);
 ulout[${ndims}] = p;
 
+printf("%f\n", ulin[${ndims}]);
+
 </%pyfr:kernel>
 
