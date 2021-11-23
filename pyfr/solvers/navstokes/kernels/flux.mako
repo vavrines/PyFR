@@ -5,4 +5,8 @@
 % for i, j in pyfr.ndrange(ndims, ndims):
     fout[${i}][${j}] += -${c['nu']}*grad_uin[${i}][${j}];
 % endfor
+
+% for i in range(ndims):
+    fout[${i}][${ndims}] = 0.0;
+% endfor
 </%pyfr:macro>
