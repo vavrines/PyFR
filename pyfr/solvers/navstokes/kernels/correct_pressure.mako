@@ -16,7 +16,7 @@
     fpdtype_t divu[${nupts}], intp[${nupts}];
     % for i in range(nupts):
         divu[${i}] = uoutb[${i}][${ndims}];
-        intp[${i}] = (${' + '.join('FLM[{i}][{j}]*ufpts[{j}][{var}]'.format(i=i, j=j, var=ndims) for j in range(nfpts))})*${dt};
+        intp[${i}] = 0*(${' + '.join('FLM[{i}][{j}]*ufpts[{j}][{var}]'.format(i=i, j=j, var=ndims) for j in range(nfpts))})*${dt};
     % endfor
 
     // Compute pressure
