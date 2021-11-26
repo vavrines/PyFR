@@ -75,6 +75,10 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             ufpts=self._scal_fpts_cpy, ILM=self.invLapMat, FLM=self.fluxLapMat
         )
 
+    @staticmethod
+    def grad_con_to_pri(cons, grad_cons, cfg):
+        return grad_cons
+
     def makeSolLapMats(self, Dx, Dy, Dz, Sx, Sy, Sz):
         urcpdjac = self.rcpdjac_at_np('upts') # (nupts, nelems)
         frcpdjac = self.rcpdjac_at_np('fpts') # (nfpts, nelems)
