@@ -37,8 +37,6 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['mpiint', 'scal_fpts_pack'])
         runall([q1])
 
-        if ('eles', 'copy_soln') in kernels:
-            q1.enqueue(kernels['eles', 'copy_soln'])
         if ('iint', 'copy_fpts') in kernels:
             q1.enqueue(kernels['iint', 'copy_fpts'])
 

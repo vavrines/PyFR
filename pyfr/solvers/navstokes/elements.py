@@ -71,8 +71,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self.kernels['correct_pressure'] = lambda: self._be.kernel(
             'correct_pressure', tplargs=tplargs,
             dims=[self.neles], uoutb=self.scal_upts_outb,
-            uinb=self.scal_upts_inb, rcpdjac=self.rcpdjac_at('upts'),
-            ufpts=self._scal_fpts_cpy, ILM=self.invLapMat, FLM=self.fluxLapMat
+            uinb=self.scal_upts_inb, ufpts=self._scal_fpts_cpy, 
+            ILM=self.invLapMat, FLM=self.fluxLapMat
         )
 
     @staticmethod
@@ -90,60 +90,69 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         [_, nelems] = np.shape(urcpdjac)
         invLapMat = np.zeros((self.nupts, self.nupts, nelems))
 
+
+        uniform_grid = self.cfg.get('solver', 'grid-type', None) == 'uniform'
+
         if self.ndims == 2:
             for eidx in range(nelems):
-                sxx = usmats[0, :, 0, eidx]
-                sxy = usmats[1, :, 0, eidx]
-                syx = usmats[0, :, 1, eidx]
-                syy = usmats[1, :, 1, eidx]
+                if uniform_grid and eidx > 0:
+                    invLapMat[:,:,eidx] = invLapMat[:,:,0]
+                else:
+                    sxx = usmats[0, :, 0, eidx]
+                    sxy = usmats[1, :, 0, eidx]
+                    syx = usmats[0, :, 1, eidx]
+                    syy = usmats[1, :, 1, eidx]
 
-                Mx = (drcpdjac[:, eidx]*(sxx*Sx + sxy*Sy).T).T
-                My = (drcpdjac[:, eidx]*(syx*Sx + syy*Sy).T).T
+                    Mx = (drcpdjac[:, eidx]*(sxx*Sx + sxy*Sy).T).T
+                    My = (drcpdjac[:, eidx]*(syx*Sx + syy*Sy).T).T
 
-                sxx = dsmats[0, :, 0, eidx]
-                sxy = dsmats[1, :, 0, eidx]
-                syx = dsmats[0, :, 1, eidx]
-                syy = dsmats[1, :, 1, eidx]
+                    sxx = dsmats[0, :, 0, eidx]
+                    sxy = dsmats[1, :, 0, eidx]
+                    syx = dsmats[0, :, 1, eidx]
+                    syy = dsmats[1, :, 1, eidx]
 
 
-                Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy).T).T @ Mx
-                Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy).T).T @ My
+                    Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy).T).T @ Mx
+                    Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy).T).T @ My
 
-                M = Mxx + Myy
-                invLapMat[:,:,eidx] = np.linalg.inv(M)
+                    M = Mxx + Myy
+                    invLapMat[:,:,eidx] = np.linalg.inv(M)
         elif self.ndims == 3:
             for eidx in range(nelems):
-                sxx = usmats[0, :, 0, eidx]
-                sxy = usmats[1, :, 0, eidx]
-                sxz = usmats[2, :, 0, eidx]
-                syx = usmats[0, :, 1, eidx]
-                syy = usmats[1, :, 1, eidx]
-                syz = usmats[2, :, 1, eidx]
-                szx = usmats[0, :, 2, eidx]
-                szy = usmats[1, :, 2, eidx]
-                szz = usmats[2, :, 2, eidx]
+                if uniform_grid and eidx > 0:
+                    invLapMat[:,:,eidx] = invLapMat[:,:,0]
+                else:
+                    sxx = usmats[0, :, 0, eidx]
+                    sxy = usmats[1, :, 0, eidx]
+                    sxz = usmats[2, :, 0, eidx]
+                    syx = usmats[0, :, 1, eidx]
+                    syy = usmats[1, :, 1, eidx]
+                    syz = usmats[2, :, 1, eidx]
+                    szx = usmats[0, :, 2, eidx]
+                    szy = usmats[1, :, 2, eidx]
+                    szz = usmats[2, :, 2, eidx]
 
-                Mx = (drcpdjac[:, eidx]*(sxx*Sx + sxy*Sy + sxz*Sz).T).T
-                My = (drcpdjac[:, eidx]*(syx*Sx + syy*Sy + syz*Sz).T).T
-                Mz = (drcpdjac[:, eidx]*(szx*Sx + szy*Sy + szz*Sz).T).T
+                    Mx = (drcpdjac[:, eidx]*(sxx*Sx + sxy*Sy + sxz*Sz).T).T
+                    My = (drcpdjac[:, eidx]*(syx*Sx + syy*Sy + syz*Sz).T).T
+                    Mz = (drcpdjac[:, eidx]*(szx*Sx + szy*Sy + szz*Sz).T).T
 
-                sxx = dsmats[0, :, 0, eidx]
-                sxy = dsmats[1, :, 0, eidx]
-                sxz = dsmats[2, :, 0, eidx]
-                syx = dsmats[0, :, 1, eidx]
-                syy = dsmats[1, :, 1, eidx]
-                syz = dsmats[2, :, 1, eidx]
-                szx = dsmats[0, :, 2, eidx]
-                szy = dsmats[1, :, 2, eidx]
-                szz = dsmats[2, :, 2, eidx]
+                    sxx = dsmats[0, :, 0, eidx]
+                    sxy = dsmats[1, :, 0, eidx]
+                    sxz = dsmats[2, :, 0, eidx]
+                    syx = dsmats[0, :, 1, eidx]
+                    syy = dsmats[1, :, 1, eidx]
+                    syz = dsmats[2, :, 1, eidx]
+                    szx = dsmats[0, :, 2, eidx]
+                    szy = dsmats[1, :, 2, eidx]
+                    szz = dsmats[2, :, 2, eidx]
 
 
-                Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy + sxz*Dz).T).T @ Mx
-                Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy + syz*Dz).T).T @ My
-                Mzz = (urcpdjac[:, eidx]*(szx*Dx + szy*Dy + szz*Dz).T).T @ Mz
+                    Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy + sxz*Dz).T).T @ Mx
+                    Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy + syz*Dz).T).T @ My
+                    Mzz = (urcpdjac[:, eidx]*(szx*Dx + szy*Dy + szz*Dz).T).T @ Mz
 
-                M = Mxx + Myy + Mzz
-                invLapMat[:,:,eidx] = np.linalg.inv(M)
+                    M = Mxx + Myy + Mzz
+                    invLapMat[:,:,eidx] = np.linalg.inv(M)
         return invLapMat
 
     def makeFluxLapMats(self, Dx, Dy, Dz, Fx, Fy, Fz):
@@ -157,58 +166,67 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         [_, nelems] = np.shape(urcpdjac)
         LapMat = np.zeros((self.nupts, self.nfpts, nelems))
 
+
+        uniform_grid = self.cfg.get('solver', 'grid-type', None) == 'uniform'
+
         if self.ndims == 2:
             for eidx in range(nelems):
-                sxx = fsmats[0, :, 0, eidx]
-                sxy = fsmats[1, :, 0, eidx]
-                syx = fsmats[0, :, 1, eidx]
-                syy = fsmats[1, :, 1, eidx]
+                if uniform_grid and eidx > 0:
+                    LapMat[:,:,eidx] = LapMat[:,:,0]
+                else:
+                    sxx = fsmats[0, :, 0, eidx]
+                    sxy = fsmats[1, :, 0, eidx]
+                    syx = fsmats[0, :, 1, eidx]
+                    syy = fsmats[1, :, 1, eidx]
 
-                Mx = (drcpdjac[:, eidx]*(sxx*Fx + sxy*Fy).T).T
-                My = (drcpdjac[:, eidx]*(syx*Fx + syy*Fy).T).T
+                    Mx = (drcpdjac[:, eidx]*(sxx*Fx + sxy*Fy).T).T
+                    My = (drcpdjac[:, eidx]*(syx*Fx + syy*Fy).T).T
 
-                sxx = dsmats[0, :, 0, eidx]
-                sxy = dsmats[1, :, 0, eidx]
-                syx = dsmats[0, :, 1, eidx]
-                syy = dsmats[1, :, 1, eidx]
+                    sxx = dsmats[0, :, 0, eidx]
+                    sxy = dsmats[1, :, 0, eidx]
+                    syx = dsmats[0, :, 1, eidx]
+                    syy = dsmats[1, :, 1, eidx]
 
 
-                Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy).T).T @ Mx
-                Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy).T).T @ My
+                    Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy).T).T @ Mx
+                    Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy).T).T @ My
 
-                LapMat[:,:,eidx] = Mxx + Myy
+                    LapMat[:,:,eidx] = Mxx + Myy
         elif self.ndims == 3:
             for eidx in range(nelems):
-                sxx = fsmats[0, :, 0, eidx]
-                sxy = fsmats[1, :, 0, eidx]
-                sxz = fsmats[2, :, 0, eidx]
-                syx = fsmats[0, :, 1, eidx]
-                syy = fsmats[1, :, 1, eidx]
-                syz = fsmats[2, :, 1, eidx]
-                szx = fsmats[0, :, 2, eidx]
-                szy = fsmats[1, :, 2, eidx]
-                szz = fsmats[2, :, 2, eidx]
+                if uniform_grid and eidx > 0:
+                    LapMat[:,:,eidx] = LapMat[:,:,0]
+                else:
+                    sxx = fsmats[0, :, 0, eidx]
+                    sxy = fsmats[1, :, 0, eidx]
+                    sxz = fsmats[2, :, 0, eidx]
+                    syx = fsmats[0, :, 1, eidx]
+                    syy = fsmats[1, :, 1, eidx]
+                    syz = fsmats[2, :, 1, eidx]
+                    szx = fsmats[0, :, 2, eidx]
+                    szy = fsmats[1, :, 2, eidx]
+                    szz = fsmats[2, :, 2, eidx]
 
-                Mx = (drcpdjac[:, eidx]*(sxx*Fx + sxy*Fy + sxz*Fz).T).T
-                My = (drcpdjac[:, eidx]*(syx*Fx + syy*Fy + syz*Fz).T).T
-                Mz = (drcpdjac[:, eidx]*(szx*Fx + szy*Fy + szz*Fz).T).T
+                    Mx = (drcpdjac[:, eidx]*(sxx*Fx + sxy*Fy + sxz*Fz).T).T
+                    My = (drcpdjac[:, eidx]*(syx*Fx + syy*Fy + syz*Fz).T).T
+                    Mz = (drcpdjac[:, eidx]*(szx*Fx + szy*Fy + szz*Fz).T).T
 
-                sxx = dsmats[0, :, 0, eidx]
-                sxy = dsmats[1, :, 0, eidx]
-                sxz = dsmats[2, :, 0, eidx]
-                syx = dsmats[0, :, 1, eidx]
-                syy = dsmats[1, :, 1, eidx]
-                syz = dsmats[2, :, 1, eidx]
-                szx = dsmats[0, :, 2, eidx]
-                szy = dsmats[1, :, 2, eidx]
-                szz = dsmats[2, :, 2, eidx]
+                    sxx = dsmats[0, :, 0, eidx]
+                    sxy = dsmats[1, :, 0, eidx]
+                    sxz = dsmats[2, :, 0, eidx]
+                    syx = dsmats[0, :, 1, eidx]
+                    syy = dsmats[1, :, 1, eidx]
+                    syz = dsmats[2, :, 1, eidx]
+                    szx = dsmats[0, :, 2, eidx]
+                    szy = dsmats[1, :, 2, eidx]
+                    szz = dsmats[2, :, 2, eidx]
 
 
-                Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy + sxz*Dz).T).T @ Mx
-                Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy + syz*Dz).T).T @ My
-                Mzz = (urcpdjac[:, eidx]*(szx*Dx + szy*Dy + szz*Dz).T).T @ Mz
+                    Mxx = (urcpdjac[:, eidx]*(sxx*Dx + sxy*Dy + sxz*Dz).T).T @ Mx
+                    Myy = (urcpdjac[:, eidx]*(syx*Dx + syy*Dy + syz*Dz).T).T @ My
+                    Mzz = (urcpdjac[:, eidx]*(szx*Dx + szy*Dy + szz*Dz).T).T @ Mz
 
-                LapMat[:,:,eidx] = Mxx + Myy + Mzz
+                    LapMat[:,:,eidx] = Mxx + Myy + Mzz
         return LapMat
 
 # Compute gradients from points defined on DFR points (upts + fpts)
