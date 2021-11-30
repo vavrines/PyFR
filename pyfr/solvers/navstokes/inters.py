@@ -103,10 +103,21 @@ class NavierStokesNoSlpWallBCInters(NavierStokesBaseBCInters):
     cflux_state = 'ghost'
 
 
-class NavierStokesSlpAdiaWallBCInters(NavierStokesBaseBCInters):
-    type = 'slp-adia-wall'
+class NavierStokesSlpWallBCInters(NavierStokesBaseBCInters):
+    type = 'slp-wall'
     cflux_state = None
 
+class NavierStokesFixedBCInters(NavierStokesBaseBCInters):
+    type = 'fixed'
+    cflux_state = 'ghost'
+
+    def __init__(self, be, lhs, elemap, cfgsect, cfg):
+        super().__init__(be, lhs, elemap, cfgsect, cfg)
+
+        tplc = self._exp_opts(
+            ['p', 'u', 'v', 'w'][:self.ndims + 1], lhs
+        )
+        self.c.update(tplc)
 
 class NavierStokesCharRiemInvBCInters(NavierStokesBaseBCInters):
     type = 'char-riem-inv'

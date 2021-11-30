@@ -6,11 +6,10 @@
 <%include file='pyfr.solvers.navstokes.kernels.flux'/>
 
 <%pyfr:macro name='bc_ldg_state' params='ul, nl, ur'>
-    fpdtype_t nor = ${' + '.join('ul[{1}]*nl[{0}]'.format(i, i + 1)
+    fpdtype_t nor = ${' + '.join('ul[{0}]*nl[{0}]'.format(i)
                                  for i in range(ndims))};
-    ur[0] = ul[0];
 % for i in range(ndims):
-    ur[${i + 1}] = ul[${i + 1}] - 2*nor*nl[${i}];
+    ur[${i}] = ul[${i}] - 2*nor*nl[${i}];
 % endfor
     ur[${nvars - 1}] = ul[${nvars - 1}];
 </%pyfr:macro>
