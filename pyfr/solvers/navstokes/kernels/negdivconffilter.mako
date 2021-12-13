@@ -39,6 +39,10 @@
     }
 </%pyfr:macro>
 
+<%pyfr:macro name='compute_zeta' params='newsolmodes, filtsol, zeta, ent_min'>
+
+</%pyfr:macro>
+
 
 <%pyfr:kernel name='negdivconffilter' ndim='1'
               t='scalar fpdtype_t'
@@ -50,79 +54,134 @@
 
 fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t newsolmodes[${nupts}][${nvars}];
-fpdtype_t filtsol[${nupts}][${nvars}];
+fpdtype_t filtsol_pp[${nupts}][${nvars}];
+fpdtype_t filtsol_mep[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
 fpdtype_t tmp;
 
+// Compute -divF
 % for i in range(nupts):
     % for v, ex in enumerate(srcex):
         tdivtconf[${i}][${v}] = -rcpdjac[${i}]*tdivtconf[${i}][${v}] + ${ex};
     % endfor
 % endfor
 
-
+// Compute forward Euler prediction of next time step
 % for i,v in pyfr.ndrange(nupts, nvars):
     newsol[${i}][${v}] = u[${i}][${v}] + ${dt}*tdivtconf[${i}][${v}];
 % endfor
 
+// Get modal form at next time step
 % for i,v in pyfr.ndrange(nupts, nvars):
     newsolmodes[${i}][${v}] = ${' + '.join('{jx}*newsol[{j}][{v}]'.format(j=j, jx=jx, v=v) for j, jx in enumerate(invvdm[i]) if jx != 0)};
 % endfor
 
+// Compute zeta for positivity-preserving
+// ***********************************************************
+    fpdtype_t zeta_low = 0;
+    fpdtype_t zeta_high = 0.5;
+    fpdtype_t zeta = 0;
+    fpdtype_t pmin, dmin, emin, p, d, e, withinbounds;
 
-fpdtype_t zeta_low = 0;
-fpdtype_t zeta_high = 0.5;
-fpdtype_t zeta = 0;
-fpdtype_t pmin, dmin, emin;
-fpdtype_t p, d, e, withinbounds;
+    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_low', 'ent_min', 'withinbounds')};
+    if (withinbounds == 1){
+        zeta = 0;
+    }
+    else {
 
-
-${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta_low', 'ent_min', 'withinbounds')};
-if (withinbounds == 1){
-    zeta = 0;
-}
-else {
-
-    ${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta_high', 'ent_min', 'withinbounds')};
-    if (withinbounds == 0){ 
-        zeta_high = 1; 
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta_high', 'ent_min', 'withinbounds')};
+        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'ent_min', 'withinbounds')};
         if (withinbounds == 0){ 
-            zeta_high = 4; 
-            ${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta_high', 'ent_min', 'withinbounds')};
+            zeta_high = 1; 
+            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'ent_min', 'withinbounds')};
             if (withinbounds == 0){ 
-                zeta_high = 10; 
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta_high', 'ent_min', 'withinbounds')};
+                zeta_high = 4; 
+                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'ent_min', 'withinbounds')};
                 if (withinbounds == 0){ 
-                    zeta_high = 50; 
+                    zeta_high = 10; 
+                    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'ent_min', 'withinbounds')};
+                    if (withinbounds == 0){ 
+                        zeta_high = 50; 
+                    }
                 }
             }
         }
+        
+        
+        % for fiter in range(niters):
+            zeta = 0.5*(zeta_low + zeta_high);
+            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'ent_min', 'withinbounds')};
+
+            if (withinbounds == 1) {
+                zeta_high = zeta; 
+            }
+            else {
+                zeta_low = zeta;
+            }
+        % endfor
+
+        zeta = zeta_high;
+        
     }
-    
-    
-    % for fiter in range(niters):
-        zeta = 0.5*(zeta_low + zeta_high);
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta', 'ent_min', 'withinbounds')};
 
-        if (withinbounds == 1) {
-            zeta_high = zeta; 
+    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'ent_min', 'withinbounds')};
+// ***********************************************************
+
+// Compute zeta for positivity-preserving and minimum entropy principle satisfying
+// ***********************************************************
+    zeta_low = 0;
+    zeta_high = 0.5;
+    zeta = 0;
+
+    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_low', 'ent_min', 'withinbounds')};
+    if (withinbounds == 1){
+        zeta = 0;
+    }
+    else {
+
+        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+        if (withinbounds == 0){ 
+            zeta_high = 1; 
+            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+            if (withinbounds == 0){ 
+                zeta_high = 4; 
+                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+                if (withinbounds == 0){ 
+                    zeta_high = 10; 
+                    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+                    if (withinbounds == 0){ 
+                        zeta_high = 50; 
+                    }
+                }
+            }
         }
-        else {
-            zeta_low = zeta;
-        }
-    % endfor
+        
+        
+        % for fiter in range(niters):
+            zeta = 0.5*(zeta_low + zeta_high);
+            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'ent_min', 'withinbounds')};
 
-    zeta = zeta_high;
-    
-}
+            if (withinbounds == 1) {
+                zeta_high = zeta; 
+            }
+            else {
+                zeta_low = zeta;
+            }
+        % endfor
 
-${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta', 'ent_min', 'withinbounds')};
+        zeta = zeta_high;
+        
+    }
 
+    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'ent_min', 'withinbounds')};
+// ***********************************************************
+
+// Compute convex combination (relaxed entropy principle) and forward Euler approximation of -divF
+fpdtype_t sol_rep;
 % for i,v in pyfr.ndrange(nupts, nvars):
-    tdivtconf[${i}][${v}] = (filtsol[${i}][${v}] - u[${i}][${v}])/${dt};
+    sol_rep = ${alpha}*filtsol_mep[${i}][${v}] + (1 - ${alpha})*filtsol_pp[${i}][${v}];
+    tdivtconf[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
 % endfor
-printf("%f/n", ent_min);
+
 </%pyfr:kernel>
 
 

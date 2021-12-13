@@ -36,11 +36,11 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 f=self._vect_upts, artvisc=self.artvisc
             )
 
-        # Obtain the degrees of the polynomial modes in the basis
         ubdegs = np.array([max(dd) for dd in self.basis.ubasis.degrees])
         ffac = np.exp(-ubdegs**2)
         dt = self.cfg.get('solver-time-integrator', 'dt')
         niters = int(self.cfg.get('solver', 'filter-iterations', 10))
+        alpha = float(self.cfg.get('solver', 'filter-alpha', 1.0))
         dtol = 1e-8
         ptol = 1e-8
         etol = 1e-8
@@ -51,7 +51,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                        vdm=self.basis.ubasis.vdm.T,
                        invvdm=self.basis.ubasis.invvdm.T,
                        srcex=self._src_exprs, niters=niters,
-                       dtol=dtol, ptol=ptol, etol=etol)
+                       dtol=dtol, ptol=ptol, etol=etol, alpha=alpha)
 
         plocupts = self.ploc_at('upts') if self._ploc_in_src_exprs else None
 
