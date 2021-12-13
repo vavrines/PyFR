@@ -15,6 +15,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         self.eles_scal_upts_outb.active = foutbank
 
         q1 << kernels['eles', 'disu_ext']()
+        q1 << kernels['eles', 'calcentropy']()
         q1 << kernels['mpiint', 'scal_fpts_pack']()
         runall([q1])
 

@@ -16,11 +16,8 @@ class BaseAdvectionDiffusionIntInters(BaseAdvectionIntInters):
         self._vect_rhs = self._vect_view(rhs, 'get_vect_fpts_for_inter')
 
         # Generate the additional view matrices for artificial viscosity
-        if cfg.get('solver', 'shock-capturing') == 'artificial-viscosity':
-            self._artvisc_lhs = self._view(lhs, 'get_artvisc_fpts_for_inter')
-            self._artvisc_rhs = self._view(rhs, 'get_artvisc_fpts_for_inter')
-        else:
-            self._artvisc_lhs = self._artvisc_rhs = None
+        self._artvisc_lhs = self._view(lhs, 'get_artvisc_fpts_for_inter')
+        self._artvisc_rhs = self._view(rhs, 'get_artvisc_fpts_for_inter')
 
         # Additional kernel constants
         self._tpl_c.update(cfg.items_as('solver-interfaces', float))
@@ -91,39 +88,35 @@ class BaseAdvectionDiffusionMPIInters(BaseAdvectionMPIInters):
             self.kernels['vect_fpts_unpack'] = null_comp_kern
 
         # Generate the additional kernels/views for artificial viscosity
-        if cfg.get('solver', 'shock-capturing') == 'artificial-viscosity':
-            self._artvisc_lhs = self._xchg_view(lhs,
-                                                'get_artvisc_fpts_for_inter')
-            self._artvisc_rhs = be.xchg_matrix_for_view(self._artvisc_lhs)
+        self._artvisc_lhs = self._xchg_view(lhs,
+                                            'get_artvisc_fpts_for_inter')
+        self._artvisc_rhs = be.xchg_matrix_for_view(self._artvisc_lhs)
 
-            # If we need to send our artificial viscosity to the RHS
-            if self._tpl_c['ldg-beta'] != -0.5:
-                self.kernels['artvisc_fpts_pack'] = lambda: be.kernel(
-                    'pack', self._artvisc_lhs
-                )
-                self.kernels['artvisc_fpts_send'] = lambda: be.kernel(
-                    'send_pack', self._artvisc_lhs, self._rhsrank,
-                    self.MPI_TAG
-                )
-            else:
-                self.kernels['artvisc_fpts_pack'] = null_comp_kern
-                self.kernels['artvisc_fpts_send'] = null_mpi_kern
-
-            # If we need to recv artificial viscosity from the RHS
-            if self._tpl_c['ldg-beta'] != 0.5:
-                self.kernels['artvisc_fpts_recv'] = lambda: be.kernel(
-                    'recv_pack', self._artvisc_rhs, self._rhsrank,
-                    self.MPI_TAG
-                )
-                self.kernels['artvisc_fpts_unpack'] = lambda: be.kernel(
-                    'unpack', self._artvisc_rhs
-                )
-            else:
-                self.kernels['artvisc_fpts_recv'] = null_mpi_kern
-                self.kernels['artvisc_fpts_unpack'] = null_comp_kern
+        # If we need to send our artificial viscosity to the RHS
+        if self._tpl_c['ldg-beta'] != -0.5:
+            self.kernels['artvisc_fpts_pack'] = lambda: be.kernel(
+                'pack', self._artvisc_lhs
+            )
+            self.kernels['artvisc_fpts_send'] = lambda: be.kernel(
+                'send_pack', self._artvisc_lhs, self._rhsrank,
+                self.MPI_TAG
+            )
         else:
-            self._artvisc_lhs = self._artvisc_rhs = None
+            self.kernels['artvisc_fpts_pack'] = null_comp_kern
+            self.kernels['artvisc_fpts_send'] = null_mpi_kern
 
+        # If we need to recv artificial viscosity from the RHS
+        if self._tpl_c['ldg-beta'] != 0.5:
+            self.kernels['artvisc_fpts_recv'] = lambda: be.kernel(
+                'recv_pack', self._artvisc_rhs, self._rhsrank,
+                self.MPI_TAG
+            )
+            self.kernels['artvisc_fpts_unpack'] = lambda: be.kernel(
+                'unpack', self._artvisc_rhs
+            )
+        else:
+            self.kernels['artvisc_fpts_recv'] = null_mpi_kern
+            self.kernels['artvisc_fpts_unpack'] = null_comp_kern
 
 class BaseAdvectionDiffusionBCInters(BaseAdvectionBCInters):
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
@@ -136,7 +129,4 @@ class BaseAdvectionDiffusionBCInters(BaseAdvectionBCInters):
         self._tpl_c.update(cfg.items_as('solver-interfaces', float))
 
         # Generate the additional view matrices for artificial viscosity
-        if cfg.get('solver', 'shock-capturing') == 'artificial-viscosity':
-            self._artvisc_lhs = self._view(lhs, 'get_artvisc_fpts_for_inter')
-        else:
-            self._artvisc_lhs = None
+        self._artvisc_lhs = self._view(lhs, 'get_artvisc_fpts_for_inter')

@@ -54,4 +54,7 @@
 
     ul[${i}] = magnl*(ficomm[${i}] + fvcomm);
 % endfor
+
+artviscl = fmin(artviscl, artviscr);
+artviscr = fmin(artviscl, artviscr);
 </%pyfr:kernel>

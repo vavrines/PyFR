@@ -113,10 +113,10 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
                 u=self.scal_upts_inb, artvisc=self.artvisc
             )
-        elif shock_capturing == 'none':
-            self.artvisc = None
         else:
-            raise ValueError('Invalid shock capturing scheme')
+            tags = {'align'}
+            self.artvisc = self._be.matrix((1, self.neles),
+                                           extent=nonce + 'artvisc', tags=tags)
 
     def get_artvisc_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
