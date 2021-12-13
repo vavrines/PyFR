@@ -122,7 +122,14 @@ fpdtype_t tmp;
         
     }
 
+
+    // Verify that it is positivity-preserving and revert to mean mode if not
     ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'neginf', 'withinbounds')};
+    if (withinbounds == 0){
+        % for i,v in pyfr.ndrange(nupts, nvars):
+            filtsol_pp[${i}][${v}] = newsolmodes[0][${v}];
+        % endfor
+    }
 // ***********************************************************
 
 // Compute zeta for positivity-preserving and minimum entropy principle satisfying
@@ -171,7 +178,14 @@ fpdtype_t tmp;
         
     }
 
-    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'ent_min', 'withinbounds')};
+
+    // Verify that it is positivity-preserving and revert to mean mode if not
+    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'neginf', 'withinbounds')};
+    if (withinbounds == 0){
+        % for i,v in pyfr.ndrange(nupts, nvars):
+            filtsol_mep[${i}][${v}] = newsolmodes[0][${v}];
+        % endfor
+    }
 // ***********************************************************
 
 // Compute convex combination (relaxed entropy principle) and forward Euler approximation of -divF
