@@ -17,7 +17,7 @@ class CUDAKernelProvider(BaseKernelProvider):
     def _build_kernel(self, name, src, argtypes):
         # Compile the source code and retrieve the function
         mod = SourceModule(self.backend, src)
-        return mod.get_function(name, argtypes)
+        return mod.get_function(name, argtypes, prefer_l1=True)
 
 
 class CUDAPointwiseKernelProvider(CUDAKernelProvider,
@@ -39,10 +39,11 @@ class CUDAPointwiseKernelProvider(CUDAKernelProvider,
         class PointwiseKernel(ComputeKernel):
             if any(isinstance(arg, str) for arg in arglst):
                 def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.stream_comp,
+                    fun.exec_async(grid, block, queue.cuda_stream_comp,
                                    *[kwargs.get(ka, ka) for ka in arglst])
             else:
                 def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.stream_comp, *arglst)
+                    fun.exec_async(grid, block, queue.cuda_stream_comp,
+                                   *arglst)
 
         return PointwiseKernel()

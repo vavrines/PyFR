@@ -38,8 +38,6 @@ def main():
     ap_import.add_argument('-t', dest='type', choices=types,
                            help='input file type; this is usually inferred '
                            'from the extension of inmesh')
-    ap_import.add_argument('-l', dest='lintol', type=float, default=1e-5,
-                           help='linearisation tolerance')
     ap_import.set_defaults(process=process_import)
 
     # Partition command
@@ -55,12 +53,12 @@ def main():
                               help='partitioner to use')
     ap_partition.add_argument('-r', dest='rnumf', type=FileType('w'),
                               help='output renumbering file')
-    ap_partition.add_argument('-e', dest='elewts', action='append',
-                              default=[], metavar='shape:weight',
-                              help='element weighting factor')
     ap_partition.add_argument('--popt', dest='popts', action='append',
                               default=[], metavar='key:value',
                               help='partitioner-specific option')
+    ap_partition.add_argument('-t', dest='order', type=int, default=3,
+                              help='target polynomial order; aids in '
+                              'load-balancing mixed meshes')
     ap_partition.set_defaults(process=process_partition)
 
     # Export command
@@ -72,14 +70,10 @@ def main():
     ap_export.add_argument('-t', dest='type', choices=types, required=False,
                            help='output file type; this is usually inferred '
                            'from the extension of outf')
-    output_options = ap_export.add_mutually_exclusive_group(required=False)
-    output_options.add_argument('-d', '--divisor', type=int,
-                                help='sets the level to which high order '
-                                'elements are divided; output is linear '
-                                'between nodes, so increased resolution '
-                                'may be required')
-    output_options.add_argument('-k', '--order', type=int, dest="order",
-                                help='sets the order of high order elements')
+    ap_export.add_argument('-d', '--divisor', type=int, default=0,
+                           help='sets the level to which high order elements '
+                           'are divided; output is linear between nodes, so '
+                           'increased resolution may be required')
     ap_export.add_argument('-g', '--gradients', action='store_true',
                            help='compute gradients')
     ap_export.add_argument('-p', '--precision', choices=['single', 'double'],
@@ -128,7 +122,7 @@ def process_import(args):
         reader = get_reader_by_extn(extn, args.inmesh)
 
     # Get the mesh in the PyFR format
-    mesh = reader.to_pyfrm(args.lintol)
+    mesh = reader.to_pyfrm()
 
     # Save to disk
     write_pyfrms(args.outmesh, mesh)
@@ -145,22 +139,17 @@ def process_partition(args):
     else:
         pwts = [1]*int(args.np)
 
-    # Element weights
-    if args.elewts:
-        ewts = {e: int(w) for e, w in (ew.split(':') for ew in args.elewts)}
-    else:
-        ewts = {'quad': 6, 'tri': 3, 'tet': 3, 'hex': 18, 'pri': 10, 'pyr': 6}
-
     # Partitioner-specific options
     opts = dict(s.split(':', 1) for s in args.popts)
 
     # Create the partitioner
     if args.partitioner:
-        part = get_partitioner(args.partitioner, pwts, ewts, opts=opts)
+        part = get_partitioner(args.partitioner, pwts, order=args.order,
+                               opts=opts)
     else:
         for name in sorted(cls.name for cls in subclasses(BasePartitioner)):
             try:
-                part = get_partitioner(name, pwts, ewts)
+                part = get_partitioner(name, pwts, order=args.order)
                 break
             except OSError:
                 pass

@@ -7,7 +7,6 @@ from pyfr.backends.base import BaseBackend
 
 class OpenMPBackend(BaseBackend):
     name = 'openmp'
-    blocks = True
 
     def __init__(self, cfg):
         super().__init__(cfg)
@@ -18,11 +17,10 @@ class OpenMPBackend(BaseBackend):
         if self.alignb < 32 or (self.alignb & (self.alignb - 1)):
             raise ValueError('Alignment must be a power of 2 and >= 32')
 
-        # Compute the SoA and AoSoA size
+        # Compute the SoA size
         self.soasz = self.alignb // np.dtype(self.fpdtype).itemsize
-        self.csubsz = self.soasz*cfg.getint('backend-openmp', 'n-soa', 1)
 
-        from pyfr.backends.openmp import (blasext, gimmik, packing,
+        from pyfr.backends.openmp import (blasext, cblas, gimmik, packing,
                                           provider, types, xsmm)
 
         # Register our data types
@@ -43,12 +41,14 @@ class OpenMPBackend(BaseBackend):
         self._providers = [k(self) for k in kprovcls]
 
         # Instantiate optional kernel provider classes
-        try:
-            self._providers.append(xsmm.OpenMPXSMMKernels(self))
-        except OSError:
-            pass
-
-        self._providers.append(gimmik.OpenMPGiMMiKKernels(self))
+        for k in [xsmm.OpenMPXSMMKernels, gimmik.OpenMPGiMMiKKernels,
+                  cblas.OpenMPCBLASKernels]:
+            try:
+                self._providers.append(k(self))
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except:
+                pass
 
         # Pointwise kernels
         self.pointwise = self._providers[0]

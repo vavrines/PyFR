@@ -5,11 +5,13 @@
 #include <string.h>
 
 void
-par_memcpy(char *dst, int dbbytes, const char *src, int sbbytes, int bnbytes,
-           int nblocks)
+par_memcpy(char *dst, const char *src, int n)
 {
-    #pragma omp parallel for
-    for (int ib = 0; ib < nblocks; ib++)
-        memcpy(dst + ((size_t) dbbytes)*ib, src + ((size_t) sbbytes)*ib,
-               bnbytes);
+    #pragma omp parallel
+    {
+        int begin, end;
+        loop_sched_1d(n, 1, &begin, &end);
+
+        memcpy(dst + begin, src + begin, end - begin);
+    }
 }

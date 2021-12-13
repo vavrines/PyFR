@@ -11,7 +11,7 @@ from pyfr.mpiutil import get_comm_rank_root
 
 def write_pyfrms(path, data):
     # Save to disk
-    with h5py.File(path, 'w', libver='latest') as f:
+    with h5py.File(path, 'w') as f:
         for k in filter(lambda k: isinstance(k, str), data):
             f[k] = data[k]
 
@@ -95,7 +95,8 @@ class NativeWriter(object):
             bn = re.sub(r'\\{t[^}]*\\}', r'(?:.*?)', bn) + '$'
 
             for f in os.listdir(self.basedir):
-                if (m := re.match(bn, f)):
+                m = re.match(bn, f)
+                if m:
                     nout = max(nout, int(m.group(1)) + 1)
 
         return nout

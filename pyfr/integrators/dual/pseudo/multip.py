@@ -6,9 +6,7 @@ import re
 
 from pyfr.inifile import Inifile
 from pyfr.integrators.dual.pseudo.base import BaseDualPseudoIntegrator
-from pyfr.integrators.dual.pseudo.pseudocontrollers import (
-    BaseDualPseudoController
-)
+from pyfr.integrators.dual.pseudo.pseudocontrollers import BaseDualPseudoController
 from pyfr.util import memoize, proxylist, subclass_where
 
 
@@ -76,14 +74,14 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
                 mcfg.set(sect, 'pseudo-dt', dtau*self.dtauf**(order - l))
 
                 for s in cfg.sections():
-                    if (m := re.match(f'solver-(.*)-mg-p{l}$', s)):
+                    m = re.match(f'solver-(.*)-mg-p{l}$', s)
+                    if m:
                         mcfg.rename_section(s, f'solver-{m.group(1)}')
 
             # A class that bypasses pseudo-controller methods within a cycle
             class lpsint(*bases):
                 name = 'MultiPPseudoIntegrator' + str(l)
                 aux_nregs = 2 if l != self._order else 0
-                stepper_nregs = len(tcoeffs) - 1 if l == self._order else 0
 
                 @property
                 def _aux_regidx(iself):
@@ -104,16 +102,21 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
                     # Compute -∇·f
                     iself.system.rhs(t, uin, fout)
 
-                    # Coefficient for the current solution state
-                    scoeff = iself.stepper_coeffs[0]/iself._dt
+                    # Coefficients for the physical stepper
+                    svals = [sc/iself._dt for sc in iself._stepper_coeffs]
 
                     # Physical stepper source addition -∇·f - dQ/dt
-                    iself._add(1, fout, scoeff, iself._idxcurr,
-                               1, iself._source_regidx, subdims=iself._subdims)
+                    axnpby = iself._get_axnpby_kerns(len(svals) + 1,
+                                                     subdims=iself._subdims)
+                    iself._prepare_reg_banks(fout, iself._idxcurr,
+                                             *iself._stepper_regidx)
+                    iself._queue.enqueue_and_run(axnpby, 1, *svals)
 
                     # Multigrid r addition
                     if iself._aux_regidx:
-                        iself._add(1, fout, -1, iself._aux_regidx[0])
+                        axnpby = iself._get_axnpby_kerns(2)
+                        iself._prepare_reg_banks(fout, iself._aux_regidx[0])
+                        iself._queue.enqueue_and_run(axnpby, 1, -1)
 
             self.pintgs[l] = lpsint(backend, systemcls, rallocs, mesh,
                                     initsoln, mcfg, tcoeffs, dt)
@@ -132,8 +135,8 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
             del self.pintgs[l].system.ele_map
 
     def finalise_mg_advance(self, currsoln):
-        psnregs = self.pintg.pseudo_stepper_nregs
-        snregs = self.pintg.stepper_nregs
+        psnregs = self.pintg._pseudo_stepper_nregs
+        snregs = self.pintg._stepper_nregs
 
         # Rotate the stepper registers to the right by one
         self.pintg._regidx[psnregs:psnregs + snregs] = (
@@ -143,9 +146,6 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
 
         # Copy the current soln into the first source register
         self.pintg._add(0, self.pintg._regidx[psnregs], 1, currsoln)
-
-        # Physical stepper source term
-        self.pintg._accumulate_source()
 
     @property
     def _idxcurr(self):
@@ -208,7 +208,7 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
         # Prevsoln is used as temporal storage at l1
         rtemp = 0 if l1idxcurr == 1 else 1
 
-        # rtemp = R = -∇·f
+        # rtemp = R = -∇·f - dQ/dt
         self.pintg.system.rhs(self.tcurr, l1idxcurr, rtemp)
 
         # rtemp = -d = R - r at lower levels
@@ -229,7 +229,7 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
         l2sys.eles_scal_upts_inb.active = mg1
         self.pintg._queue.enqueue_and_run(self.mgproject(l1, l2))
 
-        # mg0 = R = -∇·f
+        # mg0 = R = -∇·f - dQ/dt
         self.pintg.system.rhs(self.tcurr, l2idxcurr, self._mg_regidx[0])
 
         # Compute the target residual r
@@ -240,13 +240,18 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
         # mg1 = Q^ns
         self.pintg._add(0, mg1, 1, l2idxcurr)
 
-        # Restrict the physical source term
-        l1sys.eles_scal_upts_inb.active = self.pintgs[l1]._source_regidx
-        l2sys.eles_scal_upts_inb.active = self.pintgs[l2]._source_regidx
-        self.pintg._queue.enqueue_and_run(self.mgproject(l1, l2))
+        # Restrict the physical stepper terms
+        for i in range(self.pintg._stepper_nregs):
+            l1sys.eles_scal_upts_inb.active = (
+                self.pintgs[l1]._stepper_regidx[i]
+            )
+            l2sys.eles_scal_upts_inb.active = (
+                self.pintgs[l2]._stepper_regidx[i]
+            )
+            self.pintg._queue.enqueue_and_run(self.mgproject(l1, l2))
 
         # Project local dtau field to lower multigrid levels
-        if self.pintgs[self._order].pseudo_controller_needs_lerrest:
+        if self.pintgs[self._order]._pseudo_controller_needs_lerrest:
             self.pintg._queue.enqueue_and_run(self.dtauproject(l1, l2))
 
     def prolongate(self, l1, l2):
@@ -278,7 +283,7 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
             raise AttributeError('_mg_regidx not defined when'
                                  ' self.level == self._order')
 
-        return self.pintg._aux_regidx
+        return self.pintg._aux_regidx[-2:]
 
     def pseudo_advance(self, tcurr):
         # Multigrid levels and step counts
@@ -315,7 +320,7 @@ class DualMultiPIntegrator(BaseDualPseudoIntegrator):
         for l in self.levels:
             # Total number of RHS evaluations
             stats.set('solver-time-integrator', f'nfevals-p{l}',
-                      self.pintgs[l].pseudo_stepper_nfevals)
+                      self.pintgs[l]._pseudo_stepper_nfevals)
 
             # Total number of pseudo-steps
             stats.set('solver-time-integrator', f'npseudosteps-p{l}',

@@ -64,7 +64,7 @@ class BaseShape(object):
 
     @classmethod
     def nspts_from_order(cls, sptord):
-        return int(np.polyval(cls.npts_coeffs, sptord)) // cls.npts_cdenom
+        return np.polyval(cls.npts_coeffs, sptord) // cls.npts_cdenom
 
     @classmethod
     def order_from_nspts(cls, nspts):
@@ -122,7 +122,7 @@ class BaseShape(object):
 
     @lazyprop
     def m6(self):
-        m = self.norm_fpts.T[:, None, :]*self.m3
+        m = self.norm_fpts.T[:,None,:]*self.m3
         return m.reshape(-1, self.nfpts)
 
     @lazyprop
@@ -131,15 +131,19 @@ class BaseShape(object):
 
     @lazyprop
     def m8(self):
+        return np.vstack([self.m0, self.m7])
+
+    @lazyprop
+    def m9(self):
         return _proj_l2(self._eqrule, self.ubasis)
 
     @property
-    def m9(self):
-        return block_diag([self.m8]*self.ndims)
+    def m10(self):
+        return block_diag([self.m9]*self.ndims)
 
     @lazyprop
     @clean
-    def m10(self):
+    def m11(self):
         ub = self.ubasis
 
         n = max(sum(dd) for dd in ub.degrees)
@@ -157,7 +161,7 @@ class BaseShape(object):
     @lazyprop
     def nupts(self):
         n = self.order + 1
-        return int(np.polyval(self.npts_coeffs, n)) // self.npts_cdenom
+        return np.polyval(self.npts_coeffs, n) // self.npts_cdenom
 
     @lazyprop
     def upts(self):
@@ -298,9 +302,9 @@ class BaseShape(object):
     @lazyprop
     def nfacefpts(self):
         if 'surf-flux' in self.antialias:
-            def cnt(k): return len(self._iqrules[k].pts)
+            cnt = lambda k: len(self._iqrules[k].pts)
         else:
-            def cnt(k): return self.npts_for_face[k](self.order)
+            cnt = lambda k: self.npts_for_face[k](self.order)
 
         return [cnt(kind) for kind, proj, norm in self.faces]
 
@@ -484,8 +488,8 @@ class PriShape(BaseShape):
 
     # Jacobian expressions for a linear element
     _jac_exprs_xy = [
-        [f'((x[2] - 1)*V[0][{j}] + (1 - x[2])*V[{i + 1}][{j}] -'
-         f' (x[2] + 1)*V[3][{j}] + (x[2] + 1)*V[{i + 4}][{j}])/4'
+        [f'((x[2] - 1)*V[0, {j}] + (1 - x[2])*V[{i + 1}, {j}] -'
+         f' (x[2] + 1)*V[3, {j}] + (x[2] + 1)*V[{i + 4}, {j}])/4'
          for j in range(3)]
         for i in range(2)
     ]

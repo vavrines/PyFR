@@ -21,34 +21,27 @@ class HIPKernelProvider(BaseKernelProvider):
 
 class HIPPointwiseKernelProvider(HIPKernelProvider,
                                  BasePointwiseKernelProvider):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Determine the block size for pointwise kernels
-        cfg = self.backend.cfg
-        self._blocksz = {
-            1: (cfg.getint('backend-hip', 'block-1d', '64'), 1, 1),
-            2: (cfg.getint('backend-hip', 'block-2d', '128'), 1, 1)
-        }
-
-        # Pass these to the HIP kernel generator
-        class KernelGenerator(HIPKernelGenerator):
-            block1d = self._blocksz[1]
-            block2d = self._blocksz[2]
-
-        self.kernel_generator_cls = KernelGenerator
+    kernel_generator_cls = HIPKernelGenerator
 
     def _instantiate_kernel(self, dims, fun, arglst):
-        block = self._blocksz[len(dims)]
+        cfg = self.backend.cfg
+
+        # Determine the block size
+        if len(dims) == 1:
+            block = (cfg.getint('backend-hip', 'block-1d', '64'), 1, 1)
+        else:
+            block = (cfg.getint('backend-hip', 'block-2d', '128'), 1, 1)
+
+        # Use this to compute the grid size
         grid = get_grid_for_block(block, dims[-1])
 
         class PointwiseKernel(ComputeKernel):
             if any(isinstance(arg, str) for arg in arglst):
                 def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.stream_comp,
+                    fun.exec_async(grid, block, queue.hip_stream_comp,
                                    *[kwargs.get(ka, ka) for ka in arglst])
             else:
                 def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.stream_comp, *arglst)
+                    fun.exec_async(grid, block, queue.hip_stream_comp, *arglst)
 
         return PointwiseKernel()

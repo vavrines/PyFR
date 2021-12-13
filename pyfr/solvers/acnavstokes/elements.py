@@ -6,10 +6,6 @@ from pyfr.solvers.baseadvecdiff import BaseAdvectionDiffusionElements
 
 class ACNavierStokesElements(BaseACFluidElements,
                              BaseAdvectionDiffusionElements):
-    @staticmethod
-    def grad_con_to_pri(cons, grad_cons, cfg):
-        return grad_cons
-
     def set_backend(self, *args, **kwargs):
         super().set_backend(*args, **kwargs)
 
@@ -29,7 +25,7 @@ class ACNavierStokesElements(BaseACFluidElements,
 
         # Common arguments
         if 'flux' in self.antialias:
-            u = lambda s: self._slice_mat(self._scal_qpts, s)
+            u = lambda s: self._slice_mat(self._scal_fqpts, s, ra=self.nfpts)
             f = lambda s: self._slice_mat(self._vect_qpts, s)
             pts, npts = 'qpts', self.nqpts
         else:

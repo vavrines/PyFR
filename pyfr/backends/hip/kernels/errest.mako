@@ -2,19 +2,16 @@
 <%inherit file='base'/>
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
+#define SQ(x) (x)*(x)
+
 __global__ void
-reduction(int nrow, int ncolb, int ldim, fpdtype_t *__restrict__ reduced,
-          fpdtype_t *__restrict__ rcurr, fpdtype_t *__restrict__ rold,
-% if method == 'errest':
-          fpdtype_t *__restrict__ rerr, fpdtype_t atol, fpdtype_t rtol)
-% elif method == 'resid' and dt_type == 'matrix':
-          fpdtype_t *__restrict__ dt_mat, fpdtype_t dt_fac)
-% elif method == 'resid':
-          fpdtype_t dt_fac)
-% endif
+errest(int nrow, int ncolb, int ldim, fpdtype_t *__restrict__ err,
+       fpdtype_t *__restrict__ x, fpdtype_t *__restrict__ y,
+       fpdtype_t *__restrict__ z, fpdtype_t atol, fpdtype_t rtol)
+
 {
-    int tid = threadIdx.x;
-    int i = blockIdx.x*blockDim.x + tid;
+    int tid = hipThreadIdx_x;
+    int i = hipBlockIdx_x*hipBlockDim_x + tid;
     int lastblksize = ncolb % ${sharesz};
 
     __shared__ fpdtype_t sdata[${sharesz}];
@@ -24,17 +21,12 @@ reduction(int nrow, int ncolb, int ldim, fpdtype_t *__restrict__ reduced,
     {
         for (int j = 0; j < nrow; j++)
         {
-            int idx = j*ldim + SOA_IX(i, blockIdx.y, gridDim.y);
-        % if method == 'errest':
-            r = rerr[idx]/(atol + rtol*max(fabs(rcurr[idx]), fabs(rold[idx])));
-        % elif method == 'resid':
-            r = (rcurr[idx] - rold[idx])/(dt_fac${'*dt_mat[idx]' if dt_type == 'matrix' else ''});
-        % endif
-
+            int idx = j*ldim + SOA_IX(i, hipBlockIdx_y, hipGridDim_y);
+            r = SQ(x[idx]/(atol + rtol*max(fabs(y[idx]), fabs(z[idx]))));
         % if norm == 'uniform':
-            acc = max(r*r, acc);
+            acc = max(r, acc);
         % else:
-            acc += r*r;
+            acc += r;
         % endif
         }
 
@@ -44,7 +36,7 @@ reduction(int nrow, int ncolb, int ldim, fpdtype_t *__restrict__ reduced,
     __syncthreads();
 
     // Unrolled reduction within full blocks
-    if (blockIdx.x != gridDim.x - 1)
+    if (hipBlockIdx_x != hipGridDim_x - 1)
     {
     % for n in pyfr.ilog2range(sharesz):
         if (tid < ${n})
@@ -77,5 +69,5 @@ reduction(int nrow, int ncolb, int ldim, fpdtype_t *__restrict__ reduced,
 
     // Copy to global memory
     if (tid == 0)
-        reduced[blockIdx.y*gridDim.x + blockIdx.x] = sdata[0];
+        err[hipBlockIdx_y*hipGridDim_x + hipBlockIdx_x] = sdata[0];
 }

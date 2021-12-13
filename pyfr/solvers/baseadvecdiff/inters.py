@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from pyfr.backends.base import NullComputeKernel, NullMPIKernel
+from pyfr.solvers.base import get_opt_view_perm
 from pyfr.solvers.baseadvec import (BaseAdvectionIntInters,
                                     BaseAdvectionMPIInters,
                                     BaseAdvectionBCInters)
@@ -31,7 +32,8 @@ class BaseAdvectionDiffusionIntInters(BaseAdvectionIntInters):
         side = lhs if beta != -0.5 else rhs
 
         # Compute the relevant permutation
-        self._perm = self._get_perm_for_view(side, 'get_scal_fpts_for_inter')
+        self._perm = get_opt_view_perm(side, 'get_scal_fpts_for_inter',
+                                       self.elemap)
 
 
 class BaseAdvectionDiffusionMPIInters(BaseAdvectionMPIInters):

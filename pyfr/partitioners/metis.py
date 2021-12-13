@@ -11,9 +11,9 @@ from pyfr.util import silence
 
 
 # Possible METIS exception types
-class METISError(Exception): pass
-class METISErrorInput(METISError): pass
-class METISErrorMemory(METISError): pass
+METISError = type('METISError', (Exception,), {})
+METISErrorInput = type('METISErrorInput', (METISError,), {})
+METISErrorMemory = type('METISErrorMemory', (METISError,), {})
 
 
 class METISWrappers(object):
@@ -83,7 +83,7 @@ class METISWrappers(object):
             self.metis_int = metis_int = c_int32
             self.metis_int_np = metis_int_np = np.int32
 
-        def intref(v=0): return byref(metis_int(v))
+        intref = lambda v=0: byref(metis_int(v))
 
         # Attempt to partition a two vertex graph into two partitions
         vtab = np.array([0, 1, 2], dtype=metis_int_np)
@@ -161,7 +161,8 @@ class METISPartitioner(BasePartitioner):
 
         # Process our options
         for k, v in self.opts.items():
-            opts[getattr(w, f'METIS_OPTION_{k.upper()}')] = v
+            oidx = getattr(w, 'METIS_OPTION_' + k.upper())
+            opts[oidx] = v
 
         # Select the partitioning function
         if self.opts['ptype'] == self.enum_opts['ptype']['rb']:
@@ -174,11 +175,10 @@ class METISPartitioner(BasePartitioner):
         npart, objval = w.metis_int(len(partwts)), w.metis_int()
 
         # Partition
-        with silence():
-            part_graph_fn(
-                nvert, nconst, vtab.ctypes, etab.ctypes, vwts.ctypes, None,
-                ewts.ctypes, npart, partwts.ctypes, None, opts.ctypes, objval,
-                parts.ctypes
-            )
+        part_graph_fn(
+            nvert, nconst, vtab.ctypes, etab.ctypes, vwts.ctypes, None,
+            ewts.ctypes, npart, partwts.ctypes, None, opts.ctypes, objval,
+            parts.ctypes
+        )
 
         return parts

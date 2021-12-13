@@ -12,26 +12,26 @@ class HIPBlasExtKernels(HIPKernelProvider):
             raise ValueError('Incompatible matrix types')
 
         nv = len(arr)
-        nrow, ncol, ldim, dtype = arr[0].traits[1:]
+        nrow, ncol, ldim, dtype = arr[0].traits
         ncola, ncolb = arr[0].ioshape[1:]
-
-        # Determine the grid/block
-        block = (128, 1, 1)
-        grid = get_grid_for_block(block, ncolb, nrow)
 
         # Render the kernel template
         src = self.backend.lookup.get_template('axnpby').render(
-            block=block, subdims=subdims or range(ncola), ncola=ncola, nv=nv
+            subdims=subdims or range(ncola), ncola=ncola, nv=nv
         )
 
         # Build the kernel
         kern = self._build_kernel('axnpby', src,
                                   [np.int32]*3 + [np.intp]*nv + [dtype]*nv)
 
+        # Determine the grid/block
+        block = (128, 1, 1)
+        grid = get_grid_for_block(block, ncolb, nrow)
+
         class AxnpbyKernel(ComputeKernel):
             def run(self, queue, *consts):
-                kern.exec_async(grid, block, queue.stream_comp, nrow, ncolb,
-                                ldim, *arr, *consts)
+                kern.exec_async(grid, block, queue.hip_stream_comp,
+                                nrow, ncolb, ldim, *arr, *consts)
 
         return AxnpbyKernel()
 
@@ -43,17 +43,17 @@ class HIPBlasExtKernels(HIPKernelProvider):
 
         class CopyKernel(ComputeKernel):
             def run(self, queue):
-                hip.memcpy_async(dst, src, dst.nbytes, queue.stream_comp)
+                hip.memcpy_async(dst, src, dst.nbytes, queue.hip_stream_comp)
 
         return CopyKernel()
 
-    def reduction(self, *rs, method, norm, dt_mat=None):
-        if any(r.traits != rs[0].traits for r in rs[1:]):
+    def errest(self, x, y, z, *, norm):
+        if x.traits != y.traits != z.traits:
             raise ValueError('Incompatible matrix types')
 
         hip = self.backend.hip
-        nrow, ncol, ldim, dtype = rs[0].traits[1:]
-        ncola, ncolb = rs[0].ioshape[1:]
+        nrow, ncol, ldim, dtype = x.traits
+        ncola, ncolb = x.ioshape[1:]
 
         # Reduction block dimensions
         block = (128, 1, 1)
@@ -62,44 +62,33 @@ class HIPBlasExtKernels(HIPKernelProvider):
         grid = get_grid_for_block(block, ncolb, ncola)
 
         # Empty result buffer on the device
-        reduced_dev = hip.mem_alloc(ncola*grid[0]*rs[0].itemsize)
+        err_dev = hip.mem_alloc(ncola*grid[0]*x.itemsize)
 
         # Empty result buffer on the host
-        reduced_host = hip.pagelocked_empty((ncola, grid[0]), dtype)
-
-        tplargs = dict(norm=norm, blocksz=block[0], method=method)
-
-        if method == 'resid':
-            tplargs['dt_type'] = 'matrix' if dt_mat else 'scalar'
+        err_host = hip.pagelocked_empty((ncola, grid[0]), dtype)
 
         # Get the kernel template
-        src = self.backend.lookup.get_template('reduction').render(**tplargs)
-
-        regs = list(rs) + [dt_mat] if dt_mat else rs
-
-        # Argument types for reduction kernel
-        if method == 'errest':
-            argt = [np.int32]*3 + [np.intp]*4 + [dtype]*2
-        elif method == 'resid' and dt_mat:
-            argt = [np.int32]*3 + [np.intp]*4 + [dtype]
-        else:
-            argt = [np.int32]*3 + [np.intp]*3 + [dtype]
+        src = self.backend.lookup.get_template('errest').render(
+            norm=norm, sharesz=block[0]
+        )
 
         # Build the reduction kernel
-        rkern = self._build_kernel('reduction', src, argt)
+        rkern = self._build_kernel(
+            'errest', src, [np.int32]*3 + [np.intp]*4 + [dtype]*2
+        )
 
         # Norm type
         reducer = np.max if norm == 'uniform' else np.sum
 
-        class ReductionKernel(ComputeKernel):
+        class ErrestKernel(ComputeKernel):
             @property
             def retval(self):
-                return reducer(reduced_host, axis=1)
+                return reducer(err_host, axis=1)
 
-            def run(self, queue, *facs):
-                rkern.exec_async(grid, block, queue.stream_comp,
-                                 nrow, ncolb, ldim, reduced_dev, *regs, *facs)
-                hip.memcpy_async(reduced_host, reduced_dev,
-                                 reduced_dev.nbytes, queue.stream_comp)
+            def run(self, queue, atol, rtol):
+                rkern.exec_async(grid, block, queue.hip_stream_comp, nrow,
+                                 ncolb, ldim, err_dev, x, y, z, atol, rtol)
+                hip.memcpy_async(err_host, err_dev, err_dev.nbytes,
+                                 queue.hip_stream_comp)
 
-        return ReductionKernel()
+        return ErrestKernel()

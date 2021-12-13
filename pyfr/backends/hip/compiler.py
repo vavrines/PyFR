@@ -8,14 +8,15 @@ from pyfr.nputil import npdtype_to_ctypestype
 
 
 # Possible HIPRTC exception types
-class HIPRTCError(Exception): pass
-class HIPRTCOutOfMemory(HIPRTCError): pass
-class HIPRTCProgCreationFailure(HIPRTCError): pass
-class HIPRTCInvalidInput(HIPRTCError): pass
-class HIPRTCInvalidProgram(HIPRTCError): pass
-class HIPRTCInvalidOption(HIPRTCError): pass
-class HIPRTCCompilationError(HIPRTCError): pass
-class HIPRTCInternalError(HIPRTCError): pass
+HIPRTCError = type('HIPRTCError', (Exception,), {})
+HIPRTCOutOfMemory = type('HIPRTCOutOfMemory', (HIPRTCError,), {})
+HIPRTCProgCreationFailure = type('HIPRTCProgCreationFailure', (HIPRTCError,),
+                                 {})
+HIPRTCInvalidInput = type('HIPRTCInvalidInput', (HIPRTCError,), {})
+HIPRTCInvalidProgram = type('HIPRTCInvalidProgram', (HIPRTCError,), {})
+HIPRTCInvalidOption = type('HIPRTCInvalidOption', (HIPRTCError,), {})
+HIPRTCCompilationError = type('HIPRTCCompilationError', (HIPRTCError,), {})
+HIPRTCInternalError = type('HIPRTCInternalError', (HIPRTCError,), {})
 
 
 class HIPRTCWrappers(LibWrapper):

@@ -32,7 +32,6 @@ modules = [
     'pyfr.integrators.dual.pseudo',
     'pyfr.integrators.dual.pseudo.kernels',
     'pyfr.integrators.std',
-    'pyfr.integrators.std.kernels',
     'pyfr.plugins',
     'pyfr.quadrules',
     'pyfr.readers',
@@ -72,7 +71,6 @@ package_data = {
     'pyfr.backends.opencl.kernels': ['*.mako'],
     'pyfr.backends.openmp.kernels': ['*.mako'],
     'pyfr.integrators.dual.pseudo.kernels': ['*.mako'],
-    'pyfr.integrators.std.kernels': ['*.mako'],
     'pyfr.integrators': ['schemes/*.txt'],
     'pyfr.quadrules': [
         'hex/*.txt',
@@ -110,7 +108,7 @@ install_requires = [
     'h5py >= 2.6',
     'mako >= 1.0.0',
     'mpi4py >= 3.0',
-    'numpy >= 1.20',
+    'numpy >= 1.8',
     'pytools >= 2016.2.1'
 ]
 
@@ -128,8 +126,8 @@ console_scripts = [
 classifiers = [
     'License :: OSI Approved :: BSD License',
     'Programming Language :: Python',
-    'Programming Language :: Python :: 3.8',
-    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
     'Topic :: Scientific/Engineering'
 ]
 
@@ -154,7 +152,7 @@ setup(name='pyfr',
       package_data=package_data,
       data_files=data_files,
       entry_points={'console_scripts': console_scripts},
-      python_requires='>=3.8',
+      python_requires='>=3.6',
       install_requires=install_requires,
       extras_require=extras_require,
       classifiers=classifiers

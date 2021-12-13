@@ -4,7 +4,7 @@ import itertools as it
 import re
 import types
 
-from pyfr.util import memoize
+from pyfr.util import memoize, proxylist
 
 
 class _BaseKernel(object):
@@ -34,11 +34,10 @@ class NullMPIKernel(MPIKernel):
 
 class _MetaKernel(object):
     def __init__(self, kernels):
-        self._kernels = list(kernels)
+        self._kernels = proxylist(kernels)
 
     def run(self, queue, *args, **kwargs):
-        for k in self._kernels:
-            k.run(queue, *args, **kwargs)
+        self._kernels.run(queue, *args, **kwargs)
 
 
 class ComputeMetaKernel(_MetaKernel, ComputeKernel):
@@ -95,8 +94,8 @@ class BasePointwiseKernelProvider(BaseKernelProvider):
         # Possible matrix types
         mattypes = (
             self.backend.const_matrix_cls, self.backend.matrix_cls,
-            self.backend.matrix_bank_cls, self.backend.xchg_matrix_cls,
-            self.backend.matrix_slice_cls
+            self.backend.matrix_bank_cls, self.backend.matrix_slice_cls,
+            self.backend.xchg_matrix_cls
         )
 
         # Possible view types
@@ -118,11 +117,7 @@ class BasePointwiseKernelProvider(BaseKernelProvider):
 
             # Matrix
             if isinstance(ka, mattypes):
-                # Check that argument is not a row sliced matrix
-                if isinstance(ka, mattypes[-1]) and ka.nrow != ka.parent.nrow:
-                    raise ValueError('Row sliced matrices are not supported')
-                else:
-                    arglst += [ka, ka.leaddim] if len(atypes) == 2 else [ka]
+                arglst += [ka, ka.leaddim] if len(atypes) == 2 else [ka]
             # View
             elif isinstance(ka, viewtypes):
                 if isinstance(ka, self.backend.view_cls):

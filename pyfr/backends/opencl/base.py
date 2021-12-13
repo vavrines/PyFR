@@ -8,7 +8,6 @@ from pyfr.mpiutil import get_local_rank
 
 class OpenCLBackend(BaseBackend):
     name = 'opencl'
-    blocks = False
 
     def __init__(self, cfg):
         super().__init__(cfg)
@@ -56,7 +55,6 @@ class OpenCLBackend(BaseBackend):
 
         # Compute the SoA size
         self.soasz = 2*self.alignb // np.dtype(self.fpdtype).itemsize
-        self.csubsz = self.soasz
 
         from pyfr.backends.opencl import (blasext, clblast, gimmik, packing,
                                           provider, types)

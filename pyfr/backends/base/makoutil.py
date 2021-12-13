@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from collections.abc import Iterable
+from collections import Iterable
 import itertools as it
 import re
 

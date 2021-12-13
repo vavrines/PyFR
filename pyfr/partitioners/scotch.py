@@ -9,7 +9,7 @@ from pyfr.partitioners.base import BasePartitioner
 
 
 # Possible Scotch exception types
-class SCOTCHError(Exception): pass
+SCOTCHError = type('SCOTCHError', (Exception,), {})
 
 
 class SCOTCHWrappers(LibWrapper):

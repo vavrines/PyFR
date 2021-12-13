@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from collections.abc import Mapping
+from collections import Mapping
 import os
 import re
 
@@ -57,7 +57,7 @@ class NativeReader(Mapping):
         for i in range(fmaxpn + 1):
             for et in ftypes:
                 try:
-                    n = f'{prefix}_{et}_p{i}'
+                    n = '{0}_{1}_p{2}'.format(prefix, et, i)
 
                     info[n] = (et, self._file.get(n).shape)
                 except AttributeError:

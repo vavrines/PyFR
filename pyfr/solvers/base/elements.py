@@ -167,7 +167,7 @@ class BaseElements(object):
         self._be = backend
 
         if self.basis.order >= 2:
-            self._linoff = linoff - linoff % -backend.csubsz
+            self._linoff = linoff - linoff % -backend.soasz
         else:
             self._linoff = self.neles
 
@@ -184,9 +184,13 @@ class BaseElements(object):
         valloc = lambda ex, n: alloc(ex, (ndims, n, nvars, neles))
 
         # Allocate required scalar scratch space
-        if 'scal_fpts' in sbufs:
+        if 'scal_fpts' in sbufs and 'scal_qpts' in sbufs:
+            self._scal_fqpts = salloc('_scal_fqpts', nfpts + nqpts)
+            self._scal_fpts = self._scal_fqpts.slice(0, nfpts)
+            self._scal_qpts = self._scal_fqpts.slice(nfpts, nfpts + nqpts)
+        elif 'scal_fpts' in sbufs:
             self._scal_fpts = salloc('scal_fpts', nfpts)
-        if 'scal_qpts' in sbufs:
+        elif 'scal_qpts' in sbufs:
             self._scal_qpts = salloc('scal_qpts', nqpts)
 
         # Allocate additional scalar scratch space
@@ -252,8 +256,7 @@ class BaseElements(object):
         _, djacs_mpts = self._smats_djacs_mpts
 
         # Interpolation matrix to pts
-        pt = getattr(self.basis, name) if isinstance(name, str) else name
-        m0 = self.basis.mbasis.nodal_basis_at(pt)
+        m0 = self.basis.mbasis.nodal_basis_at(getattr(self.basis, name))
 
         # Interpolate the djacs
         djac = m0 @ djacs_mpts
@@ -270,8 +273,7 @@ class BaseElements(object):
 
     @memoize
     def ploc_at_np(self, name):
-        pt = getattr(self.basis, name) if isinstance(name, str) else name
-        op = self.basis.sbasis.nodal_basis_at(pt)
+        op = self.basis.sbasis.nodal_basis_at(getattr(self.basis, name))
 
         ploc = op @ self.eles.reshape(self.nspts, -1)
         ploc = ploc.reshape(-1, self.neles, self.ndims).swapaxes(1, 2)

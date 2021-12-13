@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 <%inherit file='base'/>
 
-__global__ __launch_bounds__(${blocksz}) void
+__global__ void
 pack_view(int n, int nrv, int ncv,
           const fpdtype_t* __restrict__ v,
           const int* __restrict__ vix,

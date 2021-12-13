@@ -55,7 +55,8 @@ class BaseRankAllocator(object):
     def _get_mesh_connectivity(self, mesh):
         conn = defaultdict(list)
         for f in mesh:
-            if (m := re.match(r'con_p(\d+)p(\d+)$', f)):
+            m = re.match(r'con_p(\d+)p(\d+)$', f)
+            if m:
                 lhs, rhs = int(m.group(1)), int(m.group(2))
                 conn[lhs].append(rhs)
 
