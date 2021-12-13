@@ -6,7 +6,9 @@
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               ent_min='out fpdtype_t'>
 
-ent_min = 99999;
+<% large_number = 10**10 %>
+
+ent_min = ${large_number};
 fpdtype_t d,p,e;
 
 % for i in range(nupts):
@@ -21,7 +23,8 @@ fpdtype_t d,p,e;
                      u[${i}][2]*u[${i}][2] + 
                      u[${i}][3]*u[${i}][3]));
     % endif
-    e = d > 0 ? d*log(p/pow(d, ${c['gamma']})) : 99999;
+
+    e = (d <= 0 || p <= 0) ? ${large_number} : d*log(p/pow(d, ${c['gamma']}));
 
     ent_min = fmin(ent_min, e);
 % endfor

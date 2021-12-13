@@ -26,7 +26,7 @@
                          filtsol[${i}][3]*filtsol[${i}][3]));
         % endif
 
-        e = d > 0 ? d*log(p/pow(d, ${c['gamma']})) : -${large_number};
+        e = (d <= ${dtol} || p <= ${ptol}) ? -${large_number} : d*log(p/pow(d, ${c['gamma']}));
 
         dmin = fmin(dmin, d);
         pmin = fmin(pmin, p);
@@ -39,10 +39,6 @@
     else {
         withinbounds = 0;
     }
-</%pyfr:macro>
-
-<%pyfr:macro name='compute_zeta' params='newsolmodes, filtsol, zeta, ent_min'>
-
 </%pyfr:macro>
 
 
