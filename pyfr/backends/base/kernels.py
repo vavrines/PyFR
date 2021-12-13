@@ -8,6 +8,9 @@ from pyfr.util import memoize, proxylist
 
 
 class _BaseKernel(object):
+    def __call__(self, *args, **kwargs):
+        return self, args, kwargs
+
     @property
     def retval(self):
         return None
@@ -144,8 +147,8 @@ class BasePointwiseKernelProvider(BaseKernelProvider):
         if hasattr(self, name):
             # Same name different module
             if getattr(self, name)._mod != mod:
-                raise RuntimeError(f'Attempt to re-register "{name}" with a '
-                                   'different module')
+                raise RuntimeError('Attempt to re-register "{0}" with a '
+                                   'different module'.format(name))
             # Otherwise (since we're already registered) return
             else:
                 return

@@ -37,7 +37,7 @@ class FluidForcePlugin(BasePlugin):
         self.elementscls = intg.system.elementscls
 
         # Boundary to integrate over
-        bc = f'bcon_{suffix}_p{intg.rallocs.prank}'
+        bc = 'bcon_{0}_p{1}'.format(suffix, intg.rallocs.prank)
 
         # Get the mesh and elements
         mesh, elemap = intg.system.mesh, intg.system.ele_map
@@ -48,7 +48,8 @@ class FluidForcePlugin(BasePlugin):
         # The root rank needs to open the output file
         if rank == root:
             if not any(bcranks):
-                raise RuntimeError(f'Boundary {suffix} does not exist')
+                raise RuntimeError('Boundary {0} does not exist'
+                                   .format(suffix))
 
             # CSV header
             header = ['t', 'px', 'py', 'pz'][:self.ndims + 1]
@@ -179,8 +180,11 @@ class FluidForcePlugin(BasePlugin):
         else:
             comm.Reduce(get_mpi('in_place'), f, op=get_mpi('sum'), root=root)
 
+            # Build the row
+            row = [intg.tcurr] + f.tolist()
+
             # Write
-            print(intg.tcurr, *f, sep=',', file=self.outf)
+            print(','.join(str(r) for r in row), file=self.outf)
 
             # Flush to disk
             self.outf.flush()

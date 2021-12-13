@@ -18,4 +18,5 @@ class NaNCheckPlugin(BasePlugin):
     def __call__(self, intg):
         if intg.nacptsteps % self.nsteps == 0:
             if any(np.isnan(np.sum(s)) for s in intg.soln):
-                raise RuntimeError(f'NaNs detected at t = {intg.tcurr}')
+                raise RuntimeError('NaNs detected at t = {0}'
+                                   .format(intg.tcurr))

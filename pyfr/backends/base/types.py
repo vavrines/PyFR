@@ -310,8 +310,8 @@ class Queue(object):
     def __init__(self, backend):
         self.backend = backend
 
-        # Type of the last kernel we executed
-        self._last_ktype = None
+        # Last kernel we executed
+        self._last = None
 
         # Items waiting to be executed
         self._items = deque()
@@ -319,12 +319,12 @@ class Queue(object):
         # Active MPI requests
         self.mpi_reqs = []
 
-    def enqueue(self, items, *args, **kwargs):
-        self._items.extend((item, args, kwargs) for item in items)
+    def __lshift__(self, items):
+        self._items.extend(items)
 
-    def enqueue_and_run(self, items, *args, **kwargs):
+    def __mod__(self, items):
         self.run()
-        self.enqueue(items, *args, **kwargs)
+        self << items
         self.run()
 
     def __bool__(self):
@@ -337,7 +337,7 @@ class Queue(object):
 
     def _exec_item(self, item, args, kwargs):
         item.run(self, *args, **kwargs)
-        self._last_ktype = item.ktype
+        self._last = item
 
     def _exec_next(self):
         item, args, kwargs = self._items.popleft()

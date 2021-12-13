@@ -2,52 +2,61 @@
 <%inherit file='base'/>
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
-#define SQ(x) (x)*(x)
-
 __global__ void
 errest(int nrow, int ncolb, int ldim, fpdtype_t *__restrict__ err,
        fpdtype_t *__restrict__ x, fpdtype_t *__restrict__ y,
        fpdtype_t *__restrict__ z, fpdtype_t atol, fpdtype_t rtol)
 
 {
+    __shared__ fpdtype_t ${','.join('sdata{0}[{1}]'.format(i, sharesz) 
+                                    for i in range(ncola))};
+    fpdtype_t r;
+    int idx;
     int tid = threadIdx.x;
     int i = blockIdx.x*blockDim.x + tid;
-    int lastblksize = ncolb % ${sharesz};
-
-    __shared__ fpdtype_t sdata[${sharesz}];
-    fpdtype_t r, acc = 0;
+    int lastblksize = ncolb % blockDim.x;
 
     if (i < ncolb)
     {
-        for (int j = 0; j < nrow; j++)
-        {
-            int idx = j*ldim + SOA_IX(i, blockIdx.y, gridDim.y);
-            r = SQ(x[idx]/(atol + rtol*max(fabs(y[idx]), fabs(z[idx]))));
-        % if norm == 'uniform':
-            acc = max(r, acc);
-        % else:
-            acc += r;
-        % endif
-        }
+        // All threads load the values of the first row to shared memory
+    % for k in range(ncola):
+        idx = SOA_IX(i, ${k}, ${ncola});
+        sdata${k}[tid] = pow(x[idx]/(atol + rtol*max(fabs(y[idx]),
+                                                     fabs(z[idx]))), 2);
+    % endfor
 
-        sdata[tid] = acc;
+        // Load and reduce along nupts (y direction), rows 1 to nrow
+        for (int j = 1; j < nrow; j++)
+        {
+        % for k in range(ncola):
+            idx = j*ldim + SOA_IX(i, ${k}, ${ncola});
+            r = pow(x[idx]/(atol + rtol*max(fabs(y[idx]), fabs(z[idx]))), 2);
+        % if norm == 'uniform':
+            sdata${k}[tid] = max(sdata${k}[tid], r);
+        % else:
+            sdata${k}[tid] += r;
+        % endif
+        % endfor
+        }
     }
 
     __syncthreads();
 
-    // Unrolled reduction within full blocks
+    // Unrolled reduction within blocks
     if (blockIdx.x != gridDim.x - 1)
     {
     % for n in pyfr.ilog2range(sharesz):
         if (tid < ${n})
         {
+        % for k in range(ncola):
         % if norm == 'uniform':
-            sdata[tid] = max(sdata[tid], sdata[tid + ${n}]);
+            sdata${k}[tid] = max(sdata${k}[tid], sdata${k}[tid + ${n}]);
         % else:
-            sdata[tid] += sdata[tid + ${n}];
+            sdata${k}[tid] += sdata${k}[tid + ${n}];
         % endif
+        % endfor
+            __syncthreads();
         }
-        __syncthreads();
     % endfor
     }
     // Last block reduced with a variable sized loop
@@ -57,17 +66,23 @@ errest(int nrow, int ncolb, int ldim, fpdtype_t *__restrict__ err,
         {
             if (tid % (2*s) == 0 && tid + s < lastblksize)
             {
+            % for k in range(ncola):
             % if norm == 'uniform':
-                sdata[tid] = max(sdata[tid], sdata[tid + s]);
+                sdata${k}[tid] = max(sdata${k}[tid], sdata${k}[tid + s]);
             % else:
-                sdata[tid] += sdata[tid + s];
+                sdata${k}[tid] += sdata${k}[tid + s];
             % endif
+            % endfor
+                __syncthreads();
             }
-            __syncthreads();
         }
     }
 
     // Copy to global memory
     if (tid == 0)
-        err[blockIdx.y*gridDim.x + blockIdx.x] = sdata[0];
+    {
+    % for k in range(ncola):
+        err[${k}*gridDim.x + blockIdx.x] = sdata${k}[0];
+    % endfor
+    }
 }

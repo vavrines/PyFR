@@ -5,38 +5,46 @@ from ctypes import POINTER, c_int, c_double, c_float, c_size_t, c_void_p
 import numpy as np
 
 from pyfr.backends.base import ComputeKernel
-from pyfr.ctypesutil import LibWrapper
+from pyfr.ctypesutil import load_library
 
 
-# Possible CLBlast exception types
-CLBlastError = type('CLBlastError', (Exception,), {})
+class CLBlastWrappers(object):
+    def __init__(self):
+        lib = load_library('clblast')
 
+        # Constants
+        self.CLBlastLayoutRowMajor = 101
+        self.CLBlastLayoutColMajor = 102
+        self.CLBlastTransposeNo = 111
+        self.CLBlastTransposeYes = 112
 
-class CLBlastWrappers(LibWrapper):
-    _libname = 'clblast'
+        # CLBlastSgemm
+        self.CLBlastSgemm = lib.CLBlastSgemm
+        self.CLBlastSgemm.argtypes = [
+            c_int, c_int, c_int,
+            c_size_t, c_size_t, c_size_t, c_float,
+            c_void_p, c_size_t, c_size_t,
+            c_void_p, c_size_t, c_size_t, c_float,
+            c_void_p, c_size_t, c_size_t,
+            POINTER(c_void_p), c_void_p
+        ]
+        self.CLBlastSgemm.errcheck = self._errcheck
 
-    # Error codes
-    _statuses = {
-        '*': CLBlastError
-    }
+        # CLBlastDgemm
+        self.CLBlastDgemm = lib.CLBlastDgemm
+        self.CLBlastDgemm.argtypes = [
+            c_int, c_int, c_int,
+            c_size_t, c_size_t, c_size_t, c_double,
+            c_void_p, c_size_t, c_size_t,
+            c_void_p, c_size_t, c_size_t, c_double,
+            c_void_p, c_size_t, c_size_t,
+            POINTER(c_void_p), c_void_p
+        ]
+        self.CLBlastDgemm.errcheck = self._errcheck
 
-    # Constants
-    LayoutRowMajor = 101
-    LayoutColMajor = 102
-    TransposeNo = 111
-    TransposeYes = 112
-
-    # Functions
-    _functions = [
-        (c_int, 'CLBlastDgemm', c_int, c_int, c_int, c_size_t, c_size_t,
-         c_size_t, c_double, c_void_p, c_size_t, c_size_t, c_void_p, c_size_t,
-         c_size_t, c_double, c_void_p, c_size_t, c_size_t, POINTER(c_void_p),
-         c_void_p),
-        (c_int, 'CLBlastSgemm', c_int, c_int, c_int, c_size_t, c_size_t,
-         c_size_t, c_float, c_void_p, c_size_t, c_size_t, c_void_p, c_size_t,
-         c_size_t, c_float, c_void_p, c_size_t, c_size_t, POINTER(c_void_p),
-         c_void_p)
-    ]
+    def _errcheck(self, status, fn, args):
+        if status != 0:
+            raise RuntimeError('CLBlast: {0}'.format(status))
 
 
 class OpenCLCLBlastKernels(object):
@@ -61,8 +69,9 @@ class OpenCLCLBlastKernels(object):
         class MulKernel(ComputeKernel):
             def run(self, queue):
                 qptr = c_void_p(queue.cl_queue_comp.int_ptr)
-                clblastgemm(w.LayoutRowMajor, w.TransposeNo, w.TransposeNo,
-                            m, n, k, alpha, a, 0, a.leaddim, b, 0, b.leaddim,
-                            beta, out, 0, out.leaddim, qptr, None)
+                clblastgemm(w.CLBlastLayoutRowMajor, w.CLBlastTransposeNo,
+                            w.CLBlastTransposeNo, m, n, k, alpha,
+                            a, 0, a.leaddim, b, 0, b.leaddim, beta,
+                            out, 0, out.leaddim, qptr, None)
 
         return MulKernel()

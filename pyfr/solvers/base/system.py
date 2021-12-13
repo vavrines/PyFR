@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import itertools as it
 import re
 
@@ -68,11 +68,24 @@ class BaseSystem(object):
         self._bc_inters = bc_inters
         del bc_inters.elemap
 
+    def _compute_int_offsets(self, rallocs, mesh):
+        lhsprank = rallocs.prank
+        intoffs = defaultdict(lambda: 0)
+
+        for rhsprank in rallocs.prankconn[lhsprank]:
+            interarr = mesh['con_p{0}p{1}'.format(lhsprank, rhsprank)]
+            interarr = interarr[['f0', 'f1']].astype('U4,i4').tolist()
+
+            for etype, eidx in interarr:
+                intoffs[etype] = max(eidx + 1, intoffs[etype])
+
+        return intoffs
+
     def _load_eles(self, rallocs, mesh, initsoln, nregs, nonce):
         basismap = {b.name: b for b in subclasses(BaseShape, just_leaf=True)}
 
         # Look for and load each element type from the mesh
-        elemap = {}
+        elemap = OrderedDict()
         for f in mesh:
             m = re.match(f'spt_(.+?)_p{rallocs.prank}$', f)
             if m:
@@ -105,21 +118,17 @@ class BaseSystem(object):
         else:
             eles.set_ics_from_cfg()
 
+        # Compute the index of first strictly interior element
+        intoffs = self._compute_int_offsets(rallocs, mesh)
+
         # Allocate these elements on the backend
         for etype, ele in elemap.items():
-            k = f'spt_{etype}_p{rallocs.prank}'
-
-            try:
-                linoff = mesh[k, 'lin_off']
-            except KeyError:
-                linoff = ele.neles
-
-            ele.set_backend(self.backend, nregs, nonce, linoff)
+            ele.set_backend(self.backend, nregs, nonce, intoffs[etype])
 
         return eles, elemap
 
     def _load_int_inters(self, rallocs, mesh, elemap):
-        key = f'con_p{rallocs.prank}'
+        key = 'con_p{0}'.format(rallocs.prank)
 
         lhs, rhs = mesh[key].astype('U4,i4,i1,i2').tolist()
         int_inters = self.intinterscls(self.backend, lhs, rhs, elemap,
@@ -173,7 +182,7 @@ class BaseSystem(object):
         self._queues = [self.backend.queue() for i in range(self._nqueues)]
 
     def _gen_kernels(self, eles, iint, mpiint, bcint):
-        self._kernels = kernels = defaultdict(list)
+        self._kernels = kernels = defaultdict(proxylist)
 
         provnames = ['eles', 'iint', 'mpiint', 'bcint']
         provobjs = [eles, iint, mpiint, bcint]
@@ -189,7 +198,7 @@ class BaseSystem(object):
     def filt(self, uinoutbank):
         self.eles_scal_upts_inb.active = uinoutbank
 
-        self._queues[0].enqueue_and_run(self._kernels['eles', 'filter_soln'])
+        self._queues[0] % self._kernels['eles', 'filter_soln']()
 
     def ele_scal_upts(self, idx):
         return [eb[idx].get() for eb in self.ele_banks]

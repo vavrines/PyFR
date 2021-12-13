@@ -1,14 +1,25 @@
 # -*- coding: utf-8 -*-
 
+from ctypes import c_int, c_ssize_t, c_void_p, pythonapi, py_object
+
 import numpy as np
+import pycuda.driver as cuda
 
 import pyfr.backends.base as base
-from pyfr.util import make_pybuf
+from pyfr.util import lazyprop
+
+
+_make_pybuf = pythonapi.PyMemoryView_FromMemory
+_make_pybuf.argtypes = [c_void_p, c_ssize_t, c_int]
+_make_pybuf.restype = py_object
 
 
 class _CUDAMatrixCommon(object):
     @property
     def _as_parameter_(self):
+        return self.data
+
+    def __index__(self):
         return self.data
 
 
@@ -30,7 +41,7 @@ class CUDAMatrixBase(_CUDAMatrixCommon, base.MatrixBase):
         buf = np.empty((self.nrow, self.leaddim), dtype=self.dtype)
 
         # Copy
-        self.backend.cuda.memcpy(buf, self.data, self.nbytes)
+        cuda.memcpy_dtoh(buf, self.data)
 
         # Unpack
         return self._unpack(buf[:, :self.ncol])
@@ -41,7 +52,7 @@ class CUDAMatrixBase(_CUDAMatrixCommon, base.MatrixBase):
         buf[:, :self.ncol] = self._pack(ary)
 
         # Copy
-        self.backend.cuda.memcpy(self.data, buf, self.nbytes)
+        cuda.memcpy_htod(self.data, buf)
 
 
 class CUDAMatrix(CUDAMatrixBase, base.Matrix):
@@ -55,7 +66,8 @@ class CUDAMatrixSlice(_CUDAMatrixCommon, base.MatrixSlice):
 
 
 class CUDAMatrixBank(base.MatrixBank):
-    pass
+    def __index__(self):
+        return self._curr_mat.data
 
 
 class CUDAConstMatrix(CUDAMatrixBase, base.ConstMatrix):
@@ -74,11 +86,11 @@ class CUDAXchgMatrix(CUDAMatrix, base.XchgMatrix):
         # If MPI is CUDA-aware then construct a buffer out of our CUDA
         # device allocation and pass this directly to MPI
         if backend.mpitype == 'cuda-aware':
-            self.hdata = make_pybuf(self.data, self.nbytes, 0x200)
+            self.hdata = _make_pybuf(self.data, self.nbytes, 0x200)
         # Otherwise, allocate a buffer on the host for MPI to send/recv from
         else:
-            shape, dtype = (self.nrow, self.ncol), self.dtype
-            self.hdata = backend.cuda.pagelocked_empty(shape, dtype)
+            self.hdata = cuda.pagelocked_empty((self.nrow, self.ncol),
+                                               self.dtype, 'C')
 
 
 class CUDAXchgView(base.XchgView):
@@ -90,23 +102,25 @@ class CUDAQueue(base.Queue):
         super().__init__(backend)
 
         # CUDA streams
-        self.cuda_stream_comp = backend.cuda.create_stream()
-        self.cuda_stream_copy = backend.cuda.create_stream()
+        self.cuda_stream_comp = cuda.Stream()
+        self.cuda_stream_copy = cuda.Stream()
 
     def _wait(self):
-        if self._last_ktype == 'compute':
+        last = self._last
+
+        if last and last.ktype == 'compute':
             self.cuda_stream_comp.synchronize()
             self.cuda_stream_copy.synchronize()
-        elif self._last_ktype == 'mpi':
+        elif last and last.ktype == 'mpi':
             from mpi4py import MPI
 
             MPI.Prequest.Waitall(self.mpi_reqs)
             self.mpi_reqs = []
 
-        self._last_ktype = None
+        self._last = None
 
     def _at_sequence_point(self, item):
-        return self._last_ktype != item.ktype
+        return self._last and self._last.ktype != item.ktype
 
     @staticmethod
     def runall(queues):

@@ -92,20 +92,22 @@ class OpenCLQueue(base.Queue):
         self.copy_events = []
 
     def _wait(self):
-        if self._last_ktype == 'compute':
+        last = self._last
+
+        if last and last.ktype == 'compute':
             self.cl_queue_comp.finish()
             self.cl_queue_copy.finish()
             self.copy_events.clear()
-        elif self._last_ktype == 'mpi':
+        elif last and last.ktype == 'mpi':
             from mpi4py import MPI
 
             MPI.Prequest.Waitall(self.mpi_reqs)
             self.mpi_reqs = []
 
-        self._last_ktype = None
+        self._last = None
 
     def _at_sequence_point(self, item):
-        return self._last_ktype != item.ktype
+        return self._last and self._last.ktype != item.ktype
 
     @staticmethod
     def runall(queues):

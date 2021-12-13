@@ -113,34 +113,32 @@ class BaseElements(object):
         pass
 
     @property
-    def _mesh_regions(self):
-        off = self._linoff
-
-        # No curved elements
-        if off == 0:
-            return {'linear': self.neles}
-        # All curved elements
-        elif off >= self.neles:
-            return {'curved': self.neles}
-        # Mix of curved and linear elements
+    def _ext_int_sides(self):
+        # No elements on a partition boundary
+        if self._intoff == 0:
+            return [('int', self.neles)]
+        # All elements on a partition boundary
+        elif self._intoff >= self.neles:
+            return [('ext', self.neles)]
+        # Mix of elements
         else:
-            return {'curved': off, 'linear': self.neles - off}
+            return [('ext', self._intoff), ('int', self.neles - self._intoff)]
 
-    def _slice_mat(self, mat, region, ra=None, rb=None):
-        off = self._linoff
+    def _slice_mat(self, mat, side, ra=None, rb=None):
+        ix = self._intoff
 
         # Handle stacked matrices
         if len(mat.ioshape) >= 3:
-            off *= mat.ioshape[-2]
+            ix *= mat.ioshape[-2]
         else:
-            off = min(off, mat.ncol)
+            ix = min(ix, mat.ncol)
 
-        if region == 'curved':
-            return mat.slice(ra, rb, 0, off)
-        elif region == 'linear':
-            return mat.slice(ra, rb, off, mat.ncol)
+        if side == 'ext':
+            return mat.slice(ra, rb, 0, ix)
+        elif side == 'int':
+            return mat.slice(ra, rb, ix, mat.ncol)
         else:
-            raise ValueError('Invalid slice region')
+            raise ValueError('Invalid slice side')
 
     @lazyprop
     def _src_exprs(self):
@@ -149,7 +147,7 @@ class BaseElements(object):
         # Variable and function substitutions
         subs = self.cfg.items('constants')
         subs.update(x='ploc[0]', y='ploc[1]', z='ploc[2]')
-        subs.update({v: f'u[{i}]' for i, v in enumerate(convars)})
+        subs.update({v: 'u[{0}]'.format(i) for i, v in enumerate(convars)})
         subs.update(abs='fabs', pi=str(math.pi))
 
         return [self.cfg.getexpr('solver-source-terms', v, '0', subs=subs)
@@ -163,13 +161,9 @@ class BaseElements(object):
     def _soln_in_src_exprs(self):
         return any(re.search(r'\bu\b', ex) for ex in self._src_exprs)
 
-    def set_backend(self, backend, nscalupts, nonce, linoff):
+    def set_backend(self, backend, nscalupts, nonce, intoff):
         self._be = backend
-
-        if self.basis.order >= 2:
-            self._linoff = linoff - linoff % -backend.soasz
-        else:
-            self._linoff = self.neles
+        self._intoff = intoff - intoff % -backend.soasz
 
         # Sizes
         ndims, nvars, neles = self.ndims, self.nvars, self.neles
@@ -285,14 +279,6 @@ class BaseElements(object):
     def ploc_at(self, name):
         return self._be.const_matrix(self.ploc_at_np(name), tags={'align'})
 
-    @lazyprop
-    def upts(self):
-        return self._be.const_matrix(self.basis.upts)
-
-    @lazyprop
-    def qpts(self):
-        return self._be.const_matrix(self.basis.qpts)
-
     def _gen_pnorm_fpts(self):
         smats = self.smat_at_np('fpts').transpose(1, 3, 0, 2)
 
@@ -374,12 +360,8 @@ class BaseElements(object):
             smats[1] = 0.5*(dtt[0][2] - dtt[2][0])
             smats[2] = 0.5*(dtt[1][0] - dtt[0][1])
 
-            # We note that J = [x0; x1; x2]
-            x0, x1, x2 = jac
-
-            # Exploit the fact that det(J) = x0 · (x1 ^ x2)
-            x1cx2 = np.cross(x1, x2, axisa=0, axisb=0, axisc=1)
-            djacs = np.einsum('ij...,ji...->j...', x0, x1cx2)
+            # Exploit the fact that det(J) = x0 . (x1 ^ x2)
+            djacs = np.einsum('ij...,ji...->j...', jac[0], smats[0])
 
         return smats.reshape(ndims, nmpts, -1), djacs
 

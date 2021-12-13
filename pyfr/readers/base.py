@@ -216,7 +216,7 @@ class NodalMeshAssembler(object):
         ret = {'con_p0': np.array(con, dtype='S4,i4,i1,i2').T}
 
         for k, v in bcon.items():
-            ret[f'bcon_{k}_p0'] = np.array(v, dtype='S4,i4,i1,i2')
+            ret['bcon_{0}_p0'.format(k)] = np.array(v, dtype='S4,i4,i1,i2')
 
         return ret
 
@@ -245,6 +245,6 @@ class NodalMeshAssembler(object):
             arr = arr.swapaxes(0, 1)
             arr = arr[..., :ndim]
 
-            spts[f'spt_{petype}_p0'] = arr
+            spts['spt_{0}_p0'.format(petype)] = arr
 
         return spts

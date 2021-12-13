@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
+import pycuda.driver as cuda
 
 from pyfr.backends.base import ComputeKernel, NullComputeKernel
 from pyfr.backends.base.packing import BasePackingKernels
@@ -9,8 +9,6 @@ from pyfr.backends.cuda.provider import CUDAKernelProvider, get_grid_for_block
 
 class CUDAPackingKernels(CUDAKernelProvider, BasePackingKernels):
     def pack(self, mv):
-        cuda = self.backend.cuda
-
         # An exchange view is simply a regular view plus an exchange matrix
         m, v = mv.xchgmat, mv.view
 
@@ -18,7 +16,7 @@ class CUDAPackingKernels(CUDAKernelProvider, BasePackingKernels):
         src = self.backend.lookup.get_template('pack').render()
 
         # Build
-        kern = self._build_kernel('pack_view', src, [np.int32]*3 + [np.intp]*4)
+        kern = self._build_kernel('pack_view', src, 'iiiPPPP')
 
         # Compute the grid and thread-block size
         block = (128, 1, 1)
@@ -31,14 +29,14 @@ class CUDAPackingKernels(CUDAKernelProvider, BasePackingKernels):
                     scomp = queue.cuda_stream_comp
 
                     # Pack
-                    kern.exec_async(
+                    kern.prepared_async_call(
                         grid, block, scomp, v.n, v.nvrow, v.nvcol, v.basedata,
                         v.mapping, v.rstrides or 0, m
                     )
         # Otherwise, we need to both pack the buffer and copy it back
         else:
             # Create a CUDA event
-            event = cuda.create_event()
+            event = cuda.Event(cuda.event_flags.DISABLE_TIMING)
 
             class PackXchgViewKernel(ComputeKernel):
                 def run(self, queue):
@@ -46,7 +44,7 @@ class CUDAPackingKernels(CUDAKernelProvider, BasePackingKernels):
                     scopy = queue.cuda_stream_copy
 
                     # Pack
-                    kern.exec_async(
+                    kern.prepared_async_call(
                         grid, block, scomp, v.n, v.nvrow, v.nvcol, v.basedata,
                         v.mapping, v.rstrides or 0, m
                     )
@@ -54,19 +52,17 @@ class CUDAPackingKernels(CUDAKernelProvider, BasePackingKernels):
                     # Copy the packed buffer to the host
                     event.record(scomp)
                     scopy.wait_for_event(event)
-                    cuda.memcpy_async(m.hdata, m.data, m.nbytes, scopy)
+                    cuda.memcpy_dtoh_async(m.hdata, m.data, scopy)
 
         return PackXchgViewKernel()
 
     def unpack(self, mv):
-        cuda = self.backend.cuda
-
         if self.backend.mpitype == 'cuda-aware':
             return NullComputeKernel()
         else:
             class UnpackXchgMatrixKernel(ComputeKernel):
                 def run(self, queue):
-                    cuda.memcpy_async(mv.data, mv.hdata, mv.nbytes,
-                                      queue.cuda_stream_comp)
+                    cuda.memcpy_htod_async(mv.data, mv.hdata,
+                                           queue.cuda_stream_comp)
 
             return UnpackXchgMatrixKernel()

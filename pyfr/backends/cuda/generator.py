@@ -12,8 +12,9 @@ class CUDAKernelGenerator(BaseKernelGenerator):
             self._ix = 'int _x = blockIdx.x*blockDim.x + threadIdx.x;'
             self._limits = 'if (_x < _nx)'
         else:
-            self._ix = 'int _x = blockIdx.x*blockDim.x + threadIdx.x;'
-            self._limits = 'for (int _y = 0; _x < _nx && _y < _ny; _y++)'
+            self._ix = ('int _x = blockIdx.x*blockDim.x + threadIdx.x;'
+                        'int _y = blockIdx.y*blockDim.y + threadIdx.y;')
+            self._limits = 'if (_x < _nx && _y < _ny)'
 
     def render(self):
         # Kernel spec
@@ -38,28 +39,31 @@ class CUDAKernelGenerator(BaseKernelGenerator):
 
     def _render_spec(self):
         # We first need the argument list; starting with the dimensions
-        kargs = [f'int {d}' for d in self._dims]
+        kargs = ['int ' + d for d in self._dims]
 
         # Now add any scalar arguments
-        kargs.extend(f'{sa.dtype} {sa.name}' for sa in self.scalargs)
+        kargs.extend('{0.dtype} {0.name}'.format(sa) for sa in self.scalargs)
 
         # Finally, add the vector arguments
         for va in self.vectargs:
             # Views
             if va.isview:
-                kargs.append(f'{va.dtype}* __restrict__ {va.name}_v')
-                kargs.append(f'const int* __restrict__ {va.name}_vix')
+                kargs.append('{0.dtype}* __restrict__ {0.name}_v'.format(va))
+                kargs.append('const int* __restrict__ {0.name}_vix'
+                             .format(va))
 
                 if va.ncdim == 2:
-                    kargs.append(f'const int* __restrict__ {va.name}_vrstri')
+                    kargs.append('const int* __restrict__ {0.name}_vrstri'
+                                 .format(va))
             # Arrays
             else:
                 # Intent in arguments should be marked constant
                 const = 'const' if va.intent == 'in' else ''
 
-                kargs.append(f'{const} {va.dtype}* __restrict__ {va.name}_v')
+                kargs.append('{0} {1.dtype}* __restrict__ {1.name}_v'
+                             .format(const, va).strip())
 
                 if self.needs_ldim(va):
-                    kargs.append(f'int ld{va.name}')
+                    kargs.append('int ld{0.name}'.format(va))
 
         return '__global__ void {0}({1})'.format(self.name, ', '.join(kargs))

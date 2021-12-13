@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from ast import literal_eval
+from collections import OrderedDict
 from configparser import SafeConfigParser, NoSectionError, NoOptionError
 import io
 import os
@@ -89,7 +90,7 @@ class Inifile(object):
                       _ensure_float, expr)
 
         # Encase in parenthesis
-        return f'({expr})'
+        return '({0})'.format(expr)
 
     _bool_states = {'1': True, 'yes': True, 'true': True, 'on': True,
                     '0': False, 'no': False, 'false': False, 'off': False}
@@ -108,18 +109,18 @@ class Inifile(object):
         return literal_eval(self.get(section, option, default))
 
     def items(self, section):
-        return dict(self._cp.items(section))
+        return OrderedDict(self._cp.items(section))
 
     def items_as(self, section, type):
-        iv = {}
+        iv = []
 
         for k, v in self._cp.items(section):
             try:
-                iv[k] = type(v)
+                iv.append((k, type(v)))
             except ValueError:
                 pass
 
-        return iv
+        return OrderedDict(iv)
 
     def sections(self):
         return self._cp.sections()

@@ -3,7 +3,7 @@
 from pyfr.backends.base import (BaseKernelProvider,
                                 BasePointwiseKernelProvider, ComputeKernel)
 from pyfr.backends.openmp.compiler import SourceModule
-from pyfr.backends.openmp.generator import OpenMPKernelGenerator
+import pyfr.backends.openmp.generator as generator
 from pyfr.util import memoize
 
 
@@ -16,15 +16,11 @@ class OpenMPKernelProvider(BaseKernelProvider):
 
 class OpenMPPointwiseKernelProvider(OpenMPKernelProvider,
                                     BasePointwiseKernelProvider):
-    kernel_generator_cls = OpenMPKernelGenerator
+    kernel_generator_cls = generator.OpenMPKernelGenerator
 
     def _instantiate_kernel(self, dims, fun, arglst):
         class PointwiseKernel(ComputeKernel):
-            if any(isinstance(arg, str) for arg in arglst):
-                def run(self, queue, **kwargs):
-                    fun(*[kwargs.get(ka, ka) for ka in arglst])
-            else:
-                def run(self, queue, **kwargs):
-                    fun(*arglst)
+            def run(self, queue, **kwargs):
+                fun(*[kwargs.get(ka, ka) for ka in arglst])
 
         return PointwiseKernel()

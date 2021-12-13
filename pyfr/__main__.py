@@ -8,6 +8,8 @@ import os
 import mpi4py.rc
 mpi4py.rc.initialize = False
 
+import h5py
+
 from pyfr.backends import BaseBackend, get_backend
 from pyfr.inifile import Inifile
 from pyfr.mpiutil import register_finalize_handler
@@ -180,7 +182,7 @@ def process_partition(args):
 
         for etype, emap in sorted(rnum.items()):
             for k, v in sorted(emap.items()):
-                print(etype, *k, *v, sep=',', file=args.rnumf)
+                print(','.join(map(str, (etype, *k, *v))), file=args.rnumf)
 
 
 def process_export(args):

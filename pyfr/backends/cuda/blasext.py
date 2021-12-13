@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import pycuda.driver as cuda
+from pycuda.gpuarray import GPUArray
+from pycuda.reduction import ReductionKernel
 
 from pyfr.backends.cuda.provider import CUDAKernelProvider, get_grid_for_block
 from pyfr.backends.base import ComputeKernel
+from pyfr.nputil import npdtype_to_ctype
 
 
 class CUDABlasExtKernels(CUDAKernelProvider):
@@ -30,20 +34,21 @@ class CUDABlasExtKernels(CUDAKernelProvider):
 
         class AxnpbyKernel(ComputeKernel):
             def run(self, queue, *consts):
-                kern.exec_async(grid, block, queue.cuda_stream_comp,
-                                nrow, ncolb, ldim, *arr, *consts)
+                args = list(arr) + list(consts)
+
+                kern.prepared_async_call(grid, block, queue.cuda_stream_comp,
+                                         nrow, ncolb, ldim, *args)
 
         return AxnpbyKernel()
 
     def copy(self, dst, src):
-        cuda = self.backend.cuda
-
         if dst.traits != src.traits:
             raise ValueError('Incompatible matrix types')
 
         class CopyKernel(ComputeKernel):
             def run(self, queue):
-                cuda.memcpy_async(dst, src, dst.nbytes, queue.cuda_stream_comp)
+                cuda.memcpy_dtod_async(dst.data, src.data, dst.nbytes,
+                                       stream=queue.cuda_stream_comp)
 
         return CopyKernel()
 
@@ -51,7 +56,6 @@ class CUDABlasExtKernels(CUDAKernelProvider):
         if x.traits != y.traits != z.traits:
             raise ValueError('Incompatible matrix types')
 
-        cuda = self.backend.cuda
         nrow, ncol, ldim, dtype = x.traits
         ncola, ncolb = x.ioshape[1:]
 
@@ -59,17 +63,17 @@ class CUDABlasExtKernels(CUDAKernelProvider):
         block = (128, 1, 1)
 
         # Determine the grid size
-        grid = get_grid_for_block(block, ncolb, ncola)
+        grid = get_grid_for_block(block, ncolb)
 
-        # Empty result buffer on the device
-        err_dev = cuda.mem_alloc(ncola*grid[0]*x.itemsize)
+        # Empty result buffer on host with shape (nvars, nblocks)
+        err_host = cuda.pagelocked_empty((ncola, grid[0]), dtype, 'C')
 
-        # Empty result buffer on the host
-        err_host = cuda.pagelocked_empty((ncola, grid[0]), dtype)
+        # Device memory allocation
+        err_dev = cuda.mem_alloc(err_host.nbytes)
 
         # Get the kernel template
         src = self.backend.lookup.get_template('errest').render(
-            norm=norm, sharesz=block[0]
+            norm=norm, ncola=ncola, sharesz=block[0]
         )
 
         # Build the reduction kernel
@@ -86,9 +90,10 @@ class CUDABlasExtKernels(CUDAKernelProvider):
                 return reducer(err_host, axis=1)
 
             def run(self, queue, atol, rtol):
-                rkern.exec_async(grid, block, queue.cuda_stream_comp, nrow,
-                                 ncolb, ldim, err_dev, x, y, z, atol, rtol)
-                cuda.memcpy_async(err_host, err_dev, err_dev.nbytes,
-                                  queue.cuda_stream_comp)
+                rkern.prepared_async_call(grid, block, queue.cuda_stream_comp,
+                                          nrow, ncolb, ldim, err_dev, x, y, z,
+                                          atol, rtol)
+                cuda.memcpy_dtoh_async(err_host, err_dev,
+                                       queue.cuda_stream_comp)
 
         return ErrestKernel()

@@ -42,7 +42,7 @@ class PseudoStatsPlugin(BasePlugin):
         # If we're the root rank then output
         if self.outf:
             for s in self.stats:
-                print(*s, sep=',', file=self.outf)
+                print(','.join(str(c) for c in s), file=self.outf)
 
             # Periodically flush to disk
             if intg.nacptsteps % self.flushsteps == 0:

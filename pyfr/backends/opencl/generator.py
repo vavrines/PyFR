@@ -12,8 +12,8 @@ class OpenCLKernelGenerator(BaseKernelGenerator):
             self._ix = 'int _x = get_global_id(0);'
             self._limits = 'if (_x < _nx)'
         else:
-            self._ix = 'int _x = get_global_id(0);'
-            self._limits = 'for (int _y = 0; _x < _nx && _y < _ny; _y++)'
+            self._ix = 'int _x = get_global_id(0), _y = get_global_id(1);'
+            self._limits = 'if (_x < _nx && _y < _ny)'
 
     def render(self):
         # Kernel spec
@@ -38,30 +38,33 @@ class OpenCLKernelGenerator(BaseKernelGenerator):
 
     def _render_spec(self):
         # We first need the argument list; starting with the dimensions
-        kargs = [f'int {d}' for d in self._dims]
+        kargs = ['int ' + d for d in self._dims]
 
         # Now add any scalar arguments
-        kargs.extend(f'{sa.dtype} {sa.name}' for sa in self.scalargs)
+        kargs.extend('{0.dtype} {0.name}'.format(sa) for sa in self.scalargs)
 
         # Finally, add the vector arguments
         for va in self.vectargs:
+            ka = []
+
             # Views
             if va.isview:
-                kargs.append(f'__global {va.dtype}* restrict {va.name}_v')
-                kargs.append(f'__global const int* restrict {va.name}_vix')
+                ka.append('__global {0.dtype}* restrict {0.name}_v')
+                ka.append('__global const int* restrict {0.name}_vix')
 
                 if va.ncdim == 2:
-                    kargs.append('__global const int* restrict '
-                                 f'{va.name}_vrstri')
+                    ka.append('__global const int* restrict {0.name}_vrstri')
             # Arrays
             else:
                 if va.intent == 'in':
-                    kargs.append(f'__global const {va.dtype}* restrict '
-                                 f'{va.name}_v')
+                    ka.append('__global const {0.dtype}* restrict {0.name}_v')
                 else:
-                    kargs.append(f'__global {va.dtype}* restrict {va.name}_v')
+                    ka.append('__global {0.dtype}* restrict {0.name}_v')
 
                 if self.needs_ldim(va):
-                    kargs.append(f'int ld{va.name}')
+                    ka.append('int ld{0.name}')
+
+            # Format
+            kargs.extend(k.format(va) for k in ka)
 
         return '__kernel void {0}({1})'.format(self.name, ', '.join(kargs))

@@ -5,7 +5,7 @@ import pyopencl as cl
 
 from pyfr.backends.base import (BaseKernelProvider,
                                 BasePointwiseKernelProvider, ComputeKernel)
-from pyfr.backends.opencl.generator import OpenCLKernelGenerator
+import pyfr.backends.opencl.generator as generator
 from pyfr.util import memoize
 
 
@@ -28,7 +28,7 @@ class OpenCLKernelProvider(BaseKernelProvider):
 
 class OpenCLPointwiseKernelProvider(OpenCLKernelProvider,
                                     BasePointwiseKernelProvider):
-    kernel_generator_cls = OpenCLKernelGenerator
+    kernel_generator_cls = generator.OpenCLKernelGenerator
 
     def _instantiate_kernel(self, dims, fun, arglst):
         cfg = self.backend.cfg
@@ -37,20 +37,16 @@ class OpenCLPointwiseKernelProvider(OpenCLKernelProvider,
         if len(dims) == 1:
             ls = (cfg.getint('backend-opencl', 'local-size-1d', '64'),)
         else:
-            ls = (cfg.getint('backend-opencl', 'local-size-2d', '128'),)
+            ls = cfg.getliteral('backend-opencl', 'local-size-2d', '128, 1')
 
         # Global work size
         gs = tuple(gi - gi % -li for gi, li in zip(dims[::-1], ls))
 
         class PointwiseKernel(ComputeKernel):
-            if any(isinstance(arg, str) for arg in arglst):
-                def run(self, queue, **kwargs):
-                    narglst = [kwargs.get(ka, ka) for ka in arglst]
-                    narglst = [getattr(arg, 'data', arg) for arg in narglst]
-                    fun(queue.cl_queue_comp, gs, ls, *narglst)
-            else:
-                def run(self, queue, **kwargs):
-                    narglst = [getattr(arg, 'data', arg) for arg in arglst]
-                    fun(queue.cl_queue_comp, gs, ls, *narglst)
+            def run(self, queue, **kwargs):
+                kwargs = {k: float(v) for k, v in kwargs.items()}
+                narglst = [kwargs.get(ka, ka) for ka in arglst]
+                narglst = [getattr(arg, 'data', arg) for arg in narglst]
+                fun(queue.cl_queue_comp, gs, ls, *narglst)
 
         return PointwiseKernel()

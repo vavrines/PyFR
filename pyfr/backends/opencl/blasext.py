@@ -2,9 +2,12 @@
 
 import numpy as np
 import pyopencl as cl
+from pyopencl.array import Array
+from pyopencl.reduction import ReductionKernel
 
 from pyfr.backends.opencl.provider import OpenCLKernelProvider
 from pyfr.backends.base import ComputeKernel
+from pyfr.nputil import npdtype_to_ctype
 
 
 class OpenCLBlasExtKernels(OpenCLKernelProvider):
@@ -27,9 +30,9 @@ class OpenCLBlasExtKernels(OpenCLKernelProvider):
 
         class AxnpbyKernel(ComputeKernel):
             def run(self, queue, *consts):
-                arrd = [x.data for x in arr]
+                args = [x.data for x in arr] + list(consts)
                 kern(queue.cl_queue_comp, (ncolb, nrow), None, nrow, ncolb,
-                     ldim, *arrd, *consts)
+                     ldim, *args)
 
         return AxnpbyKernel()
 
@@ -51,8 +54,8 @@ class OpenCLBlasExtKernels(OpenCLKernelProvider):
         ncola, ncolb = x.ioshape[1:]
 
         # Reduction workgroup dimensions
-        ls = (128, 1)
-        gs = (ncolb - ncolb % -ls[0], ncola)
+        ls = (128,)
+        gs = (ncolb - ncolb % -ls[0],)
 
         # Empty result buffer on host with (nvars, ngroups)
         err_host = np.empty((ncola, gs[0] // ls[0]), dtype)
@@ -63,7 +66,7 @@ class OpenCLBlasExtKernels(OpenCLKernelProvider):
 
         # Get the kernel template
         src = self.backend.lookup.get_template('errest').render(
-            norm=norm, sharesz=ls[0]
+            norm=norm, ncola=ncola, sharesz=ls[0]
         )
 
         # Build the reduction kernel
@@ -82,8 +85,7 @@ class OpenCLBlasExtKernels(OpenCLKernelProvider):
             def run(self, queue, atol, rtol):
                 rkern(queue.cl_queue_comp, gs, ls, nrow, ncolb, ldim, err_dev,
                       x.data, y.data, z.data, atol, rtol)
-                cevent = cl.enqueue_copy(queue.cl_queue_comp, err_host,
-                                         err_dev, is_blocking=False)
-                queue.copy_events.append(cevent)
+                cl.enqueue_copy(queue.cl_queue_comp, err_host, err_dev,
+                                is_blocking=False)
 
         return ErrestKernel()
