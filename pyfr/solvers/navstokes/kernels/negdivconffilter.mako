@@ -127,7 +127,7 @@ fpdtype_t tmp;
     ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'neginf', 'withinbounds')};
     if (withinbounds == 0){
         % for i,v in pyfr.ndrange(nupts, nvars):
-            filtsol_pp[${i}][${v}] = newsolmodes[0][${v}]/2.0; // Factor of 2 in VDM
+            filtsol_pp[${i}][${v}] = newsolmodes[0][${v}]/${mean_mode_value}; // Factor of 2 in VDM
         % endfor
     }
 // ***********************************************************
@@ -183,7 +183,7 @@ fpdtype_t tmp;
     ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'neginf', 'withinbounds')};
     if (withinbounds == 0){
         % for i,v in pyfr.ndrange(nupts, nvars):
-            filtsol_mep[${i}][${v}] = newsolmodes[0][${v}]/2.0; // Factor of 2 in VDM
+            filtsol_mep[${i}][${v}] = newsolmodes[0][${v}]/${mean_mode_value}; // Factor of 2 in VDM
         % endfor
     }
 // ***********************************************************
