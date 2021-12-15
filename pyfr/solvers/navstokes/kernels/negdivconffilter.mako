@@ -82,54 +82,56 @@ fpdtype_t tmp;
     fpdtype_t pmin, dmin, emin, p, d, e, withinbounds;
     fpdtype_t neginf = -${large_number}; 
 
-    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_low', 'neginf', 'withinbounds')};
-    if (withinbounds == 1){
-        zeta = 0;
-    }
-    else {
+    % if alpha != 1.0:
+        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_low', 'neginf', 'withinbounds')};
+        if (withinbounds == 1){
+            zeta = 0;
+        }
+        else {
 
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
-        if (withinbounds == 0){ 
-            zeta_high = 1; 
             ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
             if (withinbounds == 0){ 
-                zeta_high = 4; 
+                zeta_high = 1; 
                 ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
                 if (withinbounds == 0){ 
-                    zeta_high = 10; 
+                    zeta_high = 4; 
                     ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
                     if (withinbounds == 0){ 
-                        zeta_high = 50; 
+                        zeta_high = 10; 
+                        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
+                        if (withinbounds == 0){ 
+                            zeta_high = 50; 
+                        }
                     }
                 }
             }
+            
+            
+            for (int iter = 0; iter < ${niters}; iter++) {
+                zeta = 0.5*(zeta_low + zeta_high);
+                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'neginf', 'withinbounds')};
+
+                if (withinbounds == 1) {
+                    zeta_high = zeta; 
+                }
+                else {
+                    zeta_low = zeta;
+                }
+            }
+
+            zeta = zeta_high;
+            
         }
-        
-        
-        % for fiter in range(niters):
-            zeta = 0.5*(zeta_low + zeta_high);
-            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'neginf', 'withinbounds')};
-
-            if (withinbounds == 1) {
-                zeta_high = zeta; 
-            }
-            else {
-                zeta_low = zeta;
-            }
-        % endfor
-
-        zeta = zeta_high;
-        
-    }
 
 
-    // Verify that it is positivity-preserving and revert to mean mode if not
-    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'neginf', 'withinbounds')};
-    if (withinbounds == 0){
-        % for i,v in pyfr.ndrange(nupts, nvars):
-            filtsol_pp[${i}][${v}] = newsolmodes[0][${v}]/${mean_mode_value}; // Factor of 2 in VDM
-        % endfor
-    }
+        // Verify that it is positivity-preserving and revert to mean mode if not
+        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'neginf', 'withinbounds')};
+        if (withinbounds == 0){
+            % for i,v in pyfr.ndrange(nupts, nvars):
+                filtsol_pp[${i}][${v}] = newsolmodes[0][${v}]/${mean_mode_value}; // Factor of 2 in VDM
+            % endfor
+        }
+    % endif
 // ***********************************************************
 
 // Compute zeta for positivity-preserving and minimum entropy principle satisfying
@@ -138,60 +140,68 @@ fpdtype_t tmp;
     zeta_high = 0.5;
     zeta = 0;
 
-    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_low', 'ent_min', 'withinbounds')};
-    if (withinbounds == 1){
-        zeta = 0;
-    }
-    else {
+    % if alpha != 0.0:
+        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_low', 'ent_min', 'withinbounds')};
+        if (withinbounds == 1){
+            zeta = 0;
+        }
+        else {
 
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
-        if (withinbounds == 0){ 
-            zeta_high = 1; 
             ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
             if (withinbounds == 0){ 
-                zeta_high = 4; 
+                zeta_high = 1; 
                 ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
                 if (withinbounds == 0){ 
-                    zeta_high = 10; 
+                    zeta_high = 4; 
                     ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
                     if (withinbounds == 0){ 
-                        zeta_high = 50; 
+                        zeta_high = 10; 
+                        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+                        if (withinbounds == 0){ 
+                            zeta_high = 50; 
+                        }
                     }
                 }
             }
+            
+            
+            for (int iter = 0; iter < ${niters}; iter++) {
+                zeta = 0.5*(zeta_low + zeta_high);
+                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'ent_min', 'withinbounds')};
+
+                if (withinbounds == 1) {
+                    zeta_high = zeta; 
+                }
+                else {
+                    zeta_low = zeta;
+                }
+            }
+
+            zeta = zeta_high;
+            
         }
-        
-        
-        % for fiter in range(niters):
-            zeta = 0.5*(zeta_low + zeta_high);
-            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'ent_min', 'withinbounds')};
-
-            if (withinbounds == 1) {
-                zeta_high = zeta; 
-            }
-            else {
-                zeta_low = zeta;
-            }
-        % endfor
-
-        zeta = zeta_high;
-        
-    }
 
 
-    // Verify that it is positivity-preserving and revert to mean mode if not
-    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'neginf', 'withinbounds')};
-    if (withinbounds == 0){
-        % for i,v in pyfr.ndrange(nupts, nvars):
-            filtsol_mep[${i}][${v}] = newsolmodes[0][${v}]/${mean_mode_value}; // Factor of 2 in VDM
-        % endfor
-    }
+        // Verify that it is positivity-preserving and revert to mean mode if not
+        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'neginf', 'withinbounds')};
+        if (withinbounds == 0){
+            % for i,v in pyfr.ndrange(nupts, nvars):
+                filtsol_mep[${i}][${v}] = newsolmodes[0][${v}]/${mean_mode_value}; // Factor of 2 in VDM
+            % endfor
+        }
+    % endif
 // ***********************************************************
 
 // Compute convex combination (relaxed entropy principle) and forward Euler approximation of -divF
 fpdtype_t sol_rep;
 % for i,v in pyfr.ndrange(nupts, nvars):
-    sol_rep = ${alpha}*filtsol_mep[${i}][${v}] + (1 - ${alpha})*filtsol_pp[${i}][${v}];
+    % if alpha == 0.0:
+        sol_rep = filtsol_pp[${i}][${v}];
+    % elif alpha == 1.0:
+        sol_rep = filtsol_mep[${i}][${v}];
+    % else:
+        sol_rep = ${alpha}*filtsol_mep[${i}][${v}] + (1 - ${alpha})*filtsol_pp[${i}][${v}];
+    % endif
     tdivtconf[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
 % endfor
 
