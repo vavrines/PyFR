@@ -92,31 +92,21 @@ class BaseAdvectionDiffusionMPIInters(BaseAdvectionMPIInters):
                                             'get_artvisc_fpts_for_inter')
         self._artvisc_rhs = be.xchg_matrix_for_view(self._artvisc_lhs)
 
-        # If we need to send our artificial viscosity to the RHS
-        if self._tpl_c['ldg-beta'] != -0.5:
-            self.kernels['artvisc_fpts_pack'] = lambda: be.kernel(
-                'pack', self._artvisc_lhs
-            )
-            self.kernels['artvisc_fpts_send'] = lambda: be.kernel(
-                'send_pack', self._artvisc_lhs, self._rhsrank,
-                self.MPI_TAG
-            )
-        else:
-            self.kernels['artvisc_fpts_pack'] = null_comp_kern
-            self.kernels['artvisc_fpts_send'] = null_mpi_kern
+        self.kernels['artvisc_fpts_pack'] = lambda: be.kernel(
+            'pack', self._artvisc_lhs
+        )
+        self.kernels['artvisc_fpts_send'] = lambda: be.kernel(
+            'send_pack', self._artvisc_lhs, self._rhsrank,
+            self.MPI_TAG
+        )
 
-        # If we need to recv artificial viscosity from the RHS
-        if self._tpl_c['ldg-beta'] != 0.5:
-            self.kernels['artvisc_fpts_recv'] = lambda: be.kernel(
-                'recv_pack', self._artvisc_rhs, self._rhsrank,
-                self.MPI_TAG
-            )
-            self.kernels['artvisc_fpts_unpack'] = lambda: be.kernel(
-                'unpack', self._artvisc_rhs
-            )
-        else:
-            self.kernels['artvisc_fpts_recv'] = null_mpi_kern
-            self.kernels['artvisc_fpts_unpack'] = null_comp_kern
+        self.kernels['artvisc_fpts_recv'] = lambda: be.kernel(
+            'recv_pack', self._artvisc_rhs, self._rhsrank,
+            self.MPI_TAG
+        )
+        self.kernels['artvisc_fpts_unpack'] = lambda: be.kernel(
+            'unpack', self._artvisc_rhs
+        )
 
 class BaseAdvectionDiffusionBCInters(BaseAdvectionBCInters):
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
