@@ -16,14 +16,25 @@
 
         d = filtsol[${i}][0];
         % if ndims == 2:
-            p = ${c['gamma'] - 1}*(filtsol[${i}][${nvars - 1}] - 
-                (0.5/d)*(filtsol[${i}][1]*filtsol[${i}][1] + 
-                         filtsol[${i}][2]*filtsol[${i}][2]));
+            rhou = u[${i}][1]; rhov = u[${i}][2];
+            Bx = u[${i}][3]; By = u[${i}][4];
+            E = u[${i}][6];
+
+            BdotB2 = 0.5*(Bx*Bx + By*By);
+
+            // Compute the pressure
+            p = ${c['gamma'] - 1}*(E - (0.5/d)*(rhou*rhou + rhov*rhov)
+                                     - BdotB2);
         % elif ndims == 3:
-            p = ${c['gamma'] - 1}*(filtsol[${i}][${nvars - 1}] - 
-                (0.5/d)*(filtsol[${i}][1]*filtsol[${i}][1] + 
-                         filtsol[${i}][2]*filtsol[${i}][2] + 
-                         filtsol[${i}][3]*filtsol[${i}][3]));
+            rhou = u[${i}][1]; rhov = u[${i}][2]; rhow = u[${i}][3];
+            Bx = u[${i}][4]; By = u[${i}][5]; Bz = u[${i}][6];
+            E = u[${i}][8];
+
+            BdotB2 = 0.5*(Bx*Bx + By*By + Bz*Bz);
+
+            // Compute the pressure
+            p = ${c['gamma'] - 1}*(E - (0.5/d)*(rhou*rhou + rhov*rhov + rhow*rhow)
+                                     - BdotB2);
         % endif
 
         e = (d <= ${dtol} || p <= ${ptol}) ? -${large_number} : d*log(p/pow(d, ${c['gamma']}));
@@ -55,12 +66,60 @@ fpdtype_t newsolmodes[${nupts}][${nvars}];
 fpdtype_t filtsol_pp[${nupts}][${nvars}];
 fpdtype_t filtsol_mep[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
+fpdtype_t rcprho, v[${ndims}], B[${ndims}], Bdotv, divB;
+fpdtype_t rhou, rhov, rhow, E, Bx, By, Bz, BdotB2;
 
 // Compute -divF
 % for i in range(nupts):
-    % for v, ex in enumerate(srcex):
-        tdivtconf[${i}][${v}] = -rcpdjac[${i}]*tdivtconf[${i}][${v}] + ${ex};
-    % endfor
+    rcprho = 1.0/u[${i}][0];
+    % if ndims == 2:
+        // Velocity and magnetic fields
+        v[0] = rcprho*u[${i}][1]; v[1] = rcprho*u[${i}][2];
+        B[0] = u[${i}][3]; B[1] = u[${i}][4];
+
+        // Compute B·v
+        Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=2)};
+        divB = tdivtconf[${i}][5];
+
+        // Untransform the divergences and apply the source terms
+        // Density
+        tdivtconf[${i}][0] = -rcpdjac[${i}]*tdivtconf[${i}][0] + ${srcex[0]};
+        // Momentum
+        tdivtconf[${i}][1] = -rcpdjac[${i}]*(divB*B[0] + tdivtconf[${i}][1]) + ${srcex[1]};
+        tdivtconf[${i}][2] = -rcpdjac[${i}]*(divB*B[1] + tdivtconf[${i}][2]) + ${srcex[2]};
+        // Magnetic field
+        tdivtconf[${i}][3] = -rcpdjac[${i}]*(divB*v[0] + tdivtconf[${i}][3]) + ${srcex[3]};
+        tdivtconf[${i}][4] = -rcpdjac[${i}]*(divB*v[1] + tdivtconf[${i}][4]) + ${srcex[4]};
+        // DivB
+        tdivtconf[${i}][5] = 0.0; 
+        // Energy
+        tdivtconf[${i}][6] = -rcpdjac[${i}]*(divB*Bdotv + tdivtconf[${i}][6]) + ${srcex[6]}; 
+
+    % elif ndims == 3:
+        // Velocity and magnetic fields
+        v[0] = rcprho*u[${i}][1]; v[1] = rcprho*u[${i}][2]; v[2] = rcprho*u[${i}][3];
+        B[0] = u[${i}][4]; B[1] = u[${i}][5]; B[2] = u[${i}][6];
+
+        // Compute B·v
+        Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=3)};
+        divB = tdivtconf[${i}][7];
+
+        // Untransform the divergences and apply the source terms
+        // Density
+        tdivtconf[${i}][0] = -rcpdjac[${i}]*tdivtconf[${i}][0] + ${srcex[0]};
+        // Momentum
+        tdivtconf[${i}][1] = -rcpdjac[${i}]*(divB*B[0] + tdivtconf[${i}][1]) + ${srcex[1]};
+        tdivtconf[${i}][2] = -rcpdjac[${i}]*(divB*B[1] + tdivtconf[${i}][2]) + ${srcex[2]};
+        tdivtconf[${i}][3] = -rcpdjac[${i}]*(divB*B[2] + tdivtconf[${i}][3]) + ${srcex[3]};
+        // Magnetic field
+        tdivtconf[${i}][4] = -rcpdjac[${i}]*(divB*v[0] + tdivtconf[${i}][4]) + ${srcex[4]};
+        tdivtconf[${i}][5] = -rcpdjac[${i}]*(divB*v[1] + tdivtconf[${i}][5]) + ${srcex[5]};
+        tdivtconf[${i}][6] = -rcpdjac[${i}]*(divB*v[2] + tdivtconf[${i}][6]) + ${srcex[6]};
+        // DivB
+        tdivtconf[${i}][7] = 0.0; 
+        // Energy
+        tdivtconf[${i}][8] = -rcpdjac[${i}]*(divB*Bdotv + tdivtconf[${i}][8]) + ${srcex[8]}; 
+    % endif
 % endfor
 
 // Compute forward Euler prediction of next time step
@@ -204,6 +263,7 @@ fpdtype_t sol_rep;
     tdivtconf[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
 % endfor
 
-</%pyfr:kernel>
 
+
+</%pyfr:kernel>
 
