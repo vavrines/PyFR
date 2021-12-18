@@ -16,9 +16,9 @@
 
         d = filtsol[${i}][0];
         % if ndims == 2:
-            rhou = u[${i}][1]; rhov = u[${i}][2];
-            Bx = u[${i}][3]; By = u[${i}][4];
-            E = u[${i}][6];
+            rhou = filtsol[${i}][1]; rhov = filtsol[${i}][2];
+            Bx = filtsol[${i}][3]; By = filtsol[${i}][4];
+            E = filtsol[${i}][6];
 
             BdotB2 = 0.5*(Bx*Bx + By*By);
 
@@ -26,9 +26,9 @@
             p = ${c['gamma'] - 1}*(E - (0.5/d)*(rhou*rhou + rhov*rhov)
                                      - BdotB2);
         % elif ndims == 3:
-            rhou = u[${i}][1]; rhov = u[${i}][2]; rhow = u[${i}][3];
-            Bx = u[${i}][4]; By = u[${i}][5]; Bz = u[${i}][6];
-            E = u[${i}][8];
+            rhou = filtsol[${i}][1]; rhov = filtsol[${i}][2]; rhow = filtsol[${i}][3];
+            Bx = filtsol[${i}][4]; By = filtsol[${i}][5]; Bz = filtsol[${i}][6];
+            E = filtsol[${i}][8];
 
             BdotB2 = 0.5*(Bx*Bx + By*By + Bz*Bz);
 
