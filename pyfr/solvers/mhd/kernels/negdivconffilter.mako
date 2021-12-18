@@ -11,8 +11,11 @@
         filtmodes[${i}][${v}] = pow(${ffac[i]}, zeta)*newsolmodes[${i}][${v}];
     % endfor
 
-    % for i,v in pyfr.ndrange(nupts, nvars):
-        filtsol[${i}][${v}] = ${' + '.join('{jx}*filtmodes[{j}][{v}]'.format(j=j, jx=jx, v=v) for j, jx in enumerate(vdm[i]) if jx != 0)};
+    % for i in range(nupts):
+        % for v in range(nvars):
+            filtsol[${i}][${v}] = ${' + '.join('{jx}*filtmodes[{j}][{v}]'.format(j=j, jx=jx, v=v) 
+                                                for j, jx in enumerate(vdm[i]) if jx != 0)};
+        % endfor
 
         d = filtsol[${i}][0];
         % if ndims == 2:
