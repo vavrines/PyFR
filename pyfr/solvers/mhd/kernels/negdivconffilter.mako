@@ -60,7 +60,7 @@
               t='scalar fpdtype_t'
               tdivtconf='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               ploc='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
-              u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              u='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'
               entmin='in fpdtype_t'>
 
