@@ -12,6 +12,7 @@
               ul='inout view fpdtype_t[${str(nvars)}]'
               gradul='in view fpdtype_t[${str(ndims)}][${str(nvars)}]'
               artviscl='in view fpdtype_t'
+              entminl='in view fpdtype_t'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
 fpdtype_t ur[${nvars}];
@@ -41,6 +42,6 @@ fpdtype_t d = ur[0];
                              - BdotB2);
 % endif
 
-fpdtype_t artviscr = d*log(p/pow(d, ${c['gamma']}));
-artviscl = fmin(artviscl, artviscr);
+fpdtype_t entminr = d*log(p/pow(d, ${c['gamma']}));
+entminl = fmin(entminl, entminr);
 </%pyfr:kernel>

@@ -4,7 +4,7 @@
 
 <% large_number = 10**10 %>
 
-<%pyfr:macro name='filter' params='newsolmodes, filtsol, zeta, ent_min, withinbounds'>
+<%pyfr:macro name='filter' params='newsolmodes, filtsol, zeta, entmin, withinbounds'>
 
     dmin = ${large_number}; pmin = ${large_number}; emin = ${large_number};
     % for i,v in pyfr.ndrange(nupts, nvars):
@@ -44,7 +44,7 @@
         emin = fmin(emin, e);
     % endfor
 
-    if (dmin >= ${dtol} && pmin >= ${ptol} && emin >= ent_min - ${etol}) {
+    if (dmin >= ${dtol} && pmin >= ${ptol} && emin >= entmin - ${etol}) {
         withinbounds = 1; 
     }
     else {
@@ -59,7 +59,7 @@
               ploc='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'
-              ent_min='in fpdtype_t'>
+              entmin='in fpdtype_t'>
 
 fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t newsolmodes[${nupts}][${nvars}];
@@ -199,22 +199,22 @@ fpdtype_t rhou, rhov, rhow, E, Bx, By, Bz, BdotB2;
     zeta = 0;
 
     % if alpha != 0.0:
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_low', 'ent_min', 'withinbounds')};
+        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_low', 'entmin', 'withinbounds')};
         if (withinbounds == 1){
             zeta = 0;
         }
         else {
 
-            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
             if (withinbounds == 0){ 
                 zeta_high = 1; 
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
                 if (withinbounds == 0){ 
                     zeta_high = 4; 
-                    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+                    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
                     if (withinbounds == 0){ 
                         zeta_high = 10; 
-                        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'ent_min', 'withinbounds')};
+                        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
                         if (withinbounds == 0){ 
                             zeta_high = 50; 
                         }
@@ -225,7 +225,7 @@ fpdtype_t rhou, rhov, rhow, E, Bx, By, Bz, BdotB2;
             
             for (int iter = 0; iter < ${niters}; iter++) {
                 zeta = 0.5*(zeta_low + zeta_high);
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'ent_min', 'withinbounds')};
+                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'entmin', 'withinbounds')};
 
                 if (withinbounds == 1) {
                     zeta_high = zeta; 

@@ -42,6 +42,7 @@ class MHDIntInters(TplargsMixin, BaseAdvectionDiffusionIntInters):
             ul=self._scal_lhs, ur=self._scal_rhs,
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
+            entminl=self._entmin_lhs, entminr=self._entmin_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
         )
 
@@ -62,6 +63,7 @@ class MHDMPIInters(TplargsMixin, BaseAdvectionDiffusionMPIInters):
             ul=self._scal_lhs, ur=self._scal_rhs,
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
+            entminl=self._entmin_lhs, entminr=self._entmin_rhs,
             magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
         )
 
@@ -90,7 +92,7 @@ class MHDBaseBCInters(TplargsMixin, BaseAdvectionDiffusionBCInters):
             extrns=self._external_args, ul=self._scal_lhs,
             gradul=self._vect_lhs, magnl=self._mag_pnorm_lhs,
             nl=self._norm_pnorm_lhs, artviscl=self._artvisc_lhs,
-            **self._external_vals
+            entminl=self._entmin_lhs, **self._external_vals
         )
 
 

@@ -15,6 +15,8 @@
               gradur='in mpi fpdtype_t[${str(ndims)}][${str(nvars)}]'
               artviscl='in view fpdtype_t'
               artviscr='in mpi fpdtype_t'
+              entminl='in view fpdtype_t'
+              entminr='in mpi fpdtype_t'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
     // Perform the Riemann solve
@@ -55,6 +57,5 @@
     ul[${i}] = magnl*(ficomm[${i}] + fvcomm);
 % endfor
 
-artviscl = fmin(artviscl, artviscr);
-artviscr = fmin(artviscl, artviscr);
+entminl = fmin(entminl, entminr);
 </%pyfr:kernel>

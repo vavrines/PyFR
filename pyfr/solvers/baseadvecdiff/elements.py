@@ -113,11 +113,25 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                 'shocksensor', tplargs=tplargs, dims=[self.neles],
                 u=self.scal_upts_inb, artvisc=self.artvisc
             )
-        else:
+        elif shock_capturing == 'none':
+            self.artvisc = None
+
             tags = {'align'}
-            self.artvisc = self._be.matrix((1, self.neles),
-                                           extent=nonce + 'artvisc', tags=tags)
+            self.entmin = self._be.matrix((1, self.neles),
+                                           extent=nonce + 'entmin', tags=tags)
+            self.entmin_cpy = self._be.matrix((1, self.neles),
+                                           extent=nonce + 'entmincpy', tags=tags)
+        else:
+            raise ValueError('Invalid shock capturing scheme')
 
     def get_artvisc_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
         return (self.artvisc.mid,)*nfp, (0,)*nfp, (eidx,)*nfp
+
+    def get_entmin_fpts_for_inter(self, eidx, fidx):
+        nfp = self.nfacefpts[fidx]
+        return (self.entmin.mid,)*nfp, (0,)*nfp, (eidx,)*nfp
+
+    def get_entmin_cpy_fpts_for_inter(self, eidx, fidx):
+        nfp = self.nfacefpts[fidx]
+        return (self.entmin_cpy.mid,)*nfp, (0,)*nfp, (eidx,)*nfp

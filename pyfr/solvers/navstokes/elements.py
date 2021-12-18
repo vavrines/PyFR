@@ -61,11 +61,13 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             'negdivconffilter', tplargs=tplargs,
             dims=[self.neles], tdivtconf=self.scal_upts_outb,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb,
-            ent_min=self.artvisc
+            entmin=self.entmin
         )
 
         # Apply the sensor to estimate the required artificial viscosity
         self.kernels['calcentropy'] = lambda: self._be.kernel(
             'calcentropy', tplargs=tplargs, dims=[self.neles],
-            u=self.scal_upts_inb, ent_min=self.artvisc
+            u=self.scal_upts_inb, entmin=self.entmin, entmin_cpy=self.entmin_cpy
         )
+
+

@@ -4,11 +4,12 @@
 
 <%pyfr:kernel name='calcentropy' ndim='1'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              ent_min='out fpdtype_t'>
+              entmin='out fpdtype_t'
+              entmin_cpy='out fpdtype_t'>
 
 <% large_number = 10**10 %>
 
-ent_min = ${large_number};
+entmin = ${large_number};
 fpdtype_t d,p,e;
 
 % for i in range(nupts):
@@ -26,8 +27,10 @@ fpdtype_t d,p,e;
 
     e = (d <= 0 || p <= 0) ? ${large_number} : d*log(p/pow(d, ${c['gamma']}));
 
-    ent_min = fmin(ent_min, e);
+    entmin = fmin(entmin, e);
 % endfor
+
+entmin_cpy = entmin;
 
 
 </%pyfr:kernel>
