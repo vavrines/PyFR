@@ -266,7 +266,11 @@ fpdtype_t sol_rep;
     tdivtconf[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
 % endfor
 
-
+// Store divB in solution
+<% divbidx = 5 if ndims == 2 else 7 %>
+% for i in range(nupts):
+    u[${i}][${divbidx}] = tdivtconf[${i}][${divbidx}];
+% endfor
 
 </%pyfr:kernel>
 
