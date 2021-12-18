@@ -94,6 +94,7 @@ fpdtype_t rhou, rhov, rhow, E, Bx, By, Bz, BdotB2;
         tdivtconf[${i}][3] = -rcpdjac[${i}]*(divB*v[0] + tdivtconf[${i}][3]) + ${srcex[3]};
         tdivtconf[${i}][4] = -rcpdjac[${i}]*(divB*v[1] + tdivtconf[${i}][4]) + ${srcex[4]};
         // DivB
+        u[${i}][5] = tdivtconf[${i}][5];
         tdivtconf[${i}][5] = 0.0; 
         // Energy
         tdivtconf[${i}][6] = -rcpdjac[${i}]*(divB*Bdotv + tdivtconf[${i}][6]) + ${srcex[6]}; 
@@ -119,6 +120,7 @@ fpdtype_t rhou, rhov, rhow, E, Bx, By, Bz, BdotB2;
         tdivtconf[${i}][5] = -rcpdjac[${i}]*(divB*v[1] + tdivtconf[${i}][5]) + ${srcex[5]};
         tdivtconf[${i}][6] = -rcpdjac[${i}]*(divB*v[2] + tdivtconf[${i}][6]) + ${srcex[6]};
         // DivB
+        u[${i}][7] = tdivtconf[${i}][7];
         tdivtconf[${i}][7] = 0.0; 
         // Energy
         tdivtconf[${i}][8] = -rcpdjac[${i}]*(divB*Bdotv + tdivtconf[${i}][8]) + ${srcex[8]}; 
@@ -266,11 +268,6 @@ fpdtype_t sol_rep;
     tdivtconf[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
 % endfor
 
-// Store divB in solution
-<% divbidx = 5 if ndims == 2 else 7 %>
-% for i in range(nupts):
-    u[${i}][${divbidx}] = tdivtconf[${i}][${divbidx}];
-% endfor
 
 </%pyfr:kernel>
 
