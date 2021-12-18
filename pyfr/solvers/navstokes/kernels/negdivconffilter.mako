@@ -59,16 +59,12 @@ fpdtype_t filtsol_pp[${nupts}][${nvars}];
 fpdtype_t filtsol_mep[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
 
-// Compute -divF
+// Compute -divF and forward Euler prediction of next time step
 % for i in range(nupts):
     % for v, ex in enumerate(srcex):
         tdivtconf[${i}][${v}] = -rcpdjac[${i}]*tdivtconf[${i}][${v}] + ${ex};
+        newsol[${i}][${v}] = u[${i}][${v}] + ${dt}*tdivtconf[${i}][${v}];
     % endfor
-% endfor
-
-// Compute forward Euler prediction of next time step
-% for i,v in pyfr.ndrange(nupts, nvars):
-    newsol[${i}][${v}] = u[${i}][${v}] + ${dt}*tdivtconf[${i}][${v}];
 % endfor
 
 // Get modal form at next time step
@@ -93,19 +89,7 @@ fpdtype_t filtmodes[${nupts}][${nvars}];
 
             ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
             if (withinbounds == 0){ 
-                zeta_high = 1; 
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
-                if (withinbounds == 0){ 
-                    zeta_high = 4; 
-                    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
-                    if (withinbounds == 0){ 
-                        zeta_high = 10; 
-                        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
-                        if (withinbounds == 0){ 
-                            zeta_high = 50; 
-                        }
-                    }
-                }
+                zeta_high = 4; 
             }
             
             
@@ -151,19 +135,7 @@ fpdtype_t filtmodes[${nupts}][${nvars}];
 
             ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
             if (withinbounds == 0){ 
-                zeta_high = 1; 
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
-                if (withinbounds == 0){ 
-                    zeta_high = 4; 
-                    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
-                    if (withinbounds == 0){ 
-                        zeta_high = 10; 
-                        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
-                        if (withinbounds == 0){ 
-                            zeta_high = 50; 
-                        }
-                    }
-                }
+                zeta_high = 4; 
             }
             
             
