@@ -129,6 +129,8 @@ class BaseAdvectionDiffusionMPIInters(BaseAdvectionMPIInters):
             self._artvisc_lhs = self._xchg_view(lhs,
                                                 'get_artvisc_fpts_for_inter')
             self._artvisc_rhs = be.xchg_matrix_for_view(self._artvisc_lhs)
+        else:
+            self._artvisc_lhs = self._artvisc_rhs = None
 
         self._entmin_lhs = self._xchg_view(lhs, 'get_entmin_fpts_for_inter')
         self._entmin_cpy_lhs = self._xchg_view(lhs, 'get_entmin_cpy_fpts_for_inter')
