@@ -75,7 +75,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         self.kernels['negdivconf'] = lambda: self._be.kernel(
             'negdivconffilter', tplargs=tplargs,
-            dims=[self.neles], tdivtconf_vis=self.scal_upts_outb, tdivtconf_inv=self._scal_upts_cpy,
+            dims=[self.neles], tdivtconf_vis=self._scal_upts_cpy, tdivtconf_inv=self.scal_upts_outb,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb,
             entmin=self.entmin
         )

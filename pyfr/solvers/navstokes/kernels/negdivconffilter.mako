@@ -181,7 +181,7 @@ fpdtype_t sol_rep;
         sol_rep = ${alpha}*filtsol_mep[${i}][${v}] + (1 - ${alpha})*filtsol_pp[${i}][${v}];
     % endif
     sol_rep += du_vis[${i}][${v}];
-    tdivtconf_vis[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
+    tdivtconf_inv[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt}; // Store in upts_outb
 % endfor
 
 </%pyfr:kernel>

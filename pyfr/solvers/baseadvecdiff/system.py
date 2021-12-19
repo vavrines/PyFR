@@ -55,24 +55,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
             q1 << kernels['eles', 'gradcoru_qpts']()
 
         # Split viscous and inviscid parts
-        # Inviscid
-        q1 << kernels['eles', 'tdisf_inv']()
-        q1 << kernels['eles', 'tdivtpcorf']()
-        q1 << kernels['iint', 'comm_flux_inv']()
-        q1 << kernels['bcint', 'comm_flux_inv'](t=t)
-        q2 << kernels['mpiint', 'vect_fpts_send']()
-        q2 << kernels['mpiint', 'vect_fpts_recv']()
-        q2 << kernels['mpiint', 'vect_fpts_unpack']()
-        runall([q1, q2])
-        q1 << kernels['mpiint', 'comm_flux_inv']()
-        q1 << kernels['eles', 'tdivtconf']()
-        runall([q1])
-
-        q1 << kernels['eles', 'copy_divf']()
-
         # Viscous
-        q1 << kernels['eles', 'disu_ext']()
-        q1 << kernels['eles', 'disu_int']()
         q1 << kernels['eles', 'tdisf_vis']()
         q1 << kernels['eles', 'tdivtpcorf']()
         q1 << kernels['iint', 'comm_flux_vis']()
@@ -84,7 +67,22 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1 << kernels['mpiint', 'comm_flux_vis']()
         q1 << kernels['eles', 'tdivtconf']()
         runall([q1])
+        q1 << kernels['eles', 'copy_divf']()
 
+        # Inviscid
+        q1 << kernels['eles', 'disu_ext']()
+        q1 << kernels['eles', 'disu_int']()
+        q1 << kernels['eles', 'tdisf_inv']()
+        q1 << kernels['eles', 'tdivtpcorf']()
+        q1 << kernels['iint', 'comm_flux_inv']()
+        q1 << kernels['bcint', 'comm_flux_inv'](t=t)
+        q2 << kernels['mpiint', 'vect_fpts_send']()
+        q2 << kernels['mpiint', 'vect_fpts_recv']()
+        q2 << kernels['mpiint', 'vect_fpts_unpack']()
+        runall([q1, q2])
+        q1 << kernels['mpiint', 'comm_flux_inv']()
+        q1 << kernels['eles', 'tdivtconf']()
+        runall([q1])
 
         # Filter output
         q1 << kernels['eles', 'negdivconf'](t=t)
