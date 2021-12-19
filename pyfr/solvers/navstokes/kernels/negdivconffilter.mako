@@ -170,18 +170,45 @@ fpdtype_t filtmodes[${nupts}][${nvars}];
     % endif
 // ***********************************************************
 
-// Compute convex combination (relaxed entropy principle) and forward Euler approximation of -divF
-fpdtype_t sol_rep;
+// Create filtered solution and verify viscous component is positivity-preserving
 % for i,v in pyfr.ndrange(nupts, nvars):
     % if alpha == 0.0:
-        sol_rep = filtsol_pp[${i}][${v}];
+        newsol[${i}][${v}] = filtsol_pp[${i}][${v}];
     % elif alpha == 1.0:
-        sol_rep = filtsol_mep[${i}][${v}];
+        newsol[${i}][${v}] = filtsol_mep[${i}][${v}];
     % else:
-        sol_rep = ${alpha}*filtsol_mep[${i}][${v}] + (1 - ${alpha})*filtsol_pp[${i}][${v}];
+        newsol[${i}][${v}] = ${alpha}*filtsol_mep[${i}][${v}] + (1 - ${alpha})*filtsol_pp[${i}][${v}];
     % endif
-    sol_rep += du_vis[${i}][${v}];
-    tdivtconf_inv[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt}; // Store in upts_outb
+    newsol[${i}][${v}] += du_vis[${i}][${v}];
+% endfor
+
+% for i,v in pyfr.ndrange(nupts, nvars):
+    newsolmodes[${i}][${v}] = ${' + '.join('{jx}*newsol[{j}][{v}]'.format(j=j, jx=jx, v=v) for j, jx in enumerate(invvdm[i]) if jx != 0)};
+% endfor
+
+${pyfr.expand('filter', 'newsolmodes', 'newsol', 'zeta', 'neginf', 'withinbounds')};
+if (withinbounds == 0) {
+    zeta_low = zeta;
+    zeta_high = 10;
+    for (int iter = 0; iter < ${niters}; iter++) {
+        zeta = 0.5*(zeta_low + zeta_high);
+        ${pyfr.expand('filter', 'newsolmodes', 'newsol', 'zeta', 'neginf', 'withinbounds')};
+
+        if (withinbounds == 1) {
+            zeta_high = zeta; 
+        }
+        else {
+            zeta_low = zeta;
+        }
+    }
+    zeta = zeta_high;
+    ${pyfr.expand('filter', 'newsolmodes', 'newsol', 'zeta', 'neginf', 'withinbounds')};
+}
+
+
+// Compute forward Euler approximation of -divF
+% for i,v in pyfr.ndrange(nupts, nvars):
+    tdivtconf_inv[${i}][${v}] = (newsol[${i}][${v}] - u[${i}][${v}])/${dt}; // Store in upts_outb
 % endfor
 
 </%pyfr:kernel>
