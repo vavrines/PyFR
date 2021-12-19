@@ -16,9 +16,13 @@ class NavierStokesIntInters(BaseAdvectionDiffusionIntInters):
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         visc_corr = self.cfg.get('solver', 'viscosity-correction')
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
-        tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
+
+        tplargs_inv = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
                        visc_corr=visc_corr, shock_capturing=shock_capturing,
-                       c=self._tpl_c)
+                       c=self._tpl_c, viscous=False)
+        tplargs_vis = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
+                       visc_corr=visc_corr, shock_capturing=shock_capturing,
+                       c=self._tpl_c, viscous=True)
 
         be.pointwise.register('pyfr.solvers.navstokes.kernels.intconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.intcflux')
@@ -29,12 +33,20 @@ class NavierStokesIntInters(BaseAdvectionDiffusionIntInters):
             )
 
         self.kernels['con_u'] = lambda: be.kernel(
-            'intconu', tplargs=tplargs, dims=[self.ninterfpts],
+            'intconu', tplargs=tplargs_vis, dims=[self.ninterfpts],
             ulin=self._scal_lhs, urin=self._scal_rhs,
             ulout=self._vect_lhs, urout=self._vect_rhs
         )
-        self.kernels['comm_flux'] = lambda: be.kernel(
-            'intcflux', tplargs=tplargs, dims=[self.ninterfpts],
+        self.kernels['comm_flux_inv'] = lambda: be.kernel(
+            'intcflux', tplargs=tplargs_inv, dims=[self.ninterfpts],
+            ul=self._scal_lhs, ur=self._scal_rhs,
+            gradul=self._vect_lhs, gradur=self._vect_rhs,
+            artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
+            entminl=self._entmin_lhs, entminr=self._entmin_rhs,
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+        )
+        self.kernels['comm_flux_vis'] = lambda: be.kernel(
+            'intcflux', tplargs=tplargs_vis, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
@@ -51,19 +63,30 @@ class NavierStokesMPIInters(BaseAdvectionDiffusionMPIInters):
         rsolver = cfg.get('solver-interfaces', 'riemann-solver')
         visc_corr = cfg.get('solver', 'viscosity-correction')
         shock_capturing = cfg.get('solver', 'shock-capturing')
-        tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
+        tplargs_inv = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
                        visc_corr=visc_corr, shock_capturing=shock_capturing,
-                       c=self._tpl_c)
+                       c=self._tpl_c, viscous=False)
+        tplargs_vis = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
+                       visc_corr=visc_corr, shock_capturing=shock_capturing,
+                       c=self._tpl_c, viscous=True)
 
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpiconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.mpicflux')
 
         self.kernels['con_u'] = lambda: be.kernel(
-            'mpiconu', tplargs=tplargs, dims=[self.ninterfpts],
+            'mpiconu', tplargs=tplargs_vis, dims=[self.ninterfpts],
             ulin=self._scal_lhs, urin=self._scal_rhs, ulout=self._vect_lhs
         )
-        self.kernels['comm_flux'] = lambda: be.kernel(
-            'mpicflux', tplargs=tplargs, dims=[self.ninterfpts],
+        self.kernels['comm_flux_inv'] = lambda: be.kernel(
+            'mpicflux', tplargs=tplargs_inv, dims=[self.ninterfpts],
+            ul=self._scal_lhs, ur=self._scal_rhs,
+            gradul=self._vect_lhs, gradur=self._vect_rhs,
+            artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
+            entminl=self._entmin_lhs, entminr=self._entmin_rhs,
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+        )
+        self.kernels['comm_flux_vis'] = lambda: be.kernel(
+            'mpicflux', tplargs=tplargs_vis, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs,
             gradul=self._vect_lhs, gradur=self._vect_rhs,
             artviscl=self._artvisc_lhs, artviscr=self._artvisc_rhs,
@@ -82,22 +105,33 @@ class NavierStokesBaseBCInters(BaseAdvectionDiffusionBCInters):
         rsolver = cfg.get('solver-interfaces', 'riemann-solver')
         visc_corr = cfg.get('solver', 'viscosity-correction', 'none')
         shock_capturing = cfg.get('solver', 'shock-capturing', 'none')
-        tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
+        tplargs_inv = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
                        visc_corr=visc_corr, shock_capturing=shock_capturing,
                        c=self._tpl_c, bctype=self.type,
-                       bccfluxstate=self.cflux_state)
+                       bccfluxstate=self.cflux_state, viscous=False)
+        tplargs_vis = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
+                       visc_corr=visc_corr, shock_capturing=shock_capturing,
+                       c=self._tpl_c, bctype=self.type,
+                       bccfluxstate=self.cflux_state, viscous=True)
 
         be.pointwise.register('pyfr.solvers.navstokes.kernels.bcconu')
         be.pointwise.register('pyfr.solvers.navstokes.kernels.bccflux')
 
         self.kernels['con_u'] = lambda: be.kernel(
-            'bcconu', tplargs=tplargs, dims=[self.ninterfpts],
+            'bcconu', tplargs=tplargs_vis, dims=[self.ninterfpts],
             extrns=self._external_args, ulin=self._scal_lhs,
             ulout=self._vect_lhs, nlin=self._norm_pnorm_lhs,
             **self._external_vals
         )
-        self.kernels['comm_flux'] = lambda: be.kernel(
-            'bccflux', tplargs=tplargs, dims=[self.ninterfpts],
+        self.kernels['comm_flux_inv'] = lambda: be.kernel(
+            'bccflux', tplargs=tplargs_inv, dims=[self.ninterfpts],
+            extrns=self._external_args, ul=self._scal_lhs,
+            gradul=self._vect_lhs, magnl=self._mag_pnorm_lhs,
+            nl=self._norm_pnorm_lhs, artviscl=self._artvisc_lhs,
+            entminl=self._entmin_lhs, **self._external_vals
+        )
+        self.kernels['comm_flux_vis'] = lambda: be.kernel(
+            'bccflux', tplargs=tplargs_vis, dims=[self.ninterfpts],
             extrns=self._external_args, ul=self._scal_lhs,
             gradul=self._vect_lhs, magnl=self._mag_pnorm_lhs,
             nl=self._norm_pnorm_lhs, artviscl=self._artvisc_lhs,

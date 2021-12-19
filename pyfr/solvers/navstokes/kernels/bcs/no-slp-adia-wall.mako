@@ -11,12 +11,22 @@
 </%pyfr:macro>
 
 <%pyfr:macro name='bc_ldg_state' params='ul, nl, ur' externs='ploc, t'>
+% if viscous:
     ur[0] = ul[0];
-% for i in range(ndims):
-    ur[${i + 1}] = 0.0;
-% endfor
-    ur[${nvars - 1}] = ul[${nvars - 1}]
-                     - (0.5/ul[0])*${pyfr.dot('ul[{i}]', i=(1, ndims + 1))};
+    % for i in range(ndims):
+        ur[${i + 1}] = 0.0;
+    % endfor
+        ur[${nvars - 1}] = ul[${nvars - 1}]
+                         - (0.5/ul[0])*${pyfr.dot('ul[{i}]', i=(1, ndims + 1))};
+% else:
+    fpdtype_t nor = ${' + '.join('ul[{1}]*nl[{0}]'.format(i, i + 1)
+                                 for i in range(ndims))};
+    ur[0] = ul[0];
+    % for i in range(ndims):
+        ur[${i + 1}] = ul[${i + 1}] - 2*nor*nl[${i}];
+    % endfor
+    ur[${nvars - 1}] = ul[${nvars - 1}];
+% endif
 </%pyfr:macro>
 
 <%pyfr:macro name='bc_ldg_grad_state' params='ul, nl, grad_ul, grad_ur'>

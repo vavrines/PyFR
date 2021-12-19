@@ -23,39 +23,45 @@
     fpdtype_t ficomm[${nvars}], fvcomm;
     ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'ficomm')};
 
-% if beta != -0.5:
-    fpdtype_t fvl[${ndims}][${nvars}] = {{0}};
-    ${pyfr.expand('viscous_flux_add', 'ul', 'gradul', 'fvl')};
-    ${pyfr.expand('artificial_viscosity_add', 'gradul', 'fvl', 'artviscl')};
-% endif
+% if viscous:
+    % if beta != -0.5:
+        fpdtype_t fvl[${ndims}][${nvars}] = {{0}};
+        ${pyfr.expand('viscous_flux_add', 'ul', 'gradul', 'fvl')};
+        ${pyfr.expand('artificial_viscosity_add', 'gradul', 'fvl', 'artviscl')};
+    % endif
 
-% if beta != 0.5:
-    fpdtype_t fvr[${ndims}][${nvars}] = {{0}};
-    ${pyfr.expand('viscous_flux_add', 'ur', 'gradur', 'fvr')};
-    ${pyfr.expand('artificial_viscosity_add', 'gradur', 'fvr', 'artviscr')};
-% endif
+    % if beta != 0.5:
+        fpdtype_t fvr[${ndims}][${nvars}] = {{0}};
+        ${pyfr.expand('viscous_flux_add', 'ur', 'gradur', 'fvr')};
+        ${pyfr.expand('artificial_viscosity_add', 'gradur', 'fvr', 'artviscr')};
+    % endif
 
-% for i in range(nvars):
-% if beta == -0.5:
-    fvcomm = ${' + '.join('nl[{j}]*fvr[{j}][{i}]'.format(i=i, j=j)
-                          for j in range(ndims))};
-% elif beta == 0.5:
-    fvcomm = ${' + '.join('nl[{j}]*fvl[{j}][{i}]'.format(i=i, j=j)
-                          for j in range(ndims))};
+    % for i in range(nvars):
+    % if beta == -0.5:
+        fvcomm = ${' + '.join('nl[{j}]*fvr[{j}][{i}]'.format(i=i, j=j)
+                              for j in range(ndims))};
+    % elif beta == 0.5:
+        fvcomm = ${' + '.join('nl[{j}]*fvl[{j}][{i}]'.format(i=i, j=j)
+                              for j in range(ndims))};
+    % else:
+        fvcomm = ${0.5 + beta}*(${' + '.join('nl[{j}]*fvl[{j}][{i}]'
+                                             .format(i=i, j=j)
+                                             for j in range(ndims))})
+               + ${0.5 - beta}*(${' + '.join('nl[{j}]*fvr[{j}][{i}]'
+                                             .format(i=i, j=j)
+                                             for j in range(ndims))});
+    % endif
+    % if tau != 0.0:
+        fvcomm += ${tau}*(ul[${i}] - ur[${i}]);
+    % endif
+
+        ul[${i}] = magnl*(ficomm[${i}] + fvcomm);
+    % endfor
 % else:
-    fvcomm = ${0.5 + beta}*(${' + '.join('nl[{j}]*fvl[{j}][{i}]'
-                                         .format(i=i, j=j)
-                                         for j in range(ndims))})
-           + ${0.5 - beta}*(${' + '.join('nl[{j}]*fvr[{j}][{i}]'
-                                         .format(i=i, j=j)
-                                         for j in range(ndims))});
+    % for i in range(nvars):
+        ul[${i}] = magnl*(ficomm[${i}]);
+    % endfor
 % endif
-% if tau != 0.0:
-    fvcomm += ${tau}*(ul[${i}] - ur[${i}]);
-% endif
-
-    ul[${i}] = magnl*(ficomm[${i}] + fvcomm);
-% endfor
 
 entminl = fmin(entminl, entminr);
 </%pyfr:kernel>

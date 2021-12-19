@@ -12,8 +12,9 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
         if 'flux' in self.antialias:
             bufs |= {'scal_qpts', 'vect_qpts'}
 
-        if self._soln_in_src_exprs:
-            bufs |= {'scal_upts_cpy'}
+        #if self._soln_in_src_exprs:
+        # Required for inviscid/viscous splitting
+        bufs |= {'scal_upts_cpy'}
 
         return bufs
 
@@ -121,6 +122,10 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                                            extent=nonce + 'entmin', tags=tags)
             self.entmin_cpy = self._be.matrix((1, self.neles),
                                            extent=nonce + 'entmincpy', tags=tags)
+
+            kernels['copy_divf'] = lambda: kernel(
+                'copy', self._scal_upts_cpy, self.scal_upts_outb
+            )
         else:
             raise ValueError('Invalid shock capturing scheme')
 

@@ -19,19 +19,35 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         if visc_corr not in {'sutherland', 'none'}:
             raise ValueError('Invalid viscosity-correction option')
 
-        tplargs = dict(ndims=self.ndims, nvars=self.nvars,
+        tplargs_inv = dict(ndims=self.ndims, nvars=self.nvars,
                        shock_capturing=shock_capturing, visc_corr=visc_corr,
-                       c=self.cfg.items_as('constants', float))
+                       c=self.cfg.items_as('constants', float),
+                       viscous=False)
+
+        tplargs_vis = dict(ndims=self.ndims, nvars=self.nvars,
+                       shock_capturing=shock_capturing, visc_corr=visc_corr,
+                       c=self.cfg.items_as('constants', float),
+                       viscous=True)
 
         if 'flux' in self.antialias:
-            self.kernels['tdisf'] = lambda: self._be.kernel(
-                'tflux', tplargs=tplargs, dims=[self.nqpts, self.neles],
+            self.kernels['tdisf_inv'] = lambda: self._be.kernel(
+                'tflux', tplargs=tplargs_inv, dims=[self.nqpts, self.neles],
+                u=self._scal_qpts, smats=self.smat_at('qpts'),
+                f=self._vect_qpts, artvisc=self.artvisc
+            )
+            self.kernels['tdisf_vis'] = lambda: self._be.kernel(
+                'tflux', tplargs=tplargs_vis, dims=[self.nqpts, self.neles],
                 u=self._scal_qpts, smats=self.smat_at('qpts'),
                 f=self._vect_qpts, artvisc=self.artvisc
             )
         else:
-            self.kernels['tdisf'] = lambda: self._be.kernel(
-                'tflux', tplargs=tplargs, dims=[self.nupts, self.neles],
+            self.kernels['tdisf_inv'] = lambda: self._be.kernel(
+                'tflux', tplargs=tplargs_inv, dims=[self.nupts, self.neles],
+                u=self.scal_upts_inb, smats=self.smat_at('upts'),
+                f=self._vect_upts, artvisc=self.artvisc
+            )
+            self.kernels['tdisf_vis'] = lambda: self._be.kernel(
+                'tflux', tplargs=tplargs_vis, dims=[self.nupts, self.neles],
                 u=self.scal_upts_inb, smats=self.smat_at('upts'),
                 f=self._vect_upts, artvisc=self.artvisc
             )
@@ -59,7 +75,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         self.kernels['negdivconf'] = lambda: self._be.kernel(
             'negdivconffilter', tplargs=tplargs,
-            dims=[self.neles], tdivtconf=self.scal_upts_outb,
+            dims=[self.neles], tdivtconf_vis=self.scal_upts_outb, tdivtconf_inv=self._scal_upts_cpy,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb,
             entmin=self.entmin
         )

@@ -47,13 +47,15 @@
 
 <%pyfr:kernel name='negdivconffilter' ndim='1'
               t='scalar fpdtype_t'
-              tdivtconf='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              tdivtconf_inv='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              tdivtconf_vis='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               ploc='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'
               entmin='in fpdtype_t'>
 
 fpdtype_t newsol[${nupts}][${nvars}];
+fpdtype_t du_vis[${nupts}][${nvars}];
 fpdtype_t newsolmodes[${nupts}][${nvars}];
 fpdtype_t filtsol_pp[${nupts}][${nvars}];
 fpdtype_t filtsol_mep[${nupts}][${nvars}];
@@ -62,8 +64,10 @@ fpdtype_t filtmodes[${nupts}][${nvars}];
 // Compute -divF and forward Euler prediction of next time step
 % for i in range(nupts):
     % for v, ex in enumerate(srcex):
-        tdivtconf[${i}][${v}] = -rcpdjac[${i}]*tdivtconf[${i}][${v}] + ${ex};
-        newsol[${i}][${v}] = u[${i}][${v}] + ${dt}*tdivtconf[${i}][${v}];
+        tdivtconf_inv[${i}][${v}] = -rcpdjac[${i}]*tdivtconf_inv[${i}][${v}] + ${ex};
+        tdivtconf_vis[${i}][${v}] = -rcpdjac[${i}]*tdivtconf_vis[${i}][${v}] + ${ex};
+        newsol[${i}][${v}] = u[${i}][${v}] + ${dt}*tdivtconf_inv[${i}][${v}];
+        du_vis[${i}][${v}] = ${dt}*(tdivtconf_vis[${i}][${v}] - tdivtconf_inv[${i}][${v}]);
     % endfor
 % endfor
 
@@ -176,7 +180,8 @@ fpdtype_t sol_rep;
     % else:
         sol_rep = ${alpha}*filtsol_mep[${i}][${v}] + (1 - ${alpha})*filtsol_pp[${i}][${v}];
     % endif
-    tdivtconf[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
+    sol_rep += du_vis[${i}][${v}];
+    tdivtconf_vis[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
 % endfor
 
 </%pyfr:kernel>
