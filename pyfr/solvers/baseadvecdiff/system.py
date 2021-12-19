@@ -72,6 +72,8 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         # Inviscid
         q1 << kernels['eles', 'disu_ext']()
         q1 << kernels['eles', 'disu_int']()
+        q1 << kernels['mpiint', 'vect_fpts_pack']()
+        runall([q1])
         q1 << kernels['eles', 'tdisf_inv']()
         q1 << kernels['eles', 'tdivtpcorf']()
         q1 << kernels['iint', 'comm_flux_inv']()
