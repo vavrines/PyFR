@@ -15,9 +15,11 @@ class TplargsMixin(object):
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         visc_corr = self.cfg.get('solver', 'viscosity-correction')
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
+        etol = float(self.cfg.get('solver', 'filter-etol', 1e-3))
         self._tplargs = dict(ndims=self.ndims, nvars=self.nvars, 
                              rsolver=rsolver, visc_corr=visc_corr,
-                             shock_capturing=shock_capturing, c=self._tpl_c)
+                             shock_capturing=shock_capturing, c=self._tpl_c,
+                             etol=etol)
 
 
 class MHDIntInters(TplargsMixin, BaseAdvectionDiffusionIntInters):

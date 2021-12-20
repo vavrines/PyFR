@@ -29,5 +29,6 @@
     ur[${i}] = -magnl*(ficomm[${i}]);
 % endfor
 
-entmin_intl = entmin_intr = fmin(entminl, entminr);
+fpdtype_t demin = abs(entminl - entminr);
+entmin_intl = entmin_intr = fmin(entminl, entminr) - ${etol}*demin;
 </%pyfr:kernel>
