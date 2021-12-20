@@ -4,8 +4,7 @@
 
 <%pyfr:kernel name='calcentropy' ndim='1'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              entmin='out fpdtype_t'
-              entmin_cpy='out fpdtype_t'>
+              entmin='out fpdtype_t'>
 
 <% large_number = 10**10 %>
 
@@ -41,6 +40,4 @@ fpdtype_t rhou,rhov,rhow,E,Bx,By,Bz,BdotB2;
 
     entmin = fmin(entmin, e);
 % endfor
-
-entmin_cpy = entmin;
 </%pyfr:kernel>

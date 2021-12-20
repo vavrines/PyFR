@@ -16,6 +16,8 @@
               artviscr='in mpi fpdtype_t'
               entminl='in view fpdtype_t'
               entminr='in mpi fpdtype_t'
+              entmin_intl='in view fpdtype_t'
+              entmin_intr='in mpi fpdtype_t'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
     // Perform the Riemann solve
@@ -26,5 +28,5 @@
     ul[${i}] = magnl*(ficomm[${i}]);
 % endfor
 
-entminl = fmin(entminl, entminr);
+entmin_intl = entmin_intr = fmin(entminl, entminr);
 </%pyfr:kernel>

@@ -86,6 +86,7 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.negdivconffilter')
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.calcentropy')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.calcminentropy')
 
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
@@ -122,7 +123,7 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         ptol = 1e-8
         etol = 1e-8
 
-        tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts,
+        tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts,
                        c=self.cfg.items_as('constants', float), 
                        order=self.basis.order, ffac=ffac, dt=dt,
                        vdm=self.basis.ubasis.vdm.T,
@@ -140,8 +141,12 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             entmin=self.entmin
         )
 
-        # Apply the sensor to estimate the required artificial viscosity
         self.kernels['calcentropy'] = lambda: self._be.kernel(
             'calcentropy', tplargs=tplargs, dims=[self.neles],
-            u=self.scal_upts_inb, entmin=self.entmin, entmin_cpy=self.entmin_cpy
+            u=self.scal_upts_inb, entmin=self.entmin
+        )
+
+        self.kernels['calcminentropy'] = lambda: self._be.kernel(
+            'calcminentropy', tplargs=tplargs, dims=[self.neles],
+            entmin=self.entmin, entmin_int=self.entmin_int
         )
