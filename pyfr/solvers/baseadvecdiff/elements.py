@@ -120,8 +120,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             tags = {'align'}
             self.entmin = self._be.matrix((1, self.neles),
                                            extent=nonce + 'entmin', tags=tags)
-            self.entmin_cpy = self._be.matrix((1, self.neles),
-                                           extent=nonce + 'entmincpy', tags=tags)
+            self.entmin_int = self._be.matrix((self.nfpts, self.neles),
+                                           extent=nonce + 'entminint', tags=tags)
 
             kernels['copy_divf'] = lambda: kernel(
                 'copy', self._scal_upts_cpy, self.scal_upts_outb
@@ -137,6 +137,9 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
         nfp = self.nfacefpts[fidx]
         return (self.entmin.mid,)*nfp, (0,)*nfp, (eidx,)*nfp
 
-    def get_entmin_cpy_fpts_for_inter(self, eidx, fidx):
+    def get_entmin_int_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
-        return (self.entmin_cpy.mid,)*nfp, (0,)*nfp, (eidx,)*nfp
+        rmap = self._srtd_face_fpts[fidx][eidx]
+        cmap = (eidx,)*nfp
+
+        return (self.entmin_int.mid,)*nfp, rmap, cmap

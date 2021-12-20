@@ -16,7 +16,9 @@ class BaseAdvectionDiffusionIntInters(BaseAdvectionIntInters):
         self._vect_rhs = self._vect_view(rhs, 'get_vect_fpts_for_inter')
 
         self._entmin_lhs = self._view(lhs, 'get_entmin_fpts_for_inter')
-        self._entmin_rhs = self._view(rhs, 'get_entmin_cpy_fpts_for_inter')
+        self._entmin_rhs = self._view(rhs, 'get_entmin_fpts_for_inter')
+        self._entmin_intl = self._view(lhs, 'get_entmin_int_fpts_for_inter')
+        self._entmin_intr = self._view(rhs, 'get_entmin_int_fpts_for_inter')
 
         # Generate the additional view matrices for artificial viscosity
         if cfg.get('solver', 'shock-capturing') == 'artificial-viscosity':
@@ -133,8 +135,9 @@ class BaseAdvectionDiffusionMPIInters(BaseAdvectionMPIInters):
             self._artvisc_lhs = self._artvisc_rhs = None
 
         self._entmin_lhs = self._xchg_view(lhs, 'get_entmin_fpts_for_inter')
-        self._entmin_cpy_lhs = self._xchg_view(lhs, 'get_entmin_cpy_fpts_for_inter')
-        self._entmin_rhs = be.xchg_matrix_for_view(self._entmin_cpy_lhs)
+        self._entmin_rhs = be.xchg_matrix_for_view(self._entmin_lhs)
+        self._entmin_intl = self._xchg_view(lhs, 'get_entmin_int_fpts_for_inter')
+        self._entmin_intr = be.xchg_matrix_for_view(self._entmin_intl)
 
 class BaseAdvectionDiffusionBCInters(BaseAdvectionBCInters):
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
@@ -152,4 +155,5 @@ class BaseAdvectionDiffusionBCInters(BaseAdvectionBCInters):
         else:
             self._artvisc_lhs = None
 
-        self._entmin_lhs = self._xchg_view(lhs, 'get_entmin_fpts_for_inter')
+        self._entmin_lhs = self._view(lhs, 'get_entmin_fpts_for_inter')
+        self._entmin_intl = self._view(lhs, 'get_entmin_int_fpts_for_inter')

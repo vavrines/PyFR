@@ -13,6 +13,7 @@
               gradul='in view fpdtype_t[${str(ndims)}][${str(nvars)}]'
               artviscl='in view fpdtype_t'
               entminl='in view fpdtype_t'
+              entmin_intl='in view fpdtype_t'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
 
@@ -34,6 +35,6 @@ ${pyfr.expand('bc_common_flux_state', 'ul', 'gradul', 'artviscl', 'nl', 'magnl')
     % endif
 
     fpdtype_t entminr = d*log(p/pow(d, ${c['gamma']}));
-    entminl = fmin(entminl, entminr);
+    entmin_intl = fmin(entminl, entminr);
 % endif
 </%pyfr:kernel>

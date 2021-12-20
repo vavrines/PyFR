@@ -87,5 +87,8 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         runall([q1])
 
         # Filter output
+        q1 << kernels['eles', 'calcminentropy']()
+        runall([q1])
+
         q1 << kernels['eles', 'negdivconf'](t=t)
         runall([q1])
