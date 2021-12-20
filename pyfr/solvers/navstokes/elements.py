@@ -59,9 +59,9 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         niters = int(self.cfg.get('solver', 'filter-iterations', 10))
         alpha = float(self.cfg.get('solver', 'filter-alpha', 1.0))
         mean_mode_value = (self.basis.ubasis.invvdm.T @ np.ones_like(self.basis.upts[:,0]))[0]
-        dtol = 1e-8
-        ptol = 1e-8
-        etol = 1e-8
+        dtol = float(self.cfg.get('solver', 'filter-dtol', 1e-8))
+        ptol = float(self.cfg.get('solver', 'filter-ptol', 1e-8))
+        etol = float(self.cfg.get('solver', 'filter-etol', 1e-3))
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts,
                        c=self.cfg.items_as('constants', float), 
