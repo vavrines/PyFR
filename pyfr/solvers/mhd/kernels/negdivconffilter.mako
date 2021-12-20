@@ -47,7 +47,7 @@
         emin = fmin(emin, e);
     % endfor
 
-    if (dmin >= ${dtol} && pmin >= ${ptol} && emin >= entmin - ${ptol}) {
+    if (dmin >= ${dtol} && pmin >= ${ptol} && emin >= entmin - ${etol}) {
         withinbounds = 1; 
     }
     else {
