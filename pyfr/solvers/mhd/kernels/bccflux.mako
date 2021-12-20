@@ -44,6 +44,5 @@ fpdtype_t d = ur[0];
 % endif
 
 fpdtype_t entminr = d*log(p/pow(d, ${c['gamma']}));
-fpdtype_t demin = abs(entminl - entminr);
-entmin_intl = fmin(entminl, entminr) - ${etol}*demin;
+entmin_intl = fmin(entminl, entminr);
 </%pyfr:kernel>
