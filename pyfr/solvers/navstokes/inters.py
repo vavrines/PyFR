@@ -132,16 +132,16 @@ class NavierStokesBaseBCInters(BaseAdvectionDiffusionBCInters):
             extrns=self._external_args, ul=self._scal_lhs,
             gradul=self._vect_lhs, magnl=self._mag_pnorm_lhs,
             nl=self._norm_pnorm_lhs, artviscl=self._artvisc_lhs, 
-            entmin_intl=self._entmin_intl, entmin_intr=self._entmin_intr,
-            entminl=self._entmin_lhs, **self._external_vals
+            entminl=self._entmin_lhs, entmin_intl=self._entmin_intl, 
+            **self._external_vals
         )
         self.kernels['comm_flux_vis'] = lambda: be.kernel(
             'bccflux', tplargs=tplargs_vis, dims=[self.ninterfpts],
             extrns=self._external_args, ul=self._scal_lhs,
             gradul=self._vect_lhs, magnl=self._mag_pnorm_lhs,
             nl=self._norm_pnorm_lhs, artviscl=self._artvisc_lhs, 
-            entmin_intl=self._entmin_intl, entmin_intr=self._entmin_intr,
-            entminl=self._entmin_lhs, **self._external_vals
+            entminl=self._entmin_lhs, entmin_intl=self._entmin_intl, 
+            **self._external_vals
         )
 
 
