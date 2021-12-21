@@ -13,7 +13,7 @@
               gradul='in view fpdtype_t[${str(ndims)}][${str(nvars)}]'
               artviscl='in view fpdtype_t'
               entminl='in view fpdtype_t'
-              entmin_intl='in view fpdtype_t'
+              entmin_intl='inout view fpdtype_t'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
 fpdtype_t ur[${nvars}];

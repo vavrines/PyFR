@@ -16,8 +16,8 @@
               artviscr='in view fpdtype_t'
               entminl='in view fpdtype_t'
               entminr='in view fpdtype_t'
-              entmin_intl='in view fpdtype_t'
-              entmin_intr='in view fpdtype_t'
+              entmin_intl='inout view fpdtype_t'
+              entmin_intr='inout view fpdtype_t'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
     // Perform the Riemann solve
