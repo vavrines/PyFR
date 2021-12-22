@@ -47,11 +47,9 @@
 
 <%pyfr:kernel name='entropyfilter' ndim='1'
               t='scalar fpdtype_t'
-              u_next='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
+              u_modes='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               entmin='in fpdtype_t'>
 
-
-fpdtype_t u_modes[${nupts}][${nvars}];
 fpdtype_t filtsol[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
 
@@ -60,14 +58,8 @@ fpdtype_t zeta_high = 0.5;
 fpdtype_t zeta = 0;
 fpdtype_t pmin, dmin, emin, p, d, e, withinbounds;
 
-
-// Get modal form at next time step
-% for i,v in pyfr.ndrange(nupts, nvars):
-    u_modes[${i}][${v}] = ${' + '.join('{jx}*u_next[{j}][{v}]'
-                                            .format(j=j, jx=jx, v=v) for j, jx in enumerate(invvdm[i]) if jx != 0)};
-% endfor
-
 // Compute zeta for positivity-preserving and minimum entropy principle satisfying
+
 // Check if solution is already within bounds
 ${pyfr.expand('filter_ent', 'u_modes', 'filtsol', 'zeta_low', 'entmin', 'withinbounds')};
 

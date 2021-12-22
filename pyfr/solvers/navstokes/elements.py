@@ -78,13 +78,13 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         self.kernels['split_viscous'] = lambda: self._be.kernel(
             'splitviscous', tplargs=tplargs,
-            dims=[self.nupts, self.neles], tdivtconf_vis=self._scal_upts_cpy, tdivtconf_inv=self.scal_upts_outb,
+            dims=[self.neles], tdivtconf_vis=self._scal_upts_cpy, tdivtconf_inv=self.scal_upts_outb,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb
         )
 
         self.kernels['entropy_filter'] = lambda: self._be.kernel(
             'entropyfilter', tplargs=tplargs,
-            dims=[self.neles], u_next=self.scal_upts_outb, entmin=self.entmin
+            dims=[self.neles], u_modes=self.scal_upts_outb, entmin=self.entmin
         )
 
         self.kernels['enforce_positivity_viscous'] = lambda: self._be.kernel(
