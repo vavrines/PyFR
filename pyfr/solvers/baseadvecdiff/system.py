@@ -90,5 +90,8 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1 << kernels['eles', 'calcminentropy']()
         runall([q1])
 
+        q1 << kernels['eles', 'split_viscous'](t=t)
+        q1 << kernels['eles', 'entropy_filter'](t=t)
+        q1 << kernels['eles', 'enforce_positivity_viscous'](t=t)
         q1 << kernels['eles', 'negdivconf'](t=t)
         runall([q1])
