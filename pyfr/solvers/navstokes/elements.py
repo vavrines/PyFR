@@ -14,9 +14,6 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.negdivconffilter')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.calcentropy')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.calcminentropy')
-        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.splitviscous')
-        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.entropyfilter')
-        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.positivityfilter')
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
@@ -76,26 +73,11 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         plocupts = self.ploc_at('upts') if self._ploc_in_src_exprs else None
 
-        self.kernels['split_viscous'] = lambda: self._be.kernel(
-            'splitviscous', tplargs=tplargs,
-            dims=[self.neles], tdivtconf_vis=self._scal_upts_cpy, tdivtconf_inv=self.scal_upts_outb,
-            rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb
-        )
-
-        self.kernels['entropy_filter'] = lambda: self._be.kernel(
-            'entropyfilter', tplargs=tplargs,
-            dims=[self.neles], u_modes=self.scal_upts_outb, entmin=self.entmin
-        )
-
-        self.kernels['enforce_positivity_viscous'] = lambda: self._be.kernel(
-            'positivityfilter', tplargs=tplargs,
-            dims=[self.neles], u_inv=self.scal_upts_outb, du_vis=self._scal_upts_cpy
-        )
-
         self.kernels['negdivconf'] = lambda: self._be.kernel(
             'negdivconffilter', tplargs=tplargs,
-            dims=[self.neles], u_next=self.scal_upts_outb,
-            u=self.scal_upts_inb
+            dims=[self.neles], tdivtconf_vis=self._scal_upts_cpy, tdivtconf_inv=self.scal_upts_outb,
+            rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb,
+            entmin=self.entmin
         )
 
         self.kernels['calcentropy'] = lambda: self._be.kernel(
