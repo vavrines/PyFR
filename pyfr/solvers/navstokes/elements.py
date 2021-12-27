@@ -60,7 +60,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         mean_mode_value = (self.basis.ubasis.invvdm.T @ np.ones_like(self.basis.upts[:,0]))[0]
         dtol = float(self.cfg.get('solver', 'filter-dtol', 1e-8))
         ptol = float(self.cfg.get('solver', 'filter-ptol', 1e-8))
-        etol = float(self.cfg.get('solver', 'filter-etol', 1e-4))
+        etol = float(self.cfg.get('solver', 'filter-etol', 1e-8))
+        alpha = float(self.cfg.get('solver', 'filter-alpha', 1e-3))
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts,
                        c=self.cfg.items_as('constants', float), 
@@ -69,7 +70,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                        invvdm=self.basis.ubasis.invvdm.T,
                        srcex=self._src_exprs, niters=niters,
                        dtol=dtol, ptol=ptol, etol=etol, 
-                       mean_mode_value=mean_mode_value)
+                       mean_mode_value=mean_mode_value, alpha=alpha)
 
         plocupts = self.ploc_at('upts') if self._ploc_in_src_exprs else None
 

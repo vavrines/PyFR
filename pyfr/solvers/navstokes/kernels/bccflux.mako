@@ -35,6 +35,6 @@ ${pyfr.expand('bc_common_flux_state', 'ul', 'gradul', 'artviscl', 'nl', 'magnl')
     % endif
 
     fpdtype_t entminr = d*log(p/pow(d, ${c['gamma']}));
-    entmin_intl = fmin(entminl, entminr);
+    entmin_intl = entminr;
 % endif
 </%pyfr:kernel>
