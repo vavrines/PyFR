@@ -134,6 +134,30 @@ class BaseAdvectionDiffusionMPIInters(BaseAdvectionMPIInters):
         else:
             self._artvisc_lhs = self._artvisc_rhs = None
 
+
+
+        self.kernels['entmin_fpts_pack'] = lambda: be.kernel(
+            'pack', self._entmin_lhs)
+        self.kernels['entmin_fpts_send'] = lambda: be.kernel(
+            'send_pack', self._entmin_lhs, self._rhsrank,
+            self.MPI_TAG)
+        self.kernels['entmin_fpts_recv'] = lambda: be.kernel(
+            'recv_pack', self._entmin_rhs, self._rhsrank,
+            self.MPI_TAG)
+        self.kernels['entmin_fpts_unpack'] = lambda: be.kernel(
+            'unpack', self._entmin_rhs)
+
+        self.kernels['entminint_fpts_pack'] = lambda: be.kernel(
+            'pack', self._entmin_intl)
+        self.kernels['entminint_fpts_send'] = lambda: be.kernel(
+            'send_pack', self._entmin_intl, self._rhsrank,
+            self.MPI_TAG)
+        self.kernels['entminint_fpts_recv'] = lambda: be.kernel(
+            'recv_pack', self._entmin_intr, self._rhsrank,
+            self.MPI_TAG)
+        self.kernels['entminint_fpts_unpack'] = lambda: be.kernel(
+            'unpack', self._entmin_intr)
+
         self._entmin_lhs = self._xchg_view(lhs, 'get_entmin_fpts_for_inter')
         self._entmin_rhs = be.xchg_matrix_for_view(self._entmin_lhs)
         self._entmin_intl = self._xchg_view(lhs, 'get_entmin_int_fpts_for_inter')
