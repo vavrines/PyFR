@@ -61,7 +61,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         dtol = float(self.cfg.get('solver', 'filter-dtol', 1e-8))
         ptol = float(self.cfg.get('solver', 'filter-ptol', 1e-8))
         etol = float(self.cfg.get('solver', 'filter-etol', 1e-8))
-        alpha = float(self.cfg.get('solver', 'filter-alpha', 0.0))
+        alpha = float(self.cfg.get('solver', 'filter-alpha', 1e-3))
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts,
                        c=self.cfg.items_as('constants', float), 
