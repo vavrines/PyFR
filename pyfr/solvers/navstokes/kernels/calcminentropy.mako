@@ -13,6 +13,6 @@ fpdtype_t delta_ent = 0;
 % endfor
 
 delta_ent = ${alpha/nfpts}*delta_ent - entmin;
-entmin -= fmax(0, delta_ent);
+entmin -= delta_ent;
 
 </%pyfr:kernel>
