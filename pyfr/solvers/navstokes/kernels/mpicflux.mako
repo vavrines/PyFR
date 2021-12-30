@@ -66,6 +66,6 @@
 % endif
 
 % if not viscous:
-    entmin_intl = entminr;
+    entmin_intl = entmin_intr = fmin(entminl, entminr);
 % endif
 </%pyfr:kernel>

@@ -6,13 +6,8 @@
               entmin_int='in fpdtype_t[${str(nfpts)}]'
               entmin='out fpdtype_t'>
 
-fpdtype_t delta_ent = 0;
 % for i in range(nfpts):
     entmin = fmin(entmin, entmin_int[${i}]);
-    delta_ent += entmin_int[${i}];
 % endfor
-
-delta_ent = ${alpha/nfpts}*delta_ent - entmin;
-entmin -= delta_ent;
 
 </%pyfr:kernel>
