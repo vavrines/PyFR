@@ -2,7 +2,7 @@
 
 from pyfr.backends.base.kernels import ComputeMetaKernel
 from pyfr.solvers.baseadvec import BaseAdvectionElements
-
+import numpy as np
 
 class BaseAdvectionDiffusionElements(BaseAdvectionElements):
     @property
@@ -126,6 +126,13 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             kernels['copy_divf'] = lambda: kernel(
                 'copy', self._scal_upts_cpy, self.scal_upts_outb
             )
+
+            vdm = np.repeat(self.basis.ubasis.vdm.T[:,:,np.newaxis], self.neles, axis=2)
+            invvdm = np.repeat(self.basis.ubasis.invvdm.T[:,:,np.newaxis], self.neles, axis=2)
+            self.vdm = self._be.matrix((self.nupts, self.nupts, self.neles),
+                                           extent=nonce + 'vdm', tags=tags, initval=vdm)
+            self.invvdm = self._be.matrix((self.nupts, self.nupts, self.neles),
+                                           extent=nonce + 'invvdm', tags=tags, initval=invvdm)
         else:
             raise ValueError('Invalid shock capturing scheme')
 

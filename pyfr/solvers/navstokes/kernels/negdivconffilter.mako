@@ -7,34 +7,40 @@
 <%pyfr:macro name='filter' params='newsolmodes, filtsol, zeta, entmin, withinbounds'>
 
     dmin = ${large_number}; pmin = ${large_number}; emin = ${large_number};
-    % for i,v in pyfr.ndrange(nupts, nvars):
-        filtmodes[${i}][${v}] = pow(${ffac[i]}, zeta)*newsolmodes[${i}][${v}];
-    % endfor
-
-    % for i in range(nupts):
-        % for v in range(nvars):
-            filtsol[${i}][${v}] = ${' + '.join('{jx}*filtmodes[{j}][{v}]'.format(j=j, jx=jx, v=v) 
-                                                for j, jx in enumerate(vdm[i]) if jx != 0)};
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        % for i in range(nupts):
+            filtmodes[${i}][vidx] = pow(${ffac[i]}, zeta)*newsolmodes[${i}][vidx];
         % endfor
+    }
 
-        d = filtsol[${i}][0];
+    for (int uidx = 0; uidx < ${nupts}; uidx++) {
+        for (int vidx = 0; vidx < ${nvars}; vidx++) {
+            filtsol[uidx][vidx] = 0.0;
+            for (int midx = 0; midx < ${nupts}; midx++) {
+                filtsol[uidx][vidx] += vdm[uidx][midx]*filtmodes[midx][vidx];
+            }
+        }
+
+        d = filtsol[uidx][0];
         % if ndims == 2:
-            p = ${c['gamma'] - 1}*(filtsol[${i}][${nvars - 1}] - 
-                (0.5/d)*(filtsol[${i}][1]*filtsol[${i}][1] + 
-                         filtsol[${i}][2]*filtsol[${i}][2]));
+            p = ${c['gamma'] - 1}*(filtsol[uidx][${nvars - 1}] - 
+                (0.5/d)*(filtsol[uidx][1]*filtsol[uidx][1] + 
+                         filtsol[uidx][2]*filtsol[uidx][2]));
         % elif ndims == 3:
-            p = ${c['gamma'] - 1}*(filtsol[${i}][${nvars - 1}] - 
-                (0.5/d)*(filtsol[${i}][1]*filtsol[${i}][1] + 
-                         filtsol[${i}][2]*filtsol[${i}][2] + 
-                         filtsol[${i}][3]*filtsol[${i}][3]));
+            p = ${c['gamma'] - 1}*(filtsol[uidx][${nvars - 1}] - 
+                (0.5/d)*(filtsol[uidx][1]*filtsol[uidx][1] + 
+                         filtsol[uidx][2]*filtsol[uidx][2] + 
+                         filtsol[uidx][3]*filtsol[uidx][3]));
         % endif
+
 
         e = (d <= ${dtol} || p <= ${ptol}) ? -${large_number} : d*log(p/pow(d, ${c['gamma']}));
 
         dmin = fmin(dmin, d);
         pmin = fmin(pmin, p);
         emin = fmin(emin, e);
-    % endfor
+
+    }
 
     if (dmin >= ${dtol} && pmin >= ${ptol} && emin >= entmin - ${etol}) {
         withinbounds = 1; 
@@ -52,7 +58,9 @@
               ploc='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
               u='in fpdtype_t[${str(nupts)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'
-              entmin='in fpdtype_t'>
+              entmin='in fpdtype_t'
+              vdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
+              invvdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'>
 
 fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t du_vis[${nupts}][${nvars}];
@@ -62,19 +70,26 @@ fpdtype_t filtmodes[${nupts}][${nvars}];
 
 // Compute -divF and forward Euler prediction of next time step
 // Separate viscous and inviscid components
-% for i in range(nupts):
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
     % for v, ex in enumerate(srcex):
-        tdivtconf_inv[${i}][${v}] = -rcpdjac[${i}]*tdivtconf_inv[${i}][${v}] + ${ex};
-        tdivtconf_vis[${i}][${v}] = -rcpdjac[${i}]*tdivtconf_vis[${i}][${v}] + ${ex};
-        newsol[${i}][${v}] = u[${i}][${v}] + ${dt}*tdivtconf_inv[${i}][${v}];
-        du_vis[${i}][${v}] = ${dt}*(tdivtconf_vis[${i}][${v}] - tdivtconf_inv[${i}][${v}]);
+        tdivtconf_inv[uidx][${v}] = -rcpdjac[uidx]*tdivtconf_inv[uidx][${v}] + ${ex};
+        tdivtconf_vis[uidx][${v}] = -rcpdjac[uidx]*tdivtconf_vis[uidx][${v}] + ${ex};
+        newsol[uidx][${v}] = u[uidx][${v}] + ${dt}*tdivtconf_inv[uidx][${v}];
+        du_vis[uidx][${v}] = ${dt}*(tdivtconf_vis[uidx][${v}] - tdivtconf_inv[uidx][${v}]);
     % endfor
-% endfor
+}
 
 // Get modal form at next time step
-% for i,v in pyfr.ndrange(nupts, nvars):
-    newsolmodes[${i}][${v}] = ${' + '.join('{jx}*newsol[{j}][{v}]'.format(j=j, jx=jx, v=v) for j, jx in enumerate(invvdm[i]) if jx != 0)};
-% endfor
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        newsolmodes[uidx][vidx] = 0.0;
+        for (int midx = 0; midx < ${nupts}; midx++) {
+            newsolmodes[uidx][vidx] += invvdm[uidx][midx]*newsol[midx][vidx];
+        }
+
+    }
+}
+
 
 
 // Compute zeta for positivity-preserving and minimum entropy principle satisfying
@@ -124,14 +139,24 @@ else {
 
 // ***********************************************************
 // Add viscous component and check if positivity-preserving
-% for i,v in pyfr.ndrange(nupts, nvars):
-    newsol[${i}][${v}] = filtsol[${i}][${v}] + du_vis[${i}][${v}];
-% endfor
+
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        newsol[uidx][vidx] = filtsol[uidx][vidx] + du_vis[uidx][vidx];
+    }
+}
 
 // Get modal form of filtered viscous solution
-% for i,v in pyfr.ndrange(nupts, nvars):
-    newsolmodes[${i}][${v}] = ${' + '.join('{jx}*newsol[{j}][{v}]'.format(j=j, jx=jx, v=v) for j, jx in enumerate(invvdm[i]) if jx != 0)};
-% endfor
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        newsolmodes[uidx][vidx] = 0.0;
+        for (int midx = 0; midx < ${nupts}; midx++) {
+            newsolmodes[uidx][vidx] += invvdm[uidx][midx]*newsol[midx][vidx];
+        }
+
+    }
+}
+
 
 ${pyfr.expand('filter', 'newsolmodes', 'newsol', 'zeta', 'neginf', 'withinbounds')};
 
@@ -156,11 +181,11 @@ if (withinbounds == 0) {
     ${pyfr.expand('filter', 'newsolmodes', 'newsol', 'zeta', 'neginf', 'withinbounds')};
 }
 
-
-// Compute forward Euler approximation of -divF
-% for i,v in pyfr.ndrange(nupts, nvars):
-    tdivtconf_inv[${i}][${v}] = (newsol[${i}][${v}] - u[${i}][${v}])/${dt}; // Store in upts_outb
-% endfor
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        tdivtconf_inv[uidx][vidx] = (newsol[uidx][vidx] - u[uidx][vidx])/${dt}; // Store in upts_outb
+    }
+}
 
 </%pyfr:kernel>
 

@@ -65,8 +65,6 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts,
                        c=self.cfg.items_as('constants', float), 
                        order=self.basis.order, ffac=ffac, dt=dt,
-                       vdm=self.basis.ubasis.vdm.T,
-                       invvdm=self.basis.ubasis.invvdm.T,
                        srcex=self._src_exprs, niters=niters,
                        dtol=dtol, ptol=ptol, etol=etol, 
                        mean_mode_value=mean_mode_value)
@@ -77,7 +75,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             'negdivconffilter', tplargs=tplargs,
             dims=[self.neles], tdivtconf_vis=self._scal_upts_cpy, tdivtconf_inv=self.scal_upts_outb,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb,
-            entmin=self.entmin
+            entmin=self.entmin, vdm=self.vdm, invvdm=self.invvdm
         )
 
         self.kernels['calcentropy'] = lambda: self._be.kernel(
