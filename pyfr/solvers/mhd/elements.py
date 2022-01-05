@@ -116,21 +116,18 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         ubdegs = np.array([max(dd) for dd in self.basis.ubasis.degrees])
         ffac = np.exp(-ubdegs**2)
         dt = self.cfg.get('solver-time-integrator', 'dt')
-        niters = int(self.cfg.get('solver', 'filter-iterations', 10))
-        alpha = float(self.cfg.get('solver', 'filter-alpha', 1.0))
+        niters = int(self.cfg.get('solver', 'filter-iterations', 20))
         mean_mode_value = (self.basis.ubasis.invvdm.T @ np.ones_like(self.basis.upts[:,0]))[0]
         dtol = float(self.cfg.get('solver', 'filter-dtol', 1e-8))
         ptol = float(self.cfg.get('solver', 'filter-ptol', 1e-8))
-        etol = float(self.cfg.get('solver', 'filter-etol', 1e-3))
+        etol = float(self.cfg.get('solver', 'filter-etol', 1e-4))
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts,
                        c=self.cfg.items_as('constants', float), 
                        order=self.basis.order, ffac=ffac, dt=dt,
-                       vdm=self.basis.ubasis.vdm.T,
-                       invvdm=self.basis.ubasis.invvdm.T,
                        srcex=self._src_exprs, niters=niters,
                        dtol=dtol, ptol=ptol, etol=etol, 
-                       alpha=alpha, mean_mode_value=mean_mode_value)
+                       mean_mode_value=mean_mode_value)
 
         plocupts = self.ploc_at('upts') if self._ploc_in_src_exprs else None
 
@@ -138,7 +135,7 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             'negdivconffilter', tplargs=tplargs,
             dims=[self.neles], tdivtconf=self.scal_upts_outb,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb,
-            entmin=self.entmin
+            entmin=self.entmin, vdm=self.vdm, invvdm=self.invvdm
         )
 
         self.kernels['calcentropy'] = lambda: self._be.kernel(

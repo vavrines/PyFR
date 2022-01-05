@@ -7,21 +7,26 @@
 <%pyfr:macro name='filter' params='newsolmodes, filtsol, zeta, entmin, withinbounds'>
 
     dmin = ${large_number}; pmin = ${large_number}; emin = ${large_number};
-    % for i,v in pyfr.ndrange(nupts, nvars):
-        filtmodes[${i}][${v}] = pow(${ffac[i]}, zeta)*newsolmodes[${i}][${v}];
-    % endfor
-
-    % for i in range(nupts):
-        % for v in range(nvars):
-            filtsol[${i}][${v}] = ${' + '.join('{jx}*filtmodes[{j}][{v}]'.format(j=j, jx=jx, v=v) 
-                                                for j, jx in enumerate(vdm[i]) if jx != 0)};
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        % for i in range(nupts):
+            filtmodes[${i}][vidx] = pow(${ffac[i]}, zeta)*newsolmodes[${i}][vidx];
         % endfor
+    }
 
-        d = filtsol[${i}][0];
+    for (int uidx = 0; uidx < ${nupts}; uidx++) {
+        for (int vidx = 0; vidx < ${nvars}; vidx++) {
+            filtsol[uidx][vidx] = 0.0;
+            for (int midx = 0; midx < ${nupts}; midx++) {
+                filtsol[uidx][vidx] += vdm[uidx][midx]*filtmodes[midx][vidx];
+            }
+        }
+
+
+        d = filtsol[uidx][0];
         % if ndims == 2:
-            rhou = filtsol[${i}][1]; rhov = filtsol[${i}][2];
-            Bx = filtsol[${i}][3]; By = filtsol[${i}][4];
-            E = filtsol[${i}][6];
+            rhou = filtsol[uidx][1]; rhov = filtsol[uidx][2];
+            Bx = filtsol[uidx][3]; By = filtsol[uidx][4];
+            E = filtsol[uidx][6];
 
             BdotB2 = 0.5*(Bx*Bx + By*By);
 
@@ -29,9 +34,9 @@
             p = ${c['gamma'] - 1}*(E - (0.5/d)*(rhou*rhou + rhov*rhov)
                                      - BdotB2);
         % elif ndims == 3:
-            rhou = filtsol[${i}][1]; rhov = filtsol[${i}][2]; rhow = filtsol[${i}][3];
-            Bx = filtsol[${i}][4]; By = filtsol[${i}][5]; Bz = filtsol[${i}][6];
-            E = filtsol[${i}][8];
+            rhou = filtsol[uidx][1]; rhov = filtsol[uidx][2]; rhow = filtsol[uidx][3];
+            Bx = filtsol[uidx][4]; By = filtsol[uidx][5]; Bz = filtsol[uidx][6];
+            E = filtsol[uidx][8];
 
             BdotB2 = 0.5*(Bx*Bx + By*By + Bz*Bz);
 
@@ -40,12 +45,14 @@
                                      - BdotB2);
         % endif
 
+
         e = (d <= ${dtol} || p <= ${ptol}) ? -${large_number} : d*log(p/pow(d, ${c['gamma']}));
 
         dmin = fmin(dmin, d);
         pmin = fmin(pmin, p);
         emin = fmin(emin, e);
-    % endfor
+
+    }
 
     if (dmin >= ${dtol} && pmin >= ${ptol} && emin >= entmin - ${etol}) {
         withinbounds = 1; 
@@ -62,212 +69,140 @@
               ploc='in fpdtype_t[${str(nupts)}][${str(ndims)}]'
               u='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t[${str(nupts)}]'
-              entmin='in fpdtype_t'>
+              entmin='in fpdtype_t'
+              vdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
+              invvdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'>
 
 fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t newsolmodes[${nupts}][${nvars}];
-fpdtype_t filtsol_pp[${nupts}][${nvars}];
-fpdtype_t filtsol_mep[${nupts}][${nvars}];
+fpdtype_t filtsol[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
+
+
 fpdtype_t rcprho, v[${ndims}], B[${ndims}], Bdotv, divB;
 fpdtype_t rhou, rhov, rhow, E, Bx, By, Bz, BdotB2;
 
-// Compute -divF
-% for i in range(nupts):
-    rcprho = 1.0/u[${i}][0];
+// Compute -divF and forward Euler prediction of next time step
+fpdtype_t divf;
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
+    rcprho = 1.0/u[uidx][0];
     % if ndims == 2:
         // Velocity and magnetic fields
-        v[0] = rcprho*u[${i}][1]; v[1] = rcprho*u[${i}][2];
-        B[0] = u[${i}][3]; B[1] = u[${i}][4];
+        v[0] = rcprho*u[uidx][1]; v[1] = rcprho*u[uidx][2];
+        B[0] = u[uidx][3]; B[1] = u[uidx][4];
 
         // Compute B·v
         Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=2)};
-        divB = tdivtconf[${i}][5];
+        divB = tdivtconf[uidx][5];
 
         // Untransform the divergences and apply the source terms
         // Density
-        tdivtconf[${i}][0] = -rcpdjac[${i}]*tdivtconf[${i}][0] + ${srcex[0]};
+        tdivtconf[uidx][0] = -rcpdjac[uidx]*tdivtconf[uidx][0] + ${srcex[0]};
         // Momentum
-        tdivtconf[${i}][1] = -rcpdjac[${i}]*(divB*B[0] + tdivtconf[${i}][1]) + ${srcex[1]};
-        tdivtconf[${i}][2] = -rcpdjac[${i}]*(divB*B[1] + tdivtconf[${i}][2]) + ${srcex[2]};
+        tdivtconf[uidx][1] = -rcpdjac[uidx]*(divB*B[0] + tdivtconf[uidx][1]) + ${srcex[1]};
+        tdivtconf[uidx][2] = -rcpdjac[uidx]*(divB*B[1] + tdivtconf[uidx][2]) + ${srcex[2]};
         // Magnetic field
-        tdivtconf[${i}][3] = -rcpdjac[${i}]*(divB*v[0] + tdivtconf[${i}][3]) + ${srcex[3]};
-        tdivtconf[${i}][4] = -rcpdjac[${i}]*(divB*v[1] + tdivtconf[${i}][4]) + ${srcex[4]};
+        tdivtconf[uidx][3] = -rcpdjac[uidx]*(divB*v[0] + tdivtconf[uidx][3]) + ${srcex[3]};
+        tdivtconf[uidx][4] = -rcpdjac[uidx]*(divB*v[1] + tdivtconf[uidx][4]) + ${srcex[4]};
         // DivB
-        u[${i}][5] = tdivtconf[${i}][5];
-        tdivtconf[${i}][5] = 0.0; 
+        u[uidx][5] = tdivtconf[uidx][5];
+        tdivtconf[uidx][5] = 0.0; 
         // Energy
-        tdivtconf[${i}][6] = -rcpdjac[${i}]*(divB*Bdotv + tdivtconf[${i}][6]) + ${srcex[6]}; 
+        tdivtconf[uidx][6] = -rcpdjac[uidx]*(divB*Bdotv + tdivtconf[uidx][6]) + ${srcex[6]}; 
 
     % elif ndims == 3:
         // Velocity and magnetic fields
-        v[0] = rcprho*u[${i}][1]; v[1] = rcprho*u[${i}][2]; v[2] = rcprho*u[${i}][3];
-        B[0] = u[${i}][4]; B[1] = u[${i}][5]; B[2] = u[${i}][6];
+        v[0] = rcprho*u[uidx][1]; v[1] = rcprho*u[uidx][2]; v[2] = rcprho*u[uidx][3];
+        B[0] = u[uidx][4]; B[1] = u[uidx][5]; B[2] = u[uidx][6];
 
         // Compute B·v
         Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=3)};
-        divB = tdivtconf[${i}][7];
+        divB = tdivtconf[uidx][7];
 
         // Untransform the divergences and apply the source terms
         // Density
-        tdivtconf[${i}][0] = -rcpdjac[${i}]*tdivtconf[${i}][0] + ${srcex[0]};
+        tdivtconf[uidx][0] = -rcpdjac[uidx]*tdivtconf[uidx][0] + ${srcex[0]};
         // Momentum
-        tdivtconf[${i}][1] = -rcpdjac[${i}]*(divB*B[0] + tdivtconf[${i}][1]) + ${srcex[1]};
-        tdivtconf[${i}][2] = -rcpdjac[${i}]*(divB*B[1] + tdivtconf[${i}][2]) + ${srcex[2]};
-        tdivtconf[${i}][3] = -rcpdjac[${i}]*(divB*B[2] + tdivtconf[${i}][3]) + ${srcex[3]};
+        tdivtconf[uidx][1] = -rcpdjac[uidx]*(divB*B[0] + tdivtconf[uidx][1]) + ${srcex[1]};
+        tdivtconf[uidx][2] = -rcpdjac[uidx]*(divB*B[1] + tdivtconf[uidx][2]) + ${srcex[2]};
+        tdivtconf[uidx][3] = -rcpdjac[uidx]*(divB*B[2] + tdivtconf[uidx][3]) + ${srcex[3]};
         // Magnetic field
-        tdivtconf[${i}][4] = -rcpdjac[${i}]*(divB*v[0] + tdivtconf[${i}][4]) + ${srcex[4]};
-        tdivtconf[${i}][5] = -rcpdjac[${i}]*(divB*v[1] + tdivtconf[${i}][5]) + ${srcex[5]};
-        tdivtconf[${i}][6] = -rcpdjac[${i}]*(divB*v[2] + tdivtconf[${i}][6]) + ${srcex[6]};
+        tdivtconf[uidx][4] = -rcpdjac[uidx]*(divB*v[0] + tdivtconf[uidx][4]) + ${srcex[4]};
+        tdivtconf[uidx][5] = -rcpdjac[uidx]*(divB*v[1] + tdivtconf[uidx][5]) + ${srcex[5]};
+        tdivtconf[uidx][6] = -rcpdjac[uidx]*(divB*v[2] + tdivtconf[uidx][6]) + ${srcex[6]};
         // DivB
-        u[${i}][7] = tdivtconf[${i}][7];
-        tdivtconf[${i}][7] = 0.0; 
+        u[uidx][7] = tdivtconf[uidx][7];
+        tdivtconf[uidx][7] = 0.0; 
         // Energy
-        tdivtconf[${i}][8] = -rcpdjac[${i}]*(divB*Bdotv + tdivtconf[${i}][8]) + ${srcex[8]}; 
+        tdivtconf[uidx][8] = -rcpdjac[uidx]*(divB*Bdotv + tdivtconf[uidx][8]) + ${srcex[8]}; 
     % endif
-% endfor
 
-// Compute forward Euler prediction of next time step
-% for i,v in pyfr.ndrange(nupts, nvars):
-    newsol[${i}][${v}] = u[${i}][${v}] + ${dt}*tdivtconf[${i}][${v}];
-% endfor
+    % for v, ex in enumerate(srcex):
+        newsol[uidx][${v}] = u[uidx][${v}] + ${dt}*tdivtconf[uidx][${v}];
+    % endfor
+}
 
 // Get modal form at next time step
-% for i,v in pyfr.ndrange(nupts, nvars):
-    newsolmodes[${i}][${v}] = ${' + '.join('{jx}*newsol[{j}][{v}]'.format(j=j, jx=jx, v=v) for j, jx in enumerate(invvdm[i]) if jx != 0)};
-% endfor
-
-// Compute zeta for positivity-preserving
-// ***********************************************************
-    fpdtype_t zeta_low = 0;
-    fpdtype_t zeta_high = 0.5;
-    fpdtype_t zeta = 0;
-    fpdtype_t pmin, dmin, emin, p, d, e, withinbounds;
-    fpdtype_t neginf = -${large_number}; 
-
-    % if alpha != 1.0:
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_low', 'neginf', 'withinbounds')};
-        if (withinbounds == 1){
-            zeta = 0;
-        }
-        else {
-
-            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
-            if (withinbounds == 0){ 
-                zeta_high = 1; 
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
-                if (withinbounds == 0){ 
-                    zeta_high = 4; 
-                    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
-                    if (withinbounds == 0){ 
-                        zeta_high = 10; 
-                        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta_high', 'neginf', 'withinbounds')};
-                        if (withinbounds == 0){ 
-                            zeta_high = 50; 
-                        }
-                    }
-                }
-            }
-            
-            
-            for (int iter = 0; iter < ${niters}; iter++) {
-                zeta = 0.5*(zeta_low + zeta_high);
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'neginf', 'withinbounds')};
-
-                if (withinbounds == 1) {
-                    zeta_high = zeta; 
-                }
-                else {
-                    zeta_low = zeta;
-                }
-            }
-
-            zeta = zeta_high;
-            
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        newsolmodes[uidx][vidx] = 0.0;
+        for (int midx = 0; midx < ${nupts}; midx++) {
+            newsolmodes[uidx][vidx] += invvdm[uidx][midx]*newsol[midx][vidx];
         }
 
+    }
+}
 
-        // Verify that it is positivity-preserving and revert to mean mode if not
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_pp', 'zeta', 'neginf', 'withinbounds')};
-        if (withinbounds == 0){
-            % for i,v in pyfr.ndrange(nupts, nvars):
-                filtsol_pp[${i}][${v}] = newsolmodes[0][${v}]/${mean_mode_value}; // Factor of 2 in VDM
-            % endfor
-        }
-    % endif
-// ***********************************************************
+
 
 // Compute zeta for positivity-preserving and minimum entropy principle satisfying
 // ***********************************************************
-    zeta_low = 0;
-    zeta_high = 0.5;
-    zeta = 0;
+fpdtype_t zeta_low = 0;
+fpdtype_t zeta_high = 0.5;
+fpdtype_t zeta = 0;
+fpdtype_t pmin, dmin, emin, p, d, e, withinbounds;
 
-    % if alpha != 0.0:
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_low', 'entmin', 'withinbounds')};
-        if (withinbounds == 1){
-            zeta = 0;
+// Check if solution is already within bounds
+${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta_low', 'entmin', 'withinbounds')};
+
+
+// If within bounds, return unfiltered solution
+if (withinbounds == 1){
+    zeta = 0;
+}
+// Else apply filter
+else {
+    // Check that upper bound on filter strength satisfies bounds
+    ${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta_high', 'entmin', 'withinbounds')};
+
+    // If not, increase upper bound
+    if (withinbounds == 0){ 
+        zeta_high = 12; 
+    }
+
+    // Perform bisection method to find zeta
+    for (int iter = 0; iter < ${niters}; iter++) {
+        zeta = 0.5*(zeta_low + zeta_high);
+        ${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta', 'entmin', 'withinbounds')};
+
+        if (withinbounds == 1) {
+            zeta_high = zeta; 
         }
         else {
-
-            ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
-            if (withinbounds == 0){ 
-                zeta_high = 1; 
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
-                if (withinbounds == 0){ 
-                    zeta_high = 4; 
-                    ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
-                    if (withinbounds == 0){ 
-                        zeta_high = 10; 
-                        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta_high', 'entmin', 'withinbounds')};
-                        if (withinbounds == 0){ 
-                            zeta_high = 50; 
-                        }
-                    }
-                }
-            }
-            
-            
-            for (int iter = 0; iter < ${niters}; iter++) {
-                zeta = 0.5*(zeta_low + zeta_high);
-                ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'entmin', 'withinbounds')};
-
-                if (withinbounds == 1) {
-                    zeta_high = zeta; 
-                }
-                else {
-                    zeta_low = zeta;
-                }
-            }
-
-            zeta = zeta_high;
-            
+            zeta_low = zeta;
         }
+    }
+
+    // Take bounds-preserving value for zeta and compute filtered solution
+    zeta = zeta_high;
+    ${pyfr.expand('filter', 'newsolmodes', 'filtsol', 'zeta', 'entmin', 'withinbounds')};
+}
 
 
-        // Verify that it is positivity-preserving and revert to mean mode if not
-        ${pyfr.expand('filter', 'newsolmodes', 'filtsol_mep', 'zeta', 'neginf', 'withinbounds')};
-        if (withinbounds == 0){
-            % for i,v in pyfr.ndrange(nupts, nvars):
-                filtsol_mep[${i}][${v}] = newsolmodes[0][${v}]/${mean_mode_value}; // Factor of 2 in VDM
-            % endfor
-        }
-    % endif
-// ***********************************************************
-
-// Compute convex combination (relaxed entropy principle) and forward Euler approximation of -divF
-fpdtype_t sol_rep;
-% for i,v in pyfr.ndrange(nupts, nvars):
-    % if alpha == 0.0:
-        sol_rep = filtsol_pp[${i}][${v}];
-    % elif alpha == 1.0:
-        sol_rep = filtsol_mep[${i}][${v}];
-    % else:
-        sol_rep = ${alpha}*filtsol_mep[${i}][${v}] + (1 - ${alpha})*filtsol_pp[${i}][${v}];
-    % endif
-    tdivtconf[${i}][${v}] = (sol_rep - u[${i}][${v}])/${dt};
-% endfor
-
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        tdivtconf[uidx][vidx] = (filtsol[uidx][vidx] - u[uidx][vidx])/${dt}; // Store in upts_outb
+    }
+}
 
 </%pyfr:kernel>
-
