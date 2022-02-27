@@ -77,5 +77,7 @@ class MHDSystem(BaseAdvectionDiffusionSystem):
 
         q1 << kernels['mpiint', 'comm_flux']()
         q1 << kernels['eles', 'tdivtconf']()
+        q1 << kernels['eles', 'calcminentropy']()
+        runall([q1])
         q1 << kernels['eles', 'negdivconf'](t=t)
         runall([q1])
