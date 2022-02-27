@@ -128,4 +128,4 @@ class MHDFixedBCInters(MHDBaseBCInters):
             tplc = self._exp_opts(
                 ['rho', 'p', 'u', 'v', 'Bx', 'By', 'w', 'Bz'], lhs
             )
-        self.c.update(tplc)
+        self._tpl_c.update(tplc)
