@@ -30,33 +30,16 @@
 
 </%pyfr:macro>
 
-<%pyfr:macro name='bc_common_flux_state_f' params='ul, gradul, artviscl, nl, magnl'>
+<%pyfr:macro name='bc_common_flux_state' params='ul, gradul, artviscl, nl, magnl'>
     // Ghost state r
     fpdtype_t ur[${nvars}];
     ${pyfr.expand('bc_ldg_state', 'ul', 'nl', 'ur')};
 
     // Perform the Riemann solve
     fpdtype_t ficomm[${nvars}];
-    ${pyfr.expand('rsolve_f', 'ul', 'ur', 'nl', 'ficomm')};
+    ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'ficomm')};
 
 % for i in range(nvars):
     ul[${i}] = magnl*(ficomm[${i}]);
 % endfor
 </%pyfr:macro>
-
-<%pyfr:macro name='bc_common_flux_state_b' params='ul, gradul, artviscl, nl, magnl'>
-    // Ghost state r
-    fpdtype_t ur[${nvars}];
-    ${pyfr.expand('bc_ldg_state', 'ul', 'nl', 'ur')};
-
-    // Perform the Riemann solve
-    fpdtype_t ficomm[${nvars}];
-    ${pyfr.expand('rsolve_b', 'ul', 'ur', 'nl', 'ficomm')};
-
-% for i in range(nvars):
-    ul[${i}] = magnl*(ficomm[${i}]);
-% endfor
-</%pyfr:macro>
-
-
-<%pyfr:alias name='bc_common_flux_state_vis' func='bc_common_flux_state_f'/>
