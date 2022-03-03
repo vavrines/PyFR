@@ -68,6 +68,17 @@ fpdtype_t newsolmodes[${nupts}][${nvars}];
 fpdtype_t filtsol[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
 
+
+% if niters == 0:
+
+for (int uidx = 0; uidx < ${nupts}; uidx++) {
+    % for v, ex in enumerate(srcex):
+        tdivtconf_inv[uidx][${v}] = -rcpdjac[uidx]*(tdivtconf_vis[uidx][${v}]) + ${ex};
+    % endfor
+}
+
+% else:
+
 // Compute -divF and forward Euler prediction of next time step
 // Separate viscous and inviscid components
 for (int uidx = 0; uidx < ${nupts}; uidx++) {
@@ -186,6 +197,7 @@ for (int uidx = 0; uidx < ${nupts}; uidx++) {
         tdivtconf_inv[uidx][vidx] = (newsol[uidx][vidx] - u[uidx][vidx])/${dt}; // Store in upts_outb
     }
 }
+% endif
 
 </%pyfr:kernel>
 
