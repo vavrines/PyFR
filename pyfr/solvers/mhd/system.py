@@ -57,6 +57,12 @@ class MHDSystem(BaseAdvectionDiffusionSystem):
             q2 << kernels['mpiint', 'artvisc_fpts_recv']()
             q2 << kernels['mpiint', 'artvisc_fpts_unpack']()
 
+        q2 << kernels['mpiint', 'entmin_fpts_send']()
+        q2 << kernels['mpiint', 'entmin_fpts_recv']()
+        q2 << kernels['mpiint', 'entmin_fpts_unpack']()
+        q2 << kernels['mpiint', 'entminint_fpts_send']()
+        q2 << kernels['mpiint', 'entminint_fpts_recv']()
+        q2 << kernels['mpiint', 'entminint_fpts_unpack']()
         runall([q1, q2])
 
         q1 << kernels['eles', 'tgradcoru_upts_int']()
@@ -77,6 +83,8 @@ class MHDSystem(BaseAdvectionDiffusionSystem):
 
         q1 << kernels['mpiint', 'comm_flux']()
         q1 << kernels['eles', 'tdivtconf']()
+        runall([q1])
+        
         q1 << kernels['eles', 'calcminentropy']()
         runall([q1])
         q1 << kernels['eles', 'negdivconf'](t=t)

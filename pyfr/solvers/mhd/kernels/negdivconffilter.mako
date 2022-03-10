@@ -46,7 +46,7 @@
         % endif
 
 
-        e = (d <= ${dtol} || p <= ${ptol}) ? -${large_number} : d*log(p/pow(d, ${c['gamma']}));
+        e = (d <= ${dtol} || p <= ${ptol}) ? ${large_number} : d*log(p/pow(d, ${c['gamma']}));
 
         dmin = fmin(dmin, d);
         pmin = fmin(pmin, p);
@@ -77,6 +77,7 @@ fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t newsolmodes[${nupts}][${nvars}];
 fpdtype_t filtsol[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
+fpdtype_t source[${nupts}][${nvars}];
 
 
 fpdtype_t rcprho, v[${ndims}], B[${ndims}], Bdotv, divB;
@@ -86,6 +87,7 @@ fpdtype_t rhou, rhov, rhow, E, Bx, By, Bz, BdotB2;
 fpdtype_t divf;
 for (int uidx = 0; uidx < ${nupts}; uidx++) {
     rcprho = 1.0/u[uidx][0];
+
     % if ndims == 2:
         // Velocity and magnetic fields
         v[0] = rcprho*u[uidx][1]; v[1] = rcprho*u[uidx][2];
@@ -94,21 +96,22 @@ for (int uidx = 0; uidx < ${nupts}; uidx++) {
         // Compute B·v
         Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=2)};
         divB = tdivtconf[uidx][5];
+        u[uidx][5] = divB;
+        tdivtconf[uidx][5] = 0.0;
 
         // Untransform the divergences and apply the source terms
         // Density
-        tdivtconf[uidx][0] = -rcpdjac[uidx]*tdivtconf[uidx][0] + ${srcex[0]};
+        source[uidx][0] = 0.0;
         // Momentum
-        tdivtconf[uidx][1] = -rcpdjac[uidx]*(divB*B[0] + tdivtconf[uidx][1]) + ${srcex[1]};
-        tdivtconf[uidx][2] = -rcpdjac[uidx]*(divB*B[1] + tdivtconf[uidx][2]) + ${srcex[2]};
+        source[uidx][1] = -rcpdjac[uidx]*divB*B[0] + ${srcex[1]};
+        source[uidx][2] = -rcpdjac[uidx]*divB*B[1] + ${srcex[2]};
         // Magnetic field
-        tdivtconf[uidx][3] = -rcpdjac[uidx]*(divB*v[0] + tdivtconf[uidx][3]) + ${srcex[3]};
-        tdivtconf[uidx][4] = -rcpdjac[uidx]*(divB*v[1] + tdivtconf[uidx][4]) + ${srcex[4]};
+        source[uidx][3] = -rcpdjac[uidx]*divB*v[0] + ${srcex[3]};
+        source[uidx][4] = -rcpdjac[uidx]*divB*v[1] + ${srcex[4]};
         // DivB
-        u[uidx][5] = tdivtconf[uidx][5];
-        tdivtconf[uidx][5] = 0.0; 
+        source[uidx][5] = 0.0; 
         // Energy
-        tdivtconf[uidx][6] = -rcpdjac[uidx]*(divB*Bdotv + tdivtconf[uidx][6]) + ${srcex[6]}; 
+        source[uidx][6] = -rcpdjac[uidx]*divB*Bdotv + ${srcex[6]}; 
 
     % elif ndims == 3:
         // Velocity and magnetic fields
@@ -118,24 +121,29 @@ for (int uidx = 0; uidx < ${nupts}; uidx++) {
         // Compute B·v
         Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=3)};
         divB = tdivtconf[uidx][7];
+        u[uidx][7] = divB;
+        tdivtconf[uidx][7] = 0.0; 
 
         // Untransform the divergences and apply the source terms
         // Density
-        tdivtconf[uidx][0] = -rcpdjac[uidx]*tdivtconf[uidx][0] + ${srcex[0]};
+        source[uidx][0] = 0.0 + ${srcex[0]};
         // Momentum
-        tdivtconf[uidx][1] = -rcpdjac[uidx]*(divB*B[0] + tdivtconf[uidx][1]) + ${srcex[1]};
-        tdivtconf[uidx][2] = -rcpdjac[uidx]*(divB*B[1] + tdivtconf[uidx][2]) + ${srcex[2]};
-        tdivtconf[uidx][3] = -rcpdjac[uidx]*(divB*B[2] + tdivtconf[uidx][3]) + ${srcex[3]};
+        source[uidx][1] = -rcpdjac[uidx]*divB*B[0] + ${srcex[1]};
+        source[uidx][2] = -rcpdjac[uidx]*divB*B[1] + ${srcex[2]};
+        source[uidx][3] = -rcpdjac[uidx]*divB*B[2] + ${srcex[3]};
         // Magnetic field
-        tdivtconf[uidx][4] = -rcpdjac[uidx]*(divB*v[0] + tdivtconf[uidx][4]) + ${srcex[4]};
-        tdivtconf[uidx][5] = -rcpdjac[uidx]*(divB*v[1] + tdivtconf[uidx][5]) + ${srcex[5]};
-        tdivtconf[uidx][6] = -rcpdjac[uidx]*(divB*v[2] + tdivtconf[uidx][6]) + ${srcex[6]};
+        source[uidx][4] = -rcpdjac[uidx]*divB*v[0] + ${srcex[4]};
+        source[uidx][5] = -rcpdjac[uidx]*divB*v[1] + ${srcex[5]};
+        source[uidx][6] = -rcpdjac[uidx]*divB*v[2] + ${srcex[6]};
         // DivB
-        u[uidx][7] = tdivtconf[uidx][7];
-        tdivtconf[uidx][7] = 0.0; 
+        source[uidx][7] = 0.0; 
         // Energy
-        tdivtconf[uidx][8] = -rcpdjac[uidx]*(divB*Bdotv + tdivtconf[uidx][8]) + ${srcex[8]}; 
+        source[uidx][8] = -rcpdjac[uidx]*divB*Bdotv + ${srcex[8]}; 
     % endif
+
+    for (int vidx = 0; vidx < ${nvars}; vidx++) {
+        tdivtconf[uidx][vidx] = -rcpdjac[uidx]*tdivtconf[uidx][vidx];
+    }
 
     % for v, ex in enumerate(srcex):
         newsol[uidx][${v}] = u[uidx][${v}] + ${dt}*tdivtconf[uidx][${v}];
@@ -199,10 +207,17 @@ else {
 }
 
 
+
 for (int uidx = 0; uidx < ${nupts}; uidx++) {
     for (int vidx = 0; vidx < ${nvars}; vidx++) {
-        tdivtconf[uidx][vidx] = (filtsol[uidx][vidx] - u[uidx][vidx])/${dt}; // Store in upts_outb
+        tdivtconf[uidx][vidx] = (filtsol[uidx][vidx] - u[uidx][vidx])/${dt} + source[uidx][vidx]; // Store in upts_outb
     }
+    
+    % if ndims == 2:
+        tdivtconf[uidx][5] = 0.0;
+    % elif ndims == 3:
+        tdivtconf[uidx][7] = 0.0; 
+    % endif
 }
 
 </%pyfr:kernel>
