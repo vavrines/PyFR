@@ -25,7 +25,7 @@
 
     // Create RHS = -sum [ (du^I)*div(h(x_i))]
     % for i in range(nupts):
-        RHS[${i}] = -(divu_cor[${i}] - divu_unc[${i}])*h;
+        RHS[${i}] = -(divu_cor[${i}] - divu_unc[${i}]);
     % endfor
 
     // Solve LSQ system
@@ -37,7 +37,7 @@
     // Set velocity from 
     fpdtype_t du[${nupts*ndims}], tmp;
     % for i,j in pyfr.ndrange(nupts, ndims):
-        tmp = Z[${i + j*nupts}] + 0*U[${i + j*nupts}];
+        tmp = Z[${i + j*nupts}] + U[${i + j*nupts}];
         du[${i + j*nupts}] = (tmp - uoutb[${i}][${j}]);
         uoutb[${i}][${j}] = tmp;
     % endfor
