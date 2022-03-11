@@ -4,6 +4,7 @@ from pyfr.solvers.baseadvecdiff import BaseAdvectionDiffusionElements
 from pyfr.solvers.euler.elements import BaseFluidElements
 import numpy as np
 from scipy import interpolate
+from pyfr.quadrules import get_quadrule
 
 class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
     # Use the density field for shock sensing
@@ -14,8 +15,10 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.zero_interior_pressure')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.negdivconf_ns')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.negdivconf_ns_inv')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.compute_divergence')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.correct_pressure')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.divclean')
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
@@ -28,13 +31,20 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self.invLapMat = self._be.const_matrix(self.makeSolLapMats(Dx, Dy, Dz, Sx, Sy, Sz), tags={'align'})
         self.fluxLapMat = self._be.const_matrix(self.makeFluxLapMats(Dx, Dy, Dz, Fx, Fy, Fz), tags={'align'})
 
+        D = self.basis.m1
+        M = self.basis.m12
+        
+        ename = self.basis.name
+        weights = get_quadrule(ename, self.cfg.get(f'solver-elements-{ename}', 'soln-pts'), self.nupts).wts
+        weights /= np.sum(weights)
+
         if visc_corr not in {'sutherland', 'none'}:
             raise ValueError('Invalid viscosity-correction option')
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts,
                        nfpts=self.nfpts, shock_capturing=shock_capturing, visc_corr=visc_corr,
                        c=self.cfg.items_as('constants', float), srcex=self._src_exprs,
-                       dt=dt)
+                       dt=dt, D=D, M=M, weights=weights)
 
         if 'flux' in self.antialias:
             self.kernels['tdisf'] = lambda: self._be.kernel(
@@ -61,6 +71,12 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             dims=[self.nupts, self.neles], tdivtconf=self.scal_upts_outb,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb
         )
+        
+        self.kernels['negdivconf_ns_inv'] = lambda: self._be.kernel(
+            'negdivconf_ns_inv', tplargs=tplargs,
+            dims=[self.nupts, self.neles], tdivtconf=self.scal_upts_outb,
+            rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb
+        )
 
         self.kernels['compute_divergence'] = lambda: self._be.kernel(
             'compute_divergence', tplargs=tplargs,
@@ -73,6 +89,11 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             dims=[self.neles], uoutb=self.scal_upts_outb,
             uinb=self.scal_upts_inb, ufpts=self._scal_fpts_cpy, 
             ILM=self.invLapMat, FLM=self.fluxLapMat
+        )
+
+        self.kernels['divclean'] = lambda: self._be.kernel(
+            'divclean', tplargs=tplargs,
+            dims=[self.neles], uoutb=self.scal_upts_outb, gradu=self._vect_upts
         )
 
     @staticmethod

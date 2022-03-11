@@ -157,6 +157,14 @@ class BaseShape(object):
                 A[i] = exp(-alpha*((d - ncut)/(n - ncut))**order)
 
         return np.linalg.solve(ub.vdm, A[:, None]*ub.vdm).T
+    
+    # L2 projection matrix for divergence cleaning
+    @lazyprop
+    def m12(self):
+        m = np.rollaxis(self.ubasis.jac_nodal_basis_at(self.upts), 2)
+        m = m.reshape(self.nupts, -1)
+        m = np.linalg.pinv(m.T @ m) @ m.T
+        return m
 
     @lazyprop
     def nupts(self):
