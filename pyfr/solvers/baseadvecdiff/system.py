@@ -74,7 +74,6 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['mpiint', 'comm_flux'])
         q1.enqueue(kernels['eles', 'tdivtconf'])
         q1.enqueue(kernels['eles', 'negdivconf_ns'], t=t)
-        q1.enqueue(kernels['eles', 'divclean'])
         runall([q1])
 
         # Compute new divergence -------------
@@ -104,6 +103,8 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['eles', 'compute_divergence'])
         runall([q1])
         # -------------------
+        q1.enqueue(kernels['eles', 'divclean'])
+        runall([q1])
 
         q1.enqueue(kernels['eles', 'correct_pressure'])
         runall([q1])
@@ -159,8 +160,37 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
 
         q1.enqueue(kernels['mpiint', 'comm_flux'])
         q1.enqueue(kernels['eles', 'tdivtconf'])
+        runall([q1])
         # q1.enqueue(kernels['eles', 'negdivconf'], t=t)
         q1.enqueue(kernels['eles', 'negdivconf_ns'], t=t)
+        runall([q1])
+               # Compute new divergence -------------
+        q1.enqueue(kernels['eles', 'disu_outb'])
+        q1.enqueue(kernels['mpiint', 'scal_fpts_pack'])
+        runall([q1])
+        q1.enqueue(kernels['iint', 'con_u'])
+        q1.enqueue(kernels['bcint', 'con_u'], t=t)
+        q1.enqueue(kernels['eles', 'tgradpcoru_upts_outb'])
+        q2.enqueue(kernels['mpiint', 'scal_fpts_send'])
+        q2.enqueue(kernels['mpiint', 'scal_fpts_recv'])
+        q2.enqueue(kernels['mpiint', 'scal_fpts_unpack'])
+
+        runall([q1, q2])
+
+        q1.enqueue(kernels['mpiint', 'con_u'])
+        q1.enqueue(kernels['eles', 'tgradcoru_upts'])
+        q1.enqueue(kernels['eles', 'gradcoru_upts'])
+        q1.enqueue(kernels['eles', 'gradcoru_fpts'])
+        q1.enqueue(kernels['mpiint', 'vect_fpts_pack'])
+
+        runall([q1, q2])
+
+        if ('eles', 'gradcoru_qpts') in kernels:
+            q1.enqueue(kernels['eles', 'gradcoru_qpts'])
+
+        q1.enqueue(kernels['eles', 'compute_divergence'])
+        runall([q1])
+
         q1.enqueue(kernels['eles', 'divclean'])
         q1.enqueue(kernels['eles', 'negdivconf_ns_inv'], t=t)
         runall([q1])
@@ -183,6 +213,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['iint', 'con_u'])
         q1.enqueue(kernels['bcint', 'con_u'], t=t)
         q1.enqueue(kernels['eles', 'tgradpcoru_upts'])
+        #q1.enqueue(kernels['eles', 'tgradpcoru_uncorr'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_send'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_recv'])
         q2.enqueue(kernels['mpiint', 'scal_fpts_unpack'])

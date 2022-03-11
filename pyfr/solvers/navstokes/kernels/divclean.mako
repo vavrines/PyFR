@@ -3,8 +3,7 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
 <%pyfr:kernel name='divclean' ndim='1'
-              uoutb='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
-              gradu='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'>
+              uoutb='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'>
 
     
     // Clean local divergence
@@ -17,12 +16,12 @@
     % endfor
 
     % for i in range(nupts):
-        RHS[${i}] = -(${' + '.join('{jx}*U[{j}]'.format(j=j, jx=jx)
+        RHS[${i}] = -(${' + '.join('{jx}*(U[{j}])'.format(j=j, jx=jx)
                                  for j, jx in enumerate(D[i]) if jx != 0)});
     % endfor
 
     % for i in range(nupts*ndims):
-        Ubar[${i}] = (${' + '.join('{jx}*RHS[{j}]'.format(j=j, jx=jx)
+        Ubar[${i}] = (${' + '.join('{jx}*(RHS[{j}])'.format(j=j, jx=jx)
                        for j, jx in enumerate(M[i]))});
     % endfor
 

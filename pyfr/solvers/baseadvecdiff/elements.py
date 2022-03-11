@@ -39,6 +39,12 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             'mul', self.opmat('M4 - M6*M0'), self.scal_upts_inb,
             out=self._vect_upts
         )
+
+        kernels['tgradpcoru_uncorr'] = lambda: kernel(
+            'mul', self.opmat('M4'), self.scal_upts_inb,
+            out=self._vect_upts
+        )
+
         kernels['tgradpcoru_upts_outb'] = lambda: kernel(
             'mul', self.opmat('M4 - M6*M0'), self.scal_upts_outb,
             out=self._vect_upts
