@@ -33,10 +33,17 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         D = self.basis.m1
         M = self.basis.m12
-        
+        # Pmat = np.zeros()
+        M4 = self.basis.m4
+        P = np.linalg.pinv(M4.T @ M4) @ M4.T
+        # P = M4.T @ np.linalg.pinv(M4 @ M4.T) 
+                
         ename = self.basis.name
         weights = get_quadrule(ename, self.cfg.get(f'solver-elements-{ename}', 'soln-pts'), self.nupts).wts
         weights /= np.sum(weights)
+
+        self.div_unc = self._be.matrix((self.nupts, self.neles), tags={'align'})
+        self.div_cor = self._be.matrix((self.nupts, self.neles), tags={'align'})
 
         if visc_corr not in {'sutherland', 'none'}:
             raise ValueError('Invalid viscosity-correction option')
@@ -44,7 +51,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts,
                        nfpts=self.nfpts, shock_capturing=shock_capturing, visc_corr=visc_corr,
                        c=self.cfg.items_as('constants', float), srcex=self._src_exprs,
-                       dt=dt, D=D, M=M, weights=weights)
+                       dt=dt, D=D, M=M, P=P, weights=weights)
 
         if 'flux' in self.antialias:
             self.kernels['tdisf'] = lambda: self._be.kernel(
@@ -60,11 +67,6 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             )
 
 
-        self.kernels['zero_interior_pressure'] = lambda: self._be.kernel(
-            'zero_interior_pressure', tplargs=tplargs, dims=[self.nupts, self.neles],
-            u=self.scal_upts_inb
-        )
-
         plocupts = self.ploc_at('upts') if self._ploc_in_src_exprs else None
         self.kernels['negdivconf_ns'] = lambda: self._be.kernel(
             'negdivconf_ns', tplargs=tplargs,
@@ -78,9 +80,15 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb
         )
 
-        self.kernels['compute_divergence'] = lambda: self._be.kernel(
+        self.kernels['compute_divergence_unc'] = lambda: self._be.kernel(
             'compute_divergence', tplargs=tplargs,
-            dims=[self.nupts, self.neles], u=self.scal_upts_outb,
+            dims=[self.nupts, self.neles], divu=self.div_unc,
+            gradu=self._vect_upts
+        )
+
+        self.kernels['compute_divergence_cor'] = lambda: self._be.kernel(
+            'compute_divergence', tplargs=tplargs,
+            dims=[self.nupts, self.neles], divu=self.div_cor,
             gradu=self._vect_upts
         )
 
@@ -93,7 +101,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
         self.kernels['divclean'] = lambda: self._be.kernel(
             'divclean', tplargs=tplargs,
-            dims=[self.neles], uoutb=self.scal_upts_outb, gradu=self._vect_upts
+            dims=[self.neles], uoutb=self.scal_upts_outb, divu_cor=self.div_cor,
+            divu_unc=self.div_unc, rcpdjac=self.rcpdjac_at('upts')
         )
 
     @staticmethod

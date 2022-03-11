@@ -164,6 +164,7 @@ class BaseShape(object):
         m = np.rollaxis(self.ubasis.jac_nodal_basis_at(self.upts), 2)
         m = m.reshape(self.nupts, -1)
         m = np.linalg.pinv(m.T @ m) @ m.T
+        # m = m.T @ np.linalg.pinv(m @ m.T)  
         return m
 
     @lazyprop
