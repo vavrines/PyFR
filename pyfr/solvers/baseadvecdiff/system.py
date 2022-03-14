@@ -74,7 +74,6 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1.enqueue(kernels['mpiint', 'comm_flux'])
         q1.enqueue(kernels['eles', 'tdivtconf'])
         q1.enqueue(kernels['eles', 'negdivconf_ns'], t=t)
-        q1.enqueue(kernels['eles', 'divclean'])
         runall([q1])
 
         # Compute new divergence -------------
@@ -159,10 +158,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
 
         q1.enqueue(kernels['mpiint', 'comm_flux'])
         q1.enqueue(kernels['eles', 'tdivtconf'])
-        # q1.enqueue(kernels['eles', 'negdivconf'], t=t)
-        q1.enqueue(kernels['eles', 'negdivconf_ns'], t=t)
-        q1.enqueue(kernels['eles', 'divclean'])
-        q1.enqueue(kernels['eles', 'negdivconf_ns_inv'], t=t)
+        q1.enqueue(kernels['eles', 'negdivconf'], t=t)
         runall([q1])
 
     def compute_grads(self, t, uinbank):
