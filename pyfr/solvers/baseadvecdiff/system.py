@@ -128,7 +128,6 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
 
         q1 << kernels['mpiint', 'con_u']()
         q1 << kernels['eles', 'tgradcoru_upts']()
-        q1 << kernels['eles', 'gradcoru_upts_curved']()
-        q1 << kernels['eles', 'gradcoru_upts_linear']()
+        q1 << kernels['eles', 'gradcoru_upts']()
 
         runall([q1])
