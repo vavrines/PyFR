@@ -14,8 +14,10 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.zero_interior_pressure')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.negdivconf_ns')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.negdivconf_inv')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.compute_divergence')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.correct_pressure')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.clean_divergence')
 
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
@@ -24,6 +26,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         [Dx, Dy, Dz] = DFRGradMat(self)
         [Sx, Sy, Sz] = SolGradMat(self)
         [Fx, Fy, Fz] = FluxGradMat(self)
+        V = ProjMat(self)
 
         self.invLapMat = self._be.const_matrix(self.makeSolLapMats(Dx, Dy, Dz, Sx, Sy, Sz), tags={'align'})
         self.fluxLapMat = self._be.const_matrix(self.makeFluxLapMats(Dx, Dy, Dz, Fx, Fy, Fz), tags={'align'})
@@ -34,7 +37,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts,
                        nfpts=self.nfpts, shock_capturing=shock_capturing, visc_corr=visc_corr,
                        c=self.cfg.items_as('constants', float), srcex=self._src_exprs,
-                       dt=dt)
+                       dt=dt, V=V)
 
         if 'flux' in self.antialias:
             self.kernels['tdisf'] = lambda: self._be.kernel(
@@ -61,6 +64,11 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             dims=[self.nupts, self.neles], tdivtconf=self.scal_upts_outb,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb
         )
+        self.kernels['negdivconf_inv'] = lambda: self._be.kernel(
+            'negdivconf_inv', tplargs=tplargs,
+            dims=[self.nupts, self.neles], uout=self.scal_upts_outb,
+            uin=self.scal_upts_inb
+        )
 
         self.kernels['compute_divergence'] = lambda: self._be.kernel(
             'compute_divergence', tplargs=tplargs,
@@ -73,6 +81,11 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             dims=[self.neles], uoutb=self.scal_upts_outb,
             uinb=self.scal_upts_inb, ufpts=self._scal_fpts_cpy, 
             ILM=self.invLapMat, FLM=self.fluxLapMat
+        )
+
+        self.kernels['clean_divergence'] = lambda: self._be.kernel(
+            'clean_divergence', tplargs=tplargs,
+            dims=[self.neles], uoutb=self.scal_upts_outb
         )
 
     @staticmethod
@@ -228,6 +241,46 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
                     LapMat[:,:,eidx] = Mxx + Myy + Mzz
         return LapMat
+
+
+def ProjMat(self):
+    p = self.basis.ubasis.order-1
+    upts_1d = self.basis.ubasis.pts[:p+1,0] # Hack
+    upts = self.basis.ubasis.pts
+
+    def matp2(x,y):
+        out = [ [1, 0],
+                [3*y, 0],     
+                [0.5*(15*y**2) - 1.5, 0],     
+                [0, -1],     
+                [x, -y],     
+                [3*x*y, 0.5 - 0.5*(3*y**2)],    
+                [0, -3*x],     
+                [0.5*(3*x**2) - 0.5, -3*x*y],     
+                [0, 1.5 - 0.5*(15*x**2)] ]
+        return np.array(out)
+    
+    Vx = np.zeros(((p+1)**self.ndims, (p+1)**self.ndims))
+    Vy = np.zeros(((p+1)**self.ndims, (p+1)**self.ndims))
+    Vz = np.zeros(((p+1)**self.ndims, (p+1)**self.ndims))
+    V = np.zeros((self.ndims*(p+1)**self.ndims, (p+1)**self.ndims))
+
+    for i in range(self.nupts):
+        Vx[i, :] = matp2(upts[i,0], upts[i,1])[:,0]
+        Vy[i, :] = matp2(upts[i,0], upts[i,1])[:,1]
+    
+    if self.ndims == 2:
+        V[:self.nupts, :] = Vx
+        V[self.nupts:, :] = Vy
+    else:
+        pass
+
+
+    Vv = V @ np.linalg.inv(V.T @ V) @ V.T
+
+    return Vv
+
+
 
 # Compute gradients from points defined on DFR points (upts + fpts)
 def DFRGradMat(self):
