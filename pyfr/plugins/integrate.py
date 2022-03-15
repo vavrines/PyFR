@@ -170,9 +170,19 @@ class IntegratePlugin(BasePlugin):
                     for dim, grad in zip('xyz', pgrads[idx]):
                         subs[f'grad_{pname}_{dim}'] = grad
 
+            
             for j, v in enumerate(self.exprs):
                 # Evaluate the expression at each point
-                iex = wts*npeval(v, subs)
+                try:
+                    iex = wts*npeval(v, subs)
+                except:
+                    if 'int-p' in v:
+                        pidx = self.exprs.index('(p)')
+                        vidx = self.exprs.index('(1.)')
+                        v = v.replace('int-p', f'({-intvals[pidx]/intvals[vidx]})')
+                        iex = wts*npeval(v, subs)
+                    else:
+                        raise ValueError('Cannot evaluate')
 
                 # Accumulate
                 intvals[j] += np.sum(iex) - np.sum(iex[emask])
