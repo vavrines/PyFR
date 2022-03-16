@@ -4,6 +4,8 @@ from pyfr.solvers.baseadvecdiff import BaseAdvectionDiffusionElements
 from pyfr.solvers.euler.elements import BaseFluidElements
 import numpy as np
 from scipy import interpolate
+from scipy.special import legendre
+import numpy as np
 
 class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
     # Use the density field for shock sensing
@@ -245,8 +247,101 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
 def ProjMat(self):
     p = self.basis.ubasis.order-1
-    upts_1d = self.basis.ubasis.pts[:p+1,0] # Hack
     upts = self.basis.ubasis.pts
+
+    def lp_basis(p, ndims):
+        xp = yp = zp = np.linspace(0, p, p+1, dtype=int)
+        lp = np.zeros(((p+1)**ndims, ndims), dtype=int)
+        if ndims == 2:
+            xxp, yyp = np.meshgrid(xp, yp, indexing='ij')
+            lp[:,0] = xxp.reshape((-1))
+            lp[:,1] = yyp.reshape((-1))
+        elif ndims == 3:
+            xxp, yyp, zzp = np.meshgrid(xp, yp, zp, indexing='ij')
+            lp[:,0] = xxp.reshape((-1))
+            lp[:,1] = yyp.reshape((-1))
+            lp[:,2] = zzp.reshape((-1))
+        
+        return lp
+
+    def get_max_order(pp):
+        if self.ndims == 2:
+            p = pp[0]
+            p *= pp[1]
+            order = p.order
+        if self.ndims == 3:
+            p1 = pp[0]
+            p1 *= pp[1]
+            p1 *= pp[2]
+            p2 = pp[3]
+            p2 *= pp[4]
+            p2 *= pp[5]
+            order = max(p1.order, p2.order)
+        return order
+
+    def eval_basis(B, coords):
+        [xb, yb, zb] = B
+        nb = len(xb)
+        out = np.zeros((nb, self.ndims))
+        x = coords[0]
+        y = coords[1]
+        z = coords[2] if self.ndims == 3 else 0
+
+        if self.ndims == 2:
+            for i in range(nb):
+                out[i, 0] = xb[i][0](x)*xb[i][1](y)
+                out[i, 1] = yb[i][0](x)*yb[i][1](y)
+        elif self.ndims == 3:
+            for i in range(nb):
+                out[i, 0] = xb[i][0](x)*xb[i][1](y)*xb[i][2](z) + xb[i][3](x)*xb[i][4](y)*xb[i][5](z)
+                out[i, 1] = yb[i][0](x)*yb[i][1](y)*yb[i][2](z) + yb[i][3](x)*yb[i][4](y)*yb[i][5](z)
+                out[i, 2] = zb[i][0](x)*zb[i][1](y)*zb[i][2](z) + zb[i][3](x)*zb[i][4](y)*zb[i][5](z)
+        return out
+
+
+    basis_p = lp_basis(p+1, self.ndims)[1:]
+
+    xp = []
+    yp = []
+    zp = []
+
+    for i in range(len(basis_p)):
+        if self.ndims == 2:
+            legx = legendre(basis_p[i, 0])
+            legy = legendre(basis_p[i, 1])
+            xp.append([legx, legy.deriv()]) # Lx = xp[0]*xp[1]
+            yp.append([-legx.deriv(), legy]) # Ly = yp[0]*yp[1]
+        elif self.ndims == 3:
+            legx = legendre(basis_p[i, 0])
+            legy = legendre(basis_p[i, 1])
+            legz = legendre(basis_p[i, 2])
+            # Lx = xp[0]*xp[1]*xp[2] - xp[3]*xp[4]*xp[5]
+            xp.append([legx, legy.deriv(), legz, legx, legy, legz.deriv()])
+            yp.append([legx, legy, legz.deriv(), legx.deriv(), legy, legz])
+            zp.append([legx.deriv(), legy, legz, legx, legy.deriv(), legz])
+
+    xb_red = []
+    yb_red = []
+    zb_red = []
+    for i in range(len(basis_p)):
+        if self.ndims == 2:
+            x = xp[i]
+            y = yp[i]
+            if get_max_order(x) <= p and get_max_order(y) <= p:
+                xb_red.append(x)
+                yb_red.append(y)
+        elif self.ndims == 3:
+            x = xp[i]
+            y = yp[i]
+            z = zp[i]
+            
+            if get_max_order(x) <= p and get_max_order(y) <= p and get_max_order(z) <= p:
+                xb_red.append(x)
+                yb_red.append(y)
+                zb_red.append(z)
+
+    B = [xb_red, yb_red, zb_red]    
+    ndpts = len(xb_red)
 
     def mat(x,y,z):
         if p == 2:
@@ -325,25 +420,37 @@ def ProjMat(self):
                     [                                          0,   - (693*x**5)/8.0 + (315*x**3)/4.0 - (105*x)/8.0]]
         return np.array(out)
     
-    pmat = mat(upts[:,0], upts[:,1], None)
-    [ndpts, _] = np.shape(pmat)
-    Vx = np.zeros(((p+1)**self.ndims, ndpts))
-    Vy = np.zeros(((p+1)**self.ndims, ndpts))
-    Vz = np.zeros(((p+1)**self.ndims, ndpts))
-    V = np.zeros((self.ndims*(p+1)**self.ndims, ndpts))
+    # pmat = mat(upts[:,0], upts[:,1], None)
+    # [ndpts, _] = np.shape(pmat)
+    Vx = np.zeros((self.nupts, ndpts))
+    Vy = np.zeros((self.nupts, ndpts))
+    Vz = np.zeros((self.nupts, ndpts))
+    V = np.zeros((self.ndims*self.nupts, ndpts))
 
-    for i in range(ndpts):
-        Vx[:, i] = pmat[i,0]
-        Vy[:, i] = pmat[i,1]
+    for i in range(self.nupts):
+        if self.ndims == 2:
+            out = eval_basis(B, [upts[i, 0], upts[i, 1]])
+            Vx[i, :] = out[:, 0]
+            Vy[i, :] = out[:, 1]
+        elif self.ndims == 3:
+            out = eval_basis(B, [upts[i, 0], upts[i, 1], upts[i, 2]])
+            Vx[i, :] = out[:, 0]
+            Vy[i, :] = out[:, 1]
+            Vz[i, :] = out[:, 2]
     
     if self.ndims == 2:
-        V[:(p+1)**self.ndims, :] = Vx
-        V[(p+1)**self.ndims:, :] = Vy
+        V[:self.nupts, :] = Vx
+        V[self.nupts:, :] = Vy
     else:
-        pass
-
+        V[:self.nupts, :] = Vx
+        V[self.nupts:2*self.nupts, :] = Vy
+        V[2*self.nupts:, :] = Vz
 
     Vv = V @ np.linalg.inv(V.T @ V) @ V.T
+
+
+    # print(Vv @ np.reshape(upts, (-1)))
+    # print(Vv @ np.ones(self.nupts*self.ndims))
 
     return Vv
 
