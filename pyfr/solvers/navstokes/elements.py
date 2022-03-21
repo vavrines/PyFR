@@ -4,6 +4,7 @@ from pyfr.solvers.baseadvecdiff import BaseAdvectionDiffusionElements
 from pyfr.solvers.euler.elements import BaseFluidElements
 import numpy as np
 from scipy import interpolate
+import scipy
 from scipy.special import legendre
 import numpy as np
 
@@ -346,7 +347,6 @@ def ProjMat(self):
     Vx = np.zeros((self.nupts, ndpts))
     Vy = np.zeros((self.nupts, ndpts))
     Vz = np.zeros((self.nupts, ndpts))
-    V = np.zeros((self.ndims*self.nupts, ndpts))
 
     for i in range(self.nupts):
         if self.ndims == 2:
@@ -360,18 +360,12 @@ def ProjMat(self):
             Vz[i, :] = out[:, 2]
     
     if self.ndims == 2:
-        V[:self.nupts, :] = Vx
-        V[self.nupts:, :] = Vy
+        V = scipy.linalg.block_diag(Vx, Vy)
     else:
-        V[:self.nupts, :] = Vx
-        V[self.nupts:2*self.nupts, :] = Vy
-        V[2*self.nupts:, :] = Vz
+        V = scipy.linalg.block_diag(Vx, Vy, Vz)
 
     Vv = V @ np.linalg.pinv(V.T @ V) @ V.T
 
-
-    # print(Vv @ np.reshape(upts, (-1)))
-    # print(Vv @ np.ones(self.nupts*self.ndims))
 
     return Vv
 
