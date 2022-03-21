@@ -347,6 +347,7 @@ def ProjMat(self):
     Vx = np.zeros((self.nupts, ndpts))
     Vy = np.zeros((self.nupts, ndpts))
     Vz = np.zeros((self.nupts, ndpts))
+    V = np.zeros((self.ndims*self.nupts, ndpts))
 
     for i in range(self.nupts):
         if self.ndims == 2:
@@ -360,12 +361,12 @@ def ProjMat(self):
             Vz[i, :] = out[:, 2]
     
     if self.ndims == 2:
-        V = scipy.linalg.block_diag(Vx, Vy)
+        V[:self.nupts, :] = Vx
+        V[self.nupts:, :] = Vy
     else:
         V = scipy.linalg.block_diag(Vx, Vy, Vz)
 
     Vv = V @ np.linalg.pinv(V.T @ V) @ V.T
-
 
     return Vv
 
