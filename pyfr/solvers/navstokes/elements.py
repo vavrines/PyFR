@@ -361,11 +361,10 @@ def ProjMat(self):
             Vz[i, :] = out[:, 2]
     
     if self.ndims == 2:
-        V[:self.nupts, :] = Vx
-        V[self.nupts:, :] = Vy
+        V = np.vstack((Vx, Vy))
     else:
-        V = scipy.linalg.block_diag(Vx, Vy, Vz)
-
+        V = np.vstack((Vx, Vy, Vz))
+    
     Vv = V @ np.linalg.pinv(V.T @ V) @ V.T
 
     return Vv
