@@ -77,8 +77,8 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         runall([q1])
 
         # Compute new divergence -------------
-        q1.enqueue(kernels['eles', 'clean_divergence'], t=t)
-        runall([q1])
+        # q1.enqueue(kernels['eles', 'clean_divergence'], t=t)
+        # runall([q1])
         q1.enqueue(kernels['eles', 'disu_outb'])
         q1.enqueue(kernels['mpiint', 'scal_fpts_pack'])
         runall([q1])
