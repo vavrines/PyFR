@@ -64,17 +64,32 @@ class BaseIntegrator(object):
         # Abort computation
         self.abort = False
 
-    def _get_plugins(self):
+    def _get_plugins(self, initsoln):
         plugins = []
 
         for s in self.cfg.sections():
             if (m := re.match('soln-plugin-(.+?)(?:-(.+))?$', s)):
                 cfgsect, name, suffix = m.group(0), m.group(1), m.group(2)
 
+                data = {}
+                if initsoln is not None:
+                    # Get the plugin data stored in the solution, if any
+                    prefix = self.get_plugin_data_prefix(name, suffix)
+                    for f in initsoln:
+                        if f.startswith(f'{prefix}/'):
+                            data[f.split('/')[2]] = initsoln[f]
+
                 # Instantiate
-                plugins.append(get_plugin(name, self, cfgsect, suffix))
+                plugins.append(get_plugin(name, self, cfgsect, suffix, **data))
 
         return plugins
+
+    @staticmethod
+    def get_plugin_data_prefix(name, suffix):
+        if suffix:
+            return f'plugins/{name}-{suffix}'
+        else:
+            return f'plugins/{name}'
 
     def call_plugin_dt(self, dt):
         ta = self.tlist
@@ -173,9 +188,12 @@ class BaseCommon(object):
 
         return kerns
 
-    def _add(self, *args, subdims=None):
+    def _addv(self, consts, regidxs, subdims=None):
         # Get a suitable set of axnpby kernels
-        axnpby = self._get_axnpby_kerns(*args[1::2], subdims=subdims)
+        axnpby = self._get_axnpby_kerns(*regidxs, subdims=subdims)
 
         # Bind and run the axnpby kernels
-        self._queue.enqueue_and_run(axnpby, *args[::2])
+        self._queue.enqueue_and_run(axnpby, *consts)
+
+    def _add(self, *args, subdims=None):
+        self._addv(args[::2], args[1::2], subdims=subdims)

@@ -10,6 +10,11 @@ class BaseDualController(BaseDualIntegrator):
         # Solution filtering frequency
         self._fnsteps = self.cfg.getint('soln-filter', 'nsteps', '0')
 
+        # Fire off any event handlers if not restarting
+        if not self.isrestart:
+            for csh in self.completed_step_handlers:
+                csh(self)
+
     def _accept_step(self, idxcurr):
         self.tcurr += self._dt
         self.nacptsteps += 1
@@ -26,7 +31,8 @@ class BaseDualController(BaseDualIntegrator):
         self._curr_grad_soln = None
 
         # Fire off any event handlers
-        self.completed_step_handlers(self)
+        for csh in self.completed_step_handlers:
+            csh(self)
 
         # Abort if plugins request it
         self._check_abort()
@@ -43,5 +49,8 @@ class DualNoneController(BaseDualController):
             raise ValueError('Advance time is in the past')
 
         while self.tcurr < t:
-            self.pseudointegrator.pseudo_advance(self.tcurr)
+            # Take the physical step
+            self.step(self.tcurr, self._dt)
+
+            # We are not adaptive, so accept every step
             self._accept_step(self.pseudointegrator._idxcurr)

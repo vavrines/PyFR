@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from pyfr.backends.base import (BaseKernelProvider,
-                                BasePointwiseKernelProvider, ComputeKernel)
+                                BasePointwiseKernelProvider, Kernel)
 from pyfr.backends.cuda.generator import CUDAKernelGenerator
 from pyfr.backends.cuda.compiler import SourceModule
 from pyfr.util import memoize
@@ -24,25 +24,23 @@ class CUDAPointwiseKernelProvider(CUDAKernelProvider,
                                   BasePointwiseKernelProvider):
     kernel_generator_cls = CUDAKernelGenerator
 
-    def _instantiate_kernel(self, dims, fun, arglst):
-        cfg = self.backend.cfg
-
+    def _instantiate_kernel(self, dims, fun, arglst, argmv):
         # Determine the block size
         if len(dims) == 1:
-            block = (cfg.getint('backend-cuda', 'block-1d', '64'), 1, 1)
+            block = (64, 1, 1)
         else:
-            block = (cfg.getint('backend-cuda', 'block-2d', '128'), 1, 1)
+            block = (64, 4, 1)
 
         # Use this to compute the grid size
         grid = get_grid_for_block(block, dims[-1])
 
-        class PointwiseKernel(ComputeKernel):
+        class PointwiseKernel(Kernel):
             if any(isinstance(arg, str) for arg in arglst):
                 def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.stream_comp,
+                    fun.exec_async(grid, block, queue.stream,
                                    *[kwargs.get(ka, ka) for ka in arglst])
             else:
                 def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.stream_comp, *arglst)
+                    fun.exec_async(grid, block, queue.stream, *arglst)
 
-        return PointwiseKernel()
+        return PointwiseKernel(*argmv)

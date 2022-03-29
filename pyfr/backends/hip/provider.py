@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from pyfr.backends.base import (BaseKernelProvider,
-                                BasePointwiseKernelProvider, ComputeKernel)
+                                BasePointwiseKernelProvider, Kernel)
 from pyfr.backends.hip.compiler import SourceModule
 from pyfr.backends.hip.generator import HIPKernelGenerator
 from pyfr.util import memoize
@@ -24,31 +24,29 @@ class HIPPointwiseKernelProvider(HIPKernelProvider,
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Determine the block size for pointwise kernels
-        cfg = self.backend.cfg
-        self._blocksz = {
-            1: (cfg.getint('backend-hip', 'block-1d', '64'), 1, 1),
-            2: (cfg.getint('backend-hip', 'block-2d', '128'), 1, 1)
-        }
+        self._block1d = (64, 1, 1)
+        self._block2d = (64, 4, 1)
 
-        # Pass these to the HIP kernel generator
+        # Pass these block sizes to the generator
         class KernelGenerator(HIPKernelGenerator):
-            block1d = self._blocksz[1]
-            block2d = self._blocksz[2]
+            block1d = self._block1d
+            block2d = self._block2d
 
         self.kernel_generator_cls = KernelGenerator
 
-    def _instantiate_kernel(self, dims, fun, arglst):
-        block = self._blocksz[len(dims)]
+    def _instantiate_kernel(self, dims, fun, arglst, argmv):
+        narglst = list(arglst)
+        block = self._block1d if len(dims) == 1 else self._block2d
         grid = get_grid_for_block(block, dims[-1])
 
-        class PointwiseKernel(ComputeKernel):
-            if any(isinstance(arg, str) for arg in arglst):
-                def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.stream_comp,
-                                   *[kwargs.get(ka, ka) for ka in arglst])
-            else:
-                def run(self, queue, **kwargs):
-                    fun.exec_async(grid, block, queue.stream_comp, *arglst)
+        # Identify any runtime arguments
+        rtargs = [(i, k) for i, k in enumerate(arglst) if isinstance(k, str)]
 
-        return PointwiseKernel()
+        class PointwiseKernel(Kernel):
+            def run(self, queue, **kwargs):
+                for i, k in rtargs:
+                    narglst[i] = kwargs[k]
+
+                fun.exec_async(grid, block, queue.stream, *narglst)
+
+        return PointwiseKernel(*argmv)

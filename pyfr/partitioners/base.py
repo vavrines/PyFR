@@ -158,7 +158,10 @@ class BasePartitioner(object):
             nsp = len(svetimap) // self.nsubeles + 1
 
             # Partition the graph
-            svparts = self._partition_graph(sgraph, [1]*nsp)
+            if nsp == 1:
+                svparts = [0]*len(svetimap)
+            else:
+                svparts = self._partition_graph(sgraph, [1]*nsp)
 
             # Group elements according to their type (linear vs curved)
             # and sub-partition number
@@ -291,7 +294,7 @@ class BasePartitioner(object):
         newmesh, eleglmap = self._partition_con(mesh, vetimap, vparts)
 
         # Handle the shape points
-        newmesh.update(self._partition_spts(mesh, vetimap, vparts))
+        newmesh |= self._partition_spts(mesh, vetimap, vparts)
 
         # Update the renumbering table
         for etype, emap in rnum.items():
@@ -316,7 +319,7 @@ class BasePartitioner(object):
 
             # Copy over the metadata
             for f in soln:
-                if re.match('stats|config', f):
+                if re.match('stats|config|plugins', f):
                     newsoln[f] = soln[f]
 
             # Apply the new UUID

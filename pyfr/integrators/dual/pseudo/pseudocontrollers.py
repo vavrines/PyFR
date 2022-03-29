@@ -70,9 +70,6 @@ class DualNonePseudoController(BaseDualPseudoController):
             if self.convmon(i, self.minniters, self._dtau):
                 break
 
-        # Update
-        self.finalise_pseudo_advance(self._idxcurr)
-
 
 class DualPIPseudoController(BaseDualPseudoController):
     pseudo_controller_name = 'local-pi'
@@ -104,6 +101,12 @@ class DualPIPseudoController(BaseDualPseudoController):
         tplargs['dtau_maxf'] = self.cfg.getfloat(sect, 'pseudo-dt-max-mult',
                                                  3.0)
 
+        if not tplargs['minf'] < 1 <= tplargs['maxf']:
+            raise ValueError('Invalid pseudo max-fact, min-fact')
+
+        if tplargs['dtau_maxf'] < 1:
+            raise ValueError('Invalid pseudo-dt-max-mult')
+
         # Limits for the local pseudo-time-step size
         tplargs['dtau_min'] = self._dtau
         tplargs['dtau_max'] = tplargs['dtau_maxf'] * self._dtau
@@ -119,20 +122,20 @@ class DualPIPseudoController(BaseDualPseudoController):
             err_prev = self.backend.matrix(shape, np.ones(shape),
                                            tags={'align'})
 
-            # Append the error kernels to the proxylist
-            self.pintgkernels['localerrest'].append(
-                self.backend.kernel(
-                    'localerrest', tplargs=tplargs,
-                    dims=[ele.nupts, ele.neles], err=ele.scal_upts_inb,
-                    errprev=err_prev, dtau_upts=dtaumat
+            # Append the error kernels to the list
+            for i, err in enumerate(ele.scal_upts):
+                self.pintgkernels['localerrest', i].append(
+                    self.backend.kernel(
+                        'localerrest', tplargs=tplargs,
+                        dims=[ele.nupts, ele.neles], err=err,
+                        errprev=err_prev, dtau_upts=dtaumat
+                    )
                 )
-            )
 
         self.backend.commit()
 
     def localerrest(self, errbank):
-        self.system.eles_scal_upts_inb.active = errbank
-        self._queue.enqueue_and_run(self.pintgkernels['localerrest'])
+        self._queue.enqueue_and_run(self.pintgkernels['localerrest', errbank])
 
     def pseudo_advance(self, tcurr):
         self.tcurr = tcurr
@@ -145,5 +148,3 @@ class DualPIPseudoController(BaseDualPseudoController):
             if self.convmon(i, self.minniters):
                 break
 
-        # Update
-        self.finalise_pseudo_advance(self._idxcurr)

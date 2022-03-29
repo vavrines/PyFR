@@ -18,6 +18,11 @@ class BaseStdController(BaseStdIntegrator):
         # Stats on the most recent step
         self.stepinfo = []
 
+        # Fire off any event handlers if not restarting
+        if not self.isrestart:
+            for csh in self.completed_step_handlers:
+                csh(self)
+
     def _accept_step(self, dt, idxcurr, err=None):
         self.tcurr += dt
         self.nacptsteps += 1
@@ -37,7 +42,8 @@ class BaseStdController(BaseStdIntegrator):
         self._curr_grad_soln = None
 
         # Fire off any event handlers
-        self.completed_step_handlers(self)
+        for csh in self.completed_step_handlers:
+            csh(self)
 
         # Abort if plugins request it
         self._check_abort()
@@ -109,6 +115,9 @@ class StdPIController(BaseStdController):
         self._saffac = self.cfg.getfloat(sect, 'safety-fact', 0.8)
         self._maxfac = self.cfg.getfloat(sect, 'max-fact', 2.5)
         self._minfac = self.cfg.getfloat(sect, 'min-fact', 0.3)
+
+        if not self._minfac < 1 <= self._maxfac:
+            raise ValueError('Invalid max-fact, min-fact')
 
     @property
     def controller_needs_errest(self):
