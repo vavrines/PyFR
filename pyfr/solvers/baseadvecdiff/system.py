@@ -134,28 +134,4 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q1 << kernels['eles', 'gradcoru_upts_int']()
         q1 << kernels['eles', 'gradcoru_fpts_int']()
 
-
-
-        # q1 << kernels['eles', 'disu']()
-        # q1 << kernels['mpiint', 'scal_fpts_pack']()
-        # runall([q1])
-
-        # if ('iint', 'copy_fpts') in kernels:
-        #     q1 << kernels['iint', 'copy_fpts']()
-        # q1 << kernels['iint', 'con_u']()
-        # q1 << kernels['bcint', 'con_u'](t=t)
-        # q1 << kernels['eles', 'tgradpcoru_upts']()
-        # q2 << kernels['mpiint', 'scal_fpts_send']()
-        # q2 << kernels['mpiint', 'scal_fpts_recv']()
-        # q2 << kernels['mpiint', 'scal_fpts_unpack']()
-
-        # runall([q1, q2])
-
-        # q1 << kernels['mpiint', 'con_u']()
-        # q1 << kernels['eles', 'tgradcoru_upts_ext']()
-        # q1 << kernels['eles', 'gradcoru_upts_ext']()
-        # runall([q1])
-        # q1 << kernels['eles', 'tgradcoru_upts_int']()
-        # q1 << kernels['eles', 'gradcoru_upts_int']()
-
         runall([q1])
