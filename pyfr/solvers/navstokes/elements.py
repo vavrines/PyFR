@@ -317,23 +317,9 @@ def ProjMat(self):
             legy = legendre(basis_p[i, 1])
             legz = legendre(basis_p[i, 2])
             # Lx = xp[0]*xp[1]*xp[2] - xp[3]*xp[4]*xp[5]
-            # xp.append([legx, legy.deriv(), legz, legx, legy, legz.deriv()])
-            # yp.append([legx, legy, legz.deriv(), legx.deriv(), legy, legz])
-            # zp.append([legx.deriv(), legy, legz, legx, legy.deriv(), legz])
-
-            one = np.poly1d([1.])
-            zero = np.poly1d([0.])
-            xp.append([legx, legy.deriv(), legz, zero, zero, zero])
-            yp.append([-legx.deriv(), legy, legz, zero, zero, zero])
-            zp.append([zero, zero, zero, zero, zero, zero])
-
-            xp.append([legx, legy, legz.deriv(), zero, zero, zero])
-            yp.append([zero, zero, zero, zero, zero, zero])
-            zp.append([-legx.deriv(), legy, legz, zero, zero, zero])
-
-            xp.append([zero, zero, zero, zero, zero, zero])
-            yp.append([legx, legy, legz.deriv(), zero, zero, zero])
-            zp.append([legx, -legy.deriv(), legz, zero, zero, zero])
+            xp.append([legx, legy.deriv(), legz, legx, legy, legz.deriv()])
+            yp.append([legx, legy, legz.deriv(), legx.deriv(), legy, legz])
+            zp.append([legx.deriv(), legy, legz, legx, legy.deriv(), legz])
 
     xb_red = []
     yb_red = []
@@ -364,11 +350,12 @@ def ProjMat(self):
     V = np.zeros((self.ndims*self.nupts, ndpts))
 
     for i in range(self.nupts):
-        out = eval_basis(B, upts[i,:])
         if self.ndims == 2:
+            out = eval_basis(B, [upts[i, 0], upts[i, 1]])
             Vx[i, :] = out[:, 0]
             Vy[i, :] = out[:, 1]
         elif self.ndims == 3:
+            out = eval_basis(B, [upts[i, 0], upts[i, 1], upts[i, 2]])
             Vx[i, :] = out[:, 0]
             Vy[i, :] = out[:, 1]
             Vz[i, :] = out[:, 2]
