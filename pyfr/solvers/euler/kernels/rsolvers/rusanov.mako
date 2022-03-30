@@ -7,6 +7,8 @@
     fpdtype_t fl[${ndims}][${nvars}], fr[${ndims}][${nvars}];
     fpdtype_t vl[${ndims}], vr[${ndims}];
     fpdtype_t pl, pr;
+    fpdtype_t rl = 1.0/ul[0];
+    fpdtype_t rr = 1.0/ur[0];
 
     ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'pl', 'vl')};
     ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr')};
@@ -15,8 +17,9 @@
     fpdtype_t nv = ${pyfr.dot('n[{i}]', 'vl[{i}] + vr[{i}]', i=ndims)};
 
     // Estimate the maximum wave speed / 2
-    fpdtype_t a = sqrt(${0.25*c['gamma']}*(pl + pr)/(ul[0] + ur[0]))
+    fpdtype_t a = sqrt(${0.25*c['gamma']}*(pl + pr)/(rl + rr))
                 + 0.25*fabs(nv);
+ 
 
     // Output
 % for i in range(nvars):
@@ -24,4 +27,5 @@
                                  .format(i=i, j=j) for j in range(ndims))})
              + a*(ul[${i}] - ur[${i}]);
 % endfor
+
 </%pyfr:macro>

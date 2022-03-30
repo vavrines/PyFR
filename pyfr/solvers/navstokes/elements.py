@@ -12,8 +12,11 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
 
     @staticmethod
     def grad_con_to_pri(cons, grad_cons, cfg):
-        rho, *rhouvw = cons[:-1]
-        grad_rho, *grad_rhouvw, grad_E = grad_cons
+        sv, *rhouvw = cons[:-1]
+        grad_sv, *grad_rhouvw, grad_E = grad_cons
+
+        rho = 1./sv
+        grad_rho = -grad_sv*rho**2
 
         # Divide momentum components by ρ
         uvw = [rhov / rho for rhov in rhouvw]

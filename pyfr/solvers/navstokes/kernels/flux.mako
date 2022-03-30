@@ -3,13 +3,14 @@
 
 % if ndims == 2:
 <%pyfr:macro name='viscous_flux_add' params='uin, grad_uin, fout'>
-    fpdtype_t rho = uin[0], rhou = uin[1], rhov = uin[2], E = uin[3];
+    fpdtype_t rcprho = uin[0];
+    fpdtype_t rho  = 1.0/uin[0];
+    fpdtype_t rhou = uin[1], rhov = uin[2], E = uin[3];
 
-    fpdtype_t rcprho = 1.0/rho;
     fpdtype_t u = rcprho*rhou, v = rcprho*rhov;
 
-    fpdtype_t rho_x = grad_uin[0][0];
-    fpdtype_t rho_y = grad_uin[1][0];
+    fpdtype_t rho_x = -grad_uin[0][0]*pow(rho, 2.0);
+    fpdtype_t rho_y = -grad_uin[1][0]*pow(rho, 2.0);
 
     // Velocity derivatives (rho*grad[u,v])
     fpdtype_t u_x = grad_uin[0][1] - u*rho_x;
@@ -47,16 +48,16 @@
 </%pyfr:macro>
 % elif ndims == 3:
 <%pyfr:macro name='viscous_flux_add' params='uin, grad_uin, fout'>
-    fpdtype_t rho  = uin[0];
+    fpdtype_t rcprho = uin[0];
+    fpdtype_t rho  = 1.0/uin[0];
     fpdtype_t rhou = uin[1], rhov = uin[2], rhow = uin[3];
     fpdtype_t E    = uin[4];
 
-    fpdtype_t rcprho = 1.0/rho;
     fpdtype_t u = rcprho*rhou, v = rcprho*rhov, w = rcprho*rhow;
 
-    fpdtype_t rho_x = grad_uin[0][0];
-    fpdtype_t rho_y = grad_uin[1][0];
-    fpdtype_t rho_z = grad_uin[2][0];
+    fpdtype_t rho_x = -grad_uin[0][0]*pow(rho, 2.0);
+    fpdtype_t rho_y = -grad_uin[1][0]*pow(rho, 2.0);
+    fpdtype_t rho_z = -grad_uin[2][0]*pow(rho, 2.0);
 
     // Velocity derivatives (rho*grad[u,v,w])
     fpdtype_t u_x = grad_uin[0][1] - u*rho_x;
