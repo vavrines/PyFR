@@ -33,7 +33,8 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
     def set_backend(self, *args, **kwargs):
         super().set_backend(*args, **kwargs)
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.tflux')
-        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.negdivconffilter')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.negdivconfsplit')
+        self._be.pointwise.register('pyfr.solvers.navstokes.kernels.filter')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.calcentropy')
         self._be.pointwise.register('pyfr.solvers.navstokes.kernels.calcminentropy')
 
@@ -94,11 +95,19 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         plocupts = self.ploc_at('upts') if self._ploc_in_src_exprs else None
 
         self.kernels['negdivconf'] = lambda: self._be.kernel(
-            'negdivconffilter', tplargs=tplargs,
-            dims=[self.neles], tdivtconf_vis=self._scal_upts_cpy, tdivtconf_inv=self.scal_upts_outb,
-            rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb,
-            entmin=self.entmin, vdm=self.vdm, invvdm=self.invvdm
+            'negdivconfsplit', tplargs=tplargs,
+            dims=[self.nupts, self.neles], tdivtconf_cpy=self._scal_upts_cpy, 
+            tdivtconf_outb=self.scal_upts_outb, ploc=plocupts, u=self.scal_upts_inb,
+            rcpdjac=self.rcpdjac_at('upts')
         )
+
+        if niters != 0:
+            self.kernels['filter'] = lambda: self._be.kernel(
+                'filter', tplargs=tplargs,
+                dims=[self.neles], tdivtconf_inv=self._scal_upts_cpy, tdivtconf_vis=self.scal_upts_outb,
+                ploc=plocupts, u=self.scal_upts_inb,
+                entmin=self.entmin, vdm=self.vdm, invvdm=self.invvdm
+            )
 
         self.kernels['calcentropy'] = lambda: self._be.kernel(
             'calcentropy', tplargs=tplargs, dims=[self.neles],

@@ -51,7 +51,7 @@
 </%pyfr:macro>
 
 
-<%pyfr:kernel name='negdivconffilter' ndim='1'
+<%pyfr:kernel name='filter' ndim='1'
               t='scalar fpdtype_t'
               tdivtconf_inv='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
               tdivtconf_vis='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'
@@ -68,23 +68,10 @@ fpdtype_t newsolmodes[${nupts}][${nvars}];
 fpdtype_t filtsol[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
 
-
-% if niters == 0:
-
-for (int uidx = 0; uidx < ${nupts}; uidx++) {
-    % for v, ex in enumerate(srcex):
-        tdivtconf_inv[uidx][${v}] = -rcpdjac[uidx]*(tdivtconf_vis[uidx][${v}]) + ${ex};
-    % endfor
-}
-
-% else:
-
 // Compute -divF and forward Euler prediction of next time step
 // Separate viscous and inviscid components
 for (int uidx = 0; uidx < ${nupts}; uidx++) {
     % for v, ex in enumerate(srcex):
-        tdivtconf_inv[uidx][${v}] = -rcpdjac[uidx]*tdivtconf_inv[uidx][${v}] + ${ex};
-        tdivtconf_vis[uidx][${v}] = -rcpdjac[uidx]*tdivtconf_vis[uidx][${v}] + ${ex};
         newsol[uidx][${v}] = u[uidx][${v}] + ${dt}*tdivtconf_inv[uidx][${v}];
         du_vis[uidx][${v}] = ${dt}*(tdivtconf_vis[uidx][${v}] - tdivtconf_inv[uidx][${v}]);
     % endfor
@@ -97,7 +84,6 @@ for (int uidx = 0; uidx < ${nupts}; uidx++) {
         for (int midx = 0; midx < ${nupts}; midx++) {
             newsolmodes[uidx][vidx] += invvdm[uidx][midx]*newsol[midx][vidx];
         }
-
     }
 }
 
@@ -194,10 +180,9 @@ if (withinbounds == 0) {
 
 for (int uidx = 0; uidx < ${nupts}; uidx++) {
     for (int vidx = 0; vidx < ${nvars}; vidx++) {
-        tdivtconf_inv[uidx][vidx] = (newsol[uidx][vidx] - u[uidx][vidx])/${dt}; // Store in upts_outb
+        tdivtconf_vis[uidx][vidx] = (newsol[uidx][vidx] - u[uidx][vidx])/${dt}; // Store in upts_outb
     }
 }
-% endif
 
 </%pyfr:kernel>
 

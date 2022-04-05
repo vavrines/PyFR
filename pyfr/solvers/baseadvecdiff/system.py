@@ -101,6 +101,8 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
 
         q1 << kernels['eles', 'negdivconf'](t=t)
         runall([q1])
+        q1 << kernels['eles', 'filter'](t=t)
+        runall([q1])
 
     def compute_grads(self, t, uinbank):
         runall = self.backend.runall
