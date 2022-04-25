@@ -129,10 +129,14 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
 
             vdm = np.repeat(self.basis.ubasis.vdm.T[:,:,np.newaxis], self.neles, axis=2)
             invvdm = np.repeat(self.basis.ubasis.invvdm.T[:,:,np.newaxis], self.neles, axis=2)
+            m0 = np.repeat(self.basis.m0[:,:,np.newaxis], self.neles, axis=2)
+
             self.vdm = self._be.matrix((self.nupts, self.nupts, self.neles),
                                            extent=nonce + 'vdm', tags=tags, initval=vdm)
             self.invvdm = self._be.matrix((self.nupts, self.nupts, self.neles),
                                            extent=nonce + 'invvdm', tags=tags, initval=invvdm)
+            self.m0 = self._be.matrix((self.nupts, self.nupts, self.neles),
+                                           extent=nonce + 'm0', tags=tags, initval=m0)
         else:
             raise ValueError('Invalid shock capturing scheme')
 

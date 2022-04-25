@@ -106,7 +106,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 'filter', tplargs=tplargs,
                 dims=[self.neles], tdivtconf_inv=self._scal_upts_cpy, tdivtconf_vis=self.scal_upts_outb,
                 ploc=plocupts, u=self.scal_upts_inb,
-                entmin=self.entmin, vdm=self.vdm, invvdm=self.invvdm
+                entmin=self.entmin, vdm=self.vdm, invvdm=self.invvdm, m0=self.m0
             )
 
         self.kernels['calcentropy'] = lambda: self._be.kernel(

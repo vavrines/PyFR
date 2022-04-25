@@ -13,6 +13,7 @@
         % endfor
     }
 
+    // Compute filtered solution
     for (int uidx = 0; uidx < ${nupts}; uidx++) {
         for (int vidx = 0; vidx < ${nvars}; vidx++) {
             filtsol[uidx][vidx] = 0.0;
@@ -20,7 +21,21 @@
                 filtsol[uidx][vidx] += vdm[uidx][midx]*filtmodes[midx][vidx];
             }
         }
+    }
 
+    // Compute solution at flux points
+    for (int fidx = 0; fidx < ${nfpts}; fidx++) { 
+        for (int vidx = 0; vidx < ${nvars}; vidx++) {
+            filtsol[${nupts} + fidx][vidx] = 0.0;
+            for (int midx = 0; midx < ${nupts}; midx++) {
+                filtsol[${nupts} + fidx][vidx] += m0[fidx][midx]*filtsol[midx][vidx];
+            }
+        }
+    }
+    
+
+    // Get minimum values
+    for (int uidx = 0; uidx < ${nupts + nfpts}; uidx++) {
         d = filtsol[uidx][0];
         % if ndims == 2:
             p = ${c['gamma'] - 1}*(filtsol[uidx][${nvars - 1}] - 
@@ -60,12 +75,13 @@
               rcpdjac='in fpdtype_t[${str(nupts)}]'
               entmin='in fpdtype_t'
               vdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
-              invvdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'>
+              invvdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
+              m0='in fpdtype_t[${str(nfpts)}][${str(nupts)}]'>
 
 fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t du_vis[${nupts}][${nvars}];
 fpdtype_t newsolmodes[${nupts}][${nvars}];
-fpdtype_t filtsol[${nupts}][${nvars}];
+fpdtype_t filtsol[${nupts + nfpts}][${nvars}]; // Solution at solution and flux points
 fpdtype_t filtmodes[${nupts}][${nvars}];
 
 // Compute -divF and forward Euler prediction of next time step
