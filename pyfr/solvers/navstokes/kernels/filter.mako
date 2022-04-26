@@ -24,6 +24,7 @@
     }
 
     // Compute solution at flux points
+    % if filter_fpts:
     for (int fidx = 0; fidx < ${nfpts}; fidx++) { 
         for (int vidx = 0; vidx < ${nvars}; vidx++) {
             filtsol[${nupts} + fidx][vidx] = 0.0;
@@ -32,10 +33,11 @@
             }
         }
     }
+    % endif
     
 
     // Get minimum values
-    for (int uidx = 0; uidx < ${nupts + nfpts}; uidx++) {
+    for (int uidx = 0; uidx < ${nrpts}; uidx++) {
         d = filtsol[uidx][0];
         % if ndims == 2:
             p = ${c['gamma'] - 1}*(filtsol[uidx][${nvars - 1}] - 
@@ -81,7 +83,7 @@
 fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t du_vis[${nupts}][${nvars}];
 fpdtype_t newsolmodes[${nupts}][${nvars}];
-fpdtype_t filtsol[${nupts + nfpts}][${nvars}]; // Solution at solution and flux points
+fpdtype_t filtsol[${nrpts}][${nvars}]; // Solution at solution and flux points
 fpdtype_t filtmodes[${nupts}][${nvars}];
 
 // Compute -divF and forward Euler prediction of next time step
