@@ -24,7 +24,11 @@ fpdtype_t d,p,e;
                      u[${i}][3]*u[${i}][3]));
     % endif
 
+    % if etype == 'log':
     e = (d <= 0 || p <= 0) ? ${large_number} : d*log(p/pow(d, ${c['gamma']}));
+    % elif etype == 'exp':
+    e = (d <= 0 || p <= 0) ? ${large_number} : p*pow(d, 1-${c['gamma']});
+    % endif
 
     entmin = fmin(entmin, e);
 % endfor

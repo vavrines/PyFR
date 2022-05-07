@@ -51,7 +51,11 @@
         % endif
 
 
+        % if etype == 'log':
         e = (d <= ${dtol} || p <= ${ptol}) ? -${large_number} : d*log(p/pow(d, ${c['gamma']}));
+        % elif etype == 'exp':
+        e = (d <= ${dtol} || p <= ${ptol}) ? -${large_number} : p*pow(d, 1-${c['gamma']});
+        % endif
 
         dmin = fmin(dmin, d);
         pmin = fmin(pmin, p);

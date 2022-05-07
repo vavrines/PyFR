@@ -83,6 +83,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         dtol = float(self.cfg.get('solver', 'filter-dtol', 1e-8))
         ptol = float(self.cfg.get('solver', 'filter-ptol', 1e-8))
         etol = float(self.cfg.get('solver', 'filter-etol', 1e-4))
+        etype = self.cfg.get('solver', 'filter-etype', 'log')
         filter_fpts = bool(self.cfg.get('solver', 'filter-fpts', False))
         nrpts = self.nupts + self.nfpts if filter_fpts else self.nupts
 
@@ -91,7 +92,7 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                        order=self.basis.order, ffac=ffac, dt=dt,
                        srcex=self._src_exprs, niters=niters,
                        dtol=dtol, ptol=ptol, etol=etol, 
-                       filter_fpts=filter_fpts, nrpts=nrpts)
+                       filter_fpts=filter_fpts, nrpts=nrpts, etype=etype)
 
         plocupts = self.ploc_at('upts') if self._ploc_in_src_exprs else None
 
