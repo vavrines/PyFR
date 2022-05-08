@@ -3,6 +3,7 @@
 from pyfr.plugins.base import BasePlugin
 from pyfr.plugins.dtstats import DtStatsPlugin
 from pyfr.plugins.fluidforce import FluidForcePlugin
+from pyfr.plugins.inletforcing import InletForcingPlugin
 from pyfr.plugins.integrate import IntegratePlugin
 from pyfr.plugins.nancheck import NaNCheckPlugin
 from pyfr.plugins.pseudostats import PseudoStatsPlugin

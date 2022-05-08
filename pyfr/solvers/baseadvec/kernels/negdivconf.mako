@@ -7,8 +7,11 @@
               tdivtconf='inout fpdtype_t[${str(nvars)}]'
               ploc='in fpdtype_t[${str(ndims)}]'
               u='in fpdtype_t[${str(nvars)}]'
-              rcpdjac='in fpdtype_t'>
+              rcpdjac='in fpdtype_t'
+              rhouforce='scalar fpdtype_t'>
 % for i, ex in enumerate(srcex):
     tdivtconf[${i}] = -rcpdjac*tdivtconf[${i}] + ${ex};
 % endfor
+
+tdivtconf[1] += rhouforce;
 </%pyfr:kernel>

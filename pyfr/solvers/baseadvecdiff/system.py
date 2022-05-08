@@ -52,7 +52,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         q.enqueue(kernels['mpiint/vect_fpts_unpack'])
         q.enqueue(kernels['mpiint/comm_flux'])
         q.enqueue(kernels['eles/tdivtconf'])
-        q.enqueue(kernels['eles/negdivconf'], t=t)
+        q.enqueue(kernels['eles/negdivconf'], t=t, rhouforce=self.rhouforce)
         q.run()
 
     def compute_grads(self, t, uinbank):
