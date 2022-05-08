@@ -184,6 +184,33 @@ class NodalMeshAssembler:
         # Pair the fluid-fluid faces
         fpairs, resid = self._pair_fluid_faces(ffaces)
 
+        
+        # ---- Create periodic boundary tags ---
+        pbc = {}
+        for k in self._pfacespents:
+            pbc['periodic_' + str(k) + '_l'] = bpart[self._pfacespents[k][0]] 
+            pbc['periodic_' + str(k) + '_r'] = bpart[self._pfacespents[k][1]] 
+
+        pbcfaces = defaultdict(list)
+        nodepts = self._nodepts
+        
+        ret = {}
+        for lpent in pbc:
+            for pftype in pbc[lpent]:
+                lfnodes = pbc[lpent][pftype]
+                lfpts = np.array([[nodepts[n] for n in fn] for fn in lfnodes])
+
+                lfidx = fuzzysort(lfpts.mean(axis=1).T, range(len(lfnodes)))
+
+                for lfn in lfnodes[lfidx]:
+                    lf = resid[tuple(sorted(lfn))]
+                    pbcfaces[lpent].append(lf)
+
+        for k, v in pbcfaces.items():
+            ret['pcon_{0}_p0'.format(k)] = np.array(v, dtype='S4,i4,i1,i1')
+
+        # -------------------------------------
+
         # Tag and pair periodic boundary faces
         pfpairs = self._pair_periodic_fluid_faces(bpart, resid)
 
@@ -210,6 +237,10 @@ class NodalMeshAssembler:
 
         for k, v in bcon.items():
             ret[f'bcon_{k}_p0'] = np.array(v, dtype='S4,i4,i1,i2')
+        
+        for k, v in pbcfaces.items():
+            ret['pcon_{0}_p0'.format(k)] = np.array(v, dtype='S4,i4,i1,i1')
+
 
         return ret
 
