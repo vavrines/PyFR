@@ -58,7 +58,7 @@ class BasePartitioner:
             return con
 
         # Connectivity
-        intcon, mpicon, bccon = [], {}, defaultdict(list)
+        intcon, mpicon, bccon, pccon = [], {}, defaultdict(list), defaultdict(list)
 
         for f in mesh:
             if (mi := re.match(r'con_p(\d+)$', f)):
@@ -75,6 +75,9 @@ class BasePartitioner:
             elif (bc := re.match(r'bcon_(.+?)_p(\d+)$', f)):
                 name, l = bc[1], int(bc[2])
                 bccon[name].append(offset_con(mesh[f], l))
+            elif (pc := re.match(r'pcon_(.+?)_p(\d+)$', f)):
+                name, l = pc[1], int(pc[2])
+                pccon[name].append(offset_con(mesh[f], l))
 
         # Output data type
         dtype = 'U4,i4,i1,i2'
@@ -88,6 +91,9 @@ class BasePartitioner:
 
         for k, v in bccon.items():
             newmesh[f'bcon_{k}_p0'] = np.hstack(v).astype(dtype)
+
+        for k, v in pccon.items():
+            newmesh[f'pcon_{k}_p0'] = np.hstack(v).astype(dtype)
 
         return newmesh, rnum
 
@@ -215,6 +221,7 @@ class BasePartitioner:
         con_px = defaultdict(list)
         con_pxpy = defaultdict(list)
         bcon_px = defaultdict(list)
+        pcon_px = defaultdict(list)
 
         # Global-to-local element index map
         eleglmap = {}
@@ -243,12 +250,15 @@ class BasePartitioner:
 
         # Generate boundary conditions
         for f in filter(lambda f: isinstance(f, str), mesh):
-            if (m := re.match('bcon_(.+?)_p0$', f)):
+            if (m := re.match('[bp]con_(.+?)_p0$', f)):
                 for lpetype, leidxg, lfidx, lflags in mesh[f].tolist():
                     lpart, leidxl = eleglmap[lpetype, leidxg]
                     conl = (lpetype, leidxl, lfidx, lflags)
 
-                    bcon_px[m[1], lpart].append(conl)
+                    if 'bcon' in m.string:
+                        bcon_px[m[1], lpart].append(conl)
+                    else:
+                        pcon_px[m[1], lpart].append(conl)
 
         # Output data type
         dtype = 'S4,i4,i1,i2'
@@ -264,6 +274,9 @@ class BasePartitioner:
 
         for (etype, px), v in bcon_px.items():
             con[f'bcon_{etype}_p{px}'] = np.array(v, dtype=dtype)
+
+        for (etype, px), v in pcon_px.items():
+            con[f'pcon_{etype}_p{px}'] = np.array(v, dtype=dtype)
 
         return con, eleglmap
 
