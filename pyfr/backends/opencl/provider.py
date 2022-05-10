@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import numpy as np
-
 from pyfr.backends.base import (BaseKernelProvider,
                                 BasePointwiseKernelProvider, Kernel)
 from pyfr.backends.opencl.generator import OpenCLKernelGenerator
@@ -12,7 +10,9 @@ from pyfr.util import memoize
 class OpenCLKernelProvider(BaseKernelProvider):
     @memoize
     def _build_program(self, src):
-        return self.backend.cl.program(src, flags=['-cl-fast-relaxed-math'])
+        flags = ['-cl-fast-relaxed-math', '-cl-std=CL2.0']
+
+        return self.backend.cl.program(src, flags)
 
     def _build_kernel(self, name, src, argtypes):
         argtypes = [npdtype_to_ctypestype(arg) for arg in argtypes]
