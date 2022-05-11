@@ -121,13 +121,15 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
         dtol = float(self.cfg.get('solver', 'filter-dtol', 1e-8))
         ptol = float(self.cfg.get('solver', 'filter-ptol', 1e-8))
         etol = float(self.cfg.get('solver', 'filter-etol', 1e-4))
+        filter_fpts = bool(self.cfg.get('solver', 'filter-fpts', False))
+        nrpts = self.nupts + self.nfpts if filter_fpts else self.nupts
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, nupts=self.nupts, nfpts=self.nfpts,
                        c=self.cfg.items_as('constants', float), 
                        order=self.basis.order, ffac=ffac, dt=dt,
                        srcex=self._src_exprs, niters=niters,
                        dtol=dtol, ptol=ptol, etol=etol, 
-                       mean_mode_value=mean_mode_value)
+                       filter_fpts=filter_fpts, nrpts=nrpts,)
 
         plocupts = self.ploc_at('upts') if self._ploc_in_src_exprs else None
 
@@ -135,7 +137,7 @@ class MHDElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             'negdivconffilter', tplargs=tplargs,
             dims=[self.neles], tdivtconf=self.scal_upts_outb,
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=self.scal_upts_inb,
-            entmin=self.entmin, vdm=self.vdm, invvdm=self.invvdm
+            entmin=self.entmin, vdm=self.vdm, invvdm=self.invvdm, m0=self.m0
         )
 
         self.kernels['calcentropy'] = lambda: self._be.kernel(
