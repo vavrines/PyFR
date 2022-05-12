@@ -36,7 +36,7 @@ fpdtype_t rhou,rhov,rhow,E,Bx,By,Bz,BdotB2;
                                  - BdotB2);
     % endif
 
-    e = (d <= 0 || p <= 0) ? ${large_number} : d*log(p*pow(d, -${c['gamma']}));
+    e = (d <= 0 || p <= 0) ? ${large_number} : d*log(p/pow(d, ${c['gamma']}));
 
     entmin = fmin(entmin, e);
 % endfor

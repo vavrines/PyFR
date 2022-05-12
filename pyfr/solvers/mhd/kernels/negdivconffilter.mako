@@ -13,31 +13,15 @@
         % endfor
     }
 
-    for (int uidx = 0; uidx < ${nrpts}; uidx++) {
+    for (int uidx = 0; uidx < ${nupts}; uidx++) {
         for (int vidx = 0; vidx < ${nvars}; vidx++) {
             filtsol[uidx][vidx] = 0.0;
             for (int midx = 0; midx < ${nupts}; midx++) {
                 filtsol[uidx][vidx] += vdm[uidx][midx]*filtmodes[midx][vidx];
             }
         }
-    }
-
-    
-    // Compute solution at flux points
-    % if filter_fpts:
-    for (int fidx = 0; fidx < ${nfpts}; fidx++) { 
-        for (int vidx = 0; vidx < ${nvars}; vidx++) {
-            filtsol[${nupts} + fidx][vidx] = 0.0;
-            for (int midx = 0; midx < ${nupts}; midx++) {
-                filtsol[${nupts} + fidx][vidx] += m0[fidx][midx]*filtsol[midx][vidx];
-            }
-        }
-    }
-    % endif
 
 
-    // Get minimum values
-    for (int uidx = 0; uidx < ${nrpts}; uidx++) {
         d = filtsol[uidx][0];
         % if ndims == 2:
             rhou = filtsol[uidx][1]; rhov = filtsol[uidx][2];
@@ -62,7 +46,7 @@
         % endif
 
 
-        e = (d <= ${dtol} || p <= ${ptol}) ? ${large_number} : d*log(p*pow(d, -${c['gamma']}));
+        e = (d <= ${dtol} || p <= ${ptol}) ? ${large_number} : d*log(p/pow(d, ${c['gamma']}));
 
         dmin = fmin(dmin, d);
         pmin = fmin(pmin, p);
@@ -87,12 +71,11 @@
               rcpdjac='in fpdtype_t[${str(nupts)}]'
               entmin='in fpdtype_t'
               vdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
-              invvdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
-              m0='in fpdtype_t[${str(nfpts)}][${str(nupts)}]'>
+              invvdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'>
 
 fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t newsolmodes[${nupts}][${nvars}];
-fpdtype_t filtsol[${nrpts}][${nvars}]; // Solution at solution and flux points
+fpdtype_t filtsol[${nupts}][${nvars}];
 fpdtype_t filtmodes[${nupts}][${nvars}];
 fpdtype_t source[${nupts}][${nvars}];
 
@@ -101,6 +84,7 @@ fpdtype_t rcprho, v[${ndims}], B[${ndims}], Bdotv, divB;
 fpdtype_t rhou, rhov, rhow, E, Bx, By, Bz, BdotB2;
 
 // Compute -divF and forward Euler prediction of next time step
+fpdtype_t divf;
 for (int uidx = 0; uidx < ${nupts}; uidx++) {
     rcprho = 1.0/u[uidx][0];
 
