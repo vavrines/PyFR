@@ -27,6 +27,8 @@ class VTKWriter(BaseWriter):
         # Divisor for each type element
         self.etypes_div = defaultdict(lambda: self.divisor)
 
+        self.aux = 'aux' in args.outf
+
         # Choose whether to output subdivided cells or high order VTK cells
         # If -k is given by the user then use high-order VTK cells as output
         # with order equal to the solution order or to the one provided by
@@ -92,6 +94,8 @@ class VTKWriter(BaseWriter):
                     )
 
     def _pre_proc_fields_soln(self, name, mesh, soln):
+        if self.aux:
+            return np.array(soln)
         # Convert from conservative to primitive variables
         return np.array(self.elementscls.con_to_pri(soln, self.cfg))
 
@@ -105,10 +109,13 @@ class VTKWriter(BaseWriter):
 
         # Prepare the fields
         fields = []
-        for fnames, vnames in visvarmap:
-            ix = [privarmap.index(vn) for vn in vnames]
+        if self.aux:
+            fields.append(vsoln[0])
+        else:
+            for fnames, vnames in visvarmap:
+                ix = [privarmap.index(vn) for vn in vnames]
 
-            fields.append(vsoln[ix])
+                fields.append(vsoln[ix])
 
         return fields
 
@@ -157,7 +164,10 @@ class VTKWriter(BaseWriter):
         return fields
 
     def _get_npts_ncells_nnodes_lin(self, sk):
-        etype, neles = self.soln_inf[sk][0], self.soln_inf[sk][1][2]
+        if self.aux:
+            etype, neles = self.soln_inf[sk][0], self.soln_inf[sk][1][1]
+        else:
+            etype, neles = self.soln_inf[sk][0], self.soln_inf[sk][1][2]
 
         # Get the shape and sub division classes
         shapecls = subclass_where(BaseShape, name=etype)
@@ -202,10 +212,15 @@ class VTKWriter(BaseWriter):
         types = [dtype, 'Int32', 'Int32', 'UInt8']
         comps = ['3', '', '', '']
 
-        for fname, varnames in vvars:
-            names.append(fname.title())
+        if self.aux:
+            names.append('Zeta')
             types.append(dtype)
-            comps.append(str(len(varnames)))
+            comps.append(1)
+        else:
+            for fname, varnames in vvars:
+                names.append(fname.title())
+                types.append(dtype)
+                comps.append(str(len(varnames)))
 
         # If a solution has been given the compute the sizes
         if sk:
@@ -369,10 +384,16 @@ class VTKWriter(BaseWriter):
         soln = self.soln[sk].swapaxes(0, 1).astype(self.dtype)
 
         # Handle the case of partial solution files
-        if soln.shape[2] != mesh.shape[1]:
-            skpre, skpost = sk.rsplit('_', 1)
+        if self.aux:
+            if soln.shape[0] != mesh.shape[1]:
+                skpre, skpost = sk.rsplit('_', 1)
 
-            mesh = mesh[:, self.soln[f'{skpre}_idxs_{skpost}'], :]
+                mesh = mesh[:, self.soln[f'{skpre}_idxs_{skpost}'], :]
+        else:
+            if soln.shape[2] != mesh.shape[1]:
+                skpre, skpost = sk.rsplit('_', 1)
+
+                mesh = mesh[:, self.soln[f'{skpre}_idxs_{skpost}'], :]
 
         # Dimensions
         nspts, neles = mesh.shape[:2]
@@ -401,7 +422,13 @@ class VTKWriter(BaseWriter):
         soln = self._pre_proc_fields(name, mesh, soln).swapaxes(0, 1)
 
         # Interpolate the solution to the vis points
-        vsoln = soln_vtu_op @ soln.reshape(len(soln), -1)
+        if self.aux:
+            (x1, x2) = np.shape(soln_vtu_op)
+            ss = soln.reshape(len(soln), -1)
+            ss = np.repeat(ss, x2, axis=0)
+            vsoln = soln_vtu_op @ ss
+        else:
+            vsoln = soln_vtu_op @ soln.reshape(len(soln), -1)
         vsoln = vsoln.reshape(nsvpts, -1, neles).swapaxes(0, 1)
 
         # Append dummy z dimension for points in 2D

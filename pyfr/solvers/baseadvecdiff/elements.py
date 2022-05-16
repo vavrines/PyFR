@@ -122,6 +122,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
                                            extent=nonce + 'entmin', tags=tags)
             self.entmin_int = self._be.matrix((self.nfpts, self.neles),
                                            extent=nonce + 'entminint', tags=tags)
+            self.zeta = self._be.matrix((1, self.neles),
+                                           extent=nonce + 'zeta', tags=tags)
 
             kernels['copy_divf'] = lambda: kernel(
                 'copy', self._scal_upts_cpy, self.scal_upts_outb
@@ -130,6 +132,8 @@ class BaseAdvectionDiffusionElements(BaseAdvectionElements):
             vdm = np.repeat(self.basis.ubasis.vdm.T[:,:,np.newaxis], self.neles, axis=2)
             invvdm = np.repeat(self.basis.ubasis.invvdm.T[:,:,np.newaxis], self.neles, axis=2)
             m0 = np.repeat(self.basis.m0[:,:,np.newaxis], self.neles, axis=2)
+
+            
 
             self.vdm = self._be.matrix((self.nupts, self.nupts, self.neles),
                                            extent=nonce + 'vdm', tags=tags, initval=vdm)

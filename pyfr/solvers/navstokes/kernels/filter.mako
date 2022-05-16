@@ -82,7 +82,8 @@
               entmin='in fpdtype_t'
               vdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
               invvdm='in fpdtype_t[${str(nupts)}][${str(nupts)}]'
-              m0='in fpdtype_t[${str(nfpts)}][${str(nupts)}]'>
+              m0='in fpdtype_t[${str(nfpts)}][${str(nupts)}]'
+              zeta_out='out fpdtype_t'>
 
 fpdtype_t newsol[${nupts}][${nvars}];
 fpdtype_t du_vis[${nupts}][${nvars}];
@@ -156,6 +157,7 @@ else {
 }
 
 
+zeta_out = zeta;
 // ***********************************************************
 // Add viscous component and check if positivity-preserving
 
@@ -198,6 +200,7 @@ if (withinbounds == 0) {
     zeta = zeta_high;
     
     ${pyfr.expand('filter', 'newsolmodes', 'newsol', 'zeta', 'neginf', 'withinbounds')};
+    zeta_out = -zeta;
 }
 
 for (int uidx = 0; uidx < ${nupts}; uidx++) {
@@ -205,6 +208,7 @@ for (int uidx = 0; uidx < ${nupts}; uidx++) {
         tdivtconf_vis[uidx][vidx] = (newsol[uidx][vidx] - u[uidx][vidx])/${dt}; // Store in upts_outb
     }
 }
+
 
 </%pyfr:kernel>
 
