@@ -4,6 +4,7 @@ import re
 
 import numpy as np
 
+from pyfr.inifile import NoOptionError
 from pyfr.mpiutil import get_comm_rank_root, get_mpi
 from pyfr.nputil import npeval
 from pyfr.plugins.base import BasePlugin, init_csv
@@ -53,21 +54,38 @@ class IntegratePlugin(BasePlugin):
             self.outf = init_csv(self.cfg, cfgsect, ','.join(header))
 
         # Prepare the per element-type info list
-        self.eleinfo = []
+        self.eleinfo = eleinfo = []
         for (ename, eles), (eset, emask) in zip(system.ele_map.items(), rinfo):
-            # Locations of each solution point
-            ploc = eles.ploc_at_np('upts')[..., eset]
-            ploc = ploc.swapaxes(0, 1)
-
-            # Jacobian determinants
-            rcpdjacs = eles.rcpdjac_at_np('upts')[:, eset]
-
-            # Quadature weights
+            # Obtain quadrature info
             rname = self.cfg.get(f'solver-elements-{ename}', 'soln-pts')
-            wts = get_quadrule(ename, rname, eles.nupts).wts
+
+            try:
+                # Quadrature rule (default to that of the solution points)
+                qrule = self.cfg.get(cfgsect, f'quad-pts-{ename}', rname)
+
+                # Quadrature rule degree
+                try:
+                    qdeg = self.cfg.getint(cfgsect, f'quad-deg-{ename}')
+                except NoOptionError:
+                    qdeg = self.cfg.getint(cfgsect, 'quad-deg')
+
+                r = get_quadrule(ename, qrule, qdeg=qdeg)
+
+                # Interpolation to quadrature points matrix
+                m0 = eles.basis.ubasis.nodal_basis_at(r.pts)
+            except NoOptionError:
+                # Default to the quadrature rule of the solution points
+                r = get_quadrule(ename, rname, eles.nupts)
+                m0 = None
+
+            # Locations of each quadrature point
+            ploc = eles.ploc_at_np(r.pts).swapaxes(0, 1)[..., eset]
+
+            # Jacobian determinants at each quadrature point
+            rcpdjacs = eles.rcpdjac_at_np(r.pts)[:, eset]
 
             # Save
-            self.eleinfo.append((ploc, wts[:, None] / rcpdjacs, eset, emask))
+            eleinfo.append((ploc, r.wts[:, None] / rcpdjacs, m0, eset, emask))
 
     def _prepare_region_info(self, intg):
         # All elements
@@ -107,25 +125,8 @@ class IntegratePlugin(BasePlugin):
             gradpnames.update(re.findall(r'\bgrad_(.+?)_[xyz]\b', ex))
 
         privarmap = self.elementscls.privarmap[self.ndims]
-        self._gradpinfo = [(pname, privarmap.index(pname)) 
-                            for pname in gradpnames]
-
-        # If gradients are required then form the relevant operators
-        if gradpnames:
-            emap = intg.system.ele_map
-
-            self._gradop, self._rcpjact = [], []
-            for eles, (eset, emask) in zip(emap.values(), rinfo):
-                self._gradop.append(eles.basis.m4)
-
-                # Get the smats at the solution points and subset
-                smat = eles.smat_at_np('upts')[..., eset]
-
-                # Get |J|^-1 at the solution points and subset
-                rcpdjac = eles.rcpdjac_at_np('upts')[:, eset]
-
-                # Product to give J^-T at the solution points
-                self._rcpjact.append(rcpdjac*smat.transpose(2, 0, 1, 3))
+        self._gradpinfo = [(pname, privarmap.index(pname))
+                           for pname in gradpnames]
 
     def _eval_exprs(self, intg):
         intvals = np.zeros(len(self.exprs))
@@ -133,28 +134,41 @@ class IntegratePlugin(BasePlugin):
         # Get the primitive variable names
         pnames = self.elementscls.privarmap[self.ndims]
 
-        # Compute primitive gradients if required
-        if self._gradpinfo:
-            grads_eles = self._grad_pvars(intg)
-
         # Iterate over each element type in the simulation
         for i, (soln, eleinfo) in enumerate(zip(intg.soln, self.eleinfo)):
-            plocs, wts, eset, emask = eleinfo
+            plocs, wts, m0, eset, emask = eleinfo
 
             # Subset and transpose the solution
             soln = soln[..., eset].swapaxes(0, 1)
+
+            # Interpolate the solution to the quadrature points
+            if m0 is not None:
+                soln = m0 @ soln
 
             # Convert from conservative to primitive variables
             psolns = self.elementscls.con_to_pri(soln, self.cfg)
 
             # Prepare the substitutions dictionary
             subs = dict(zip(pnames, psolns))
-            subs.update(zip('xyz', plocs))
+            subs.update(zip('xyz', plocs), t=intg.tcurr)
 
             # Prepare any required gradients
-            for pname, idx in self._gradpinfo:
-                for dim, grad in zip('xyz', grads_eles[i][idx]):
-                    subs[f'grad_{pname}_{dim}'] = grad
+            if self._gradpinfo:
+                # Compute the gradients
+                grad_soln = np.rollaxis(intg.grad_soln[i], 2)[..., eset]
+
+                # Interpolate the gradients to the quadrature points
+                if m0 is not None:
+                    grad_soln = m0 @ grad_soln
+
+                # Transform from conservative to primitive gradients
+                pgrads = self.elementscls.grad_con_to_pri(soln, grad_soln,
+                                                          self.cfg)
+
+                # Add them to the substitutions dictionary
+                for pname, idx in self._gradpinfo:
+                    for dim, grad in zip('xyz', pgrads[idx]):
+                        subs[f'grad_{pname}_{dim}'] = grad
 
             for j, v in enumerate(self.exprs):
                 # Evaluate the expression at each point
@@ -164,27 +178,6 @@ class IntegratePlugin(BasePlugin):
                 intvals[j] += np.sum(iex) - np.sum(iex[emask])
 
         return intvals
-
-    def _grad_pvars(self, intg):
-        grads_eles = []
-
-        # Iterate over each element type in the simulation
-        for i, (soln, eleinfo) in enumerate(zip(intg.soln, self.eleinfo)):
-            eset, emask = eleinfo[2:]
-
-            # Subset and transpose the solution
-            soln = soln[..., eset].swapaxes(0, 1)
-
-            # Rearrange and subset gradient data
-            grad_soln = np.rollaxis(intg.grad_soln[i], 2)[..., eset]
-
-            # Transform from conservative to primitive gradients
-            pgrads = self.elementscls.grad_con_to_pri(soln, grad_soln, self.cfg)
-
-            # Store the gradients
-            grads_eles.append(pgrads)
-        
-        return grads_eles
 
     def __call__(self, intg):
         if intg.nacptsteps % self.nsteps == 0:
