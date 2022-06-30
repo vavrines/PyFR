@@ -45,6 +45,15 @@ class TetLShape(BaseShape):
 		('tri', lambda s, t: (-s - (t + 1)/2, s + (t + 1)/2, t), (1, 1, 0))
 	]
 
+
+	def __init__(self, nspts, cfg):
+		super().__init__(nspts, cfg)
+		# Move upper sol point to (0,0,1) (instead of (-1, -1, 1))
+		rfac = 0.5*(self.upts[:,2] + 1.)
+		self.upts[:,0] += rfac
+		self.upts[:,1] += rfac
+		self.ubasis = get_polybasis(self.name, self.order + 1, self.upts)
+
 	@classmethod
 	def std_ele(cls, sptord):
 		pts1d = np.linspace(-1, 1, sptord + 1)
@@ -100,6 +109,11 @@ class TetRShape(BaseShape):
 
 	def __init__(self, nspts, cfg):
 		super().__init__(nspts, cfg)
+		# Move upper sol point to (0,0,1) (instead of (-1, -1, 1))
+		rfac = 0.5*(self.upts[:,2] + 1.)
+		self.upts[:,0] += rfac
+		self.upts[:,1] += rfac
+		# Flip upts/fpts
 		self.upts[:,:2] *= -1
 		self.fpts[:,:2] *= -1
 		self.ubasis = get_polybasis(self.name, self.order + 1, self.upts)
@@ -185,6 +199,7 @@ class PyrShape(BaseShape):
 		self.nquadpts = (p+1)**2
 
 		self.make_fpts_map()
+		self.make_upts_map()
 
 
 	@classmethod
@@ -252,8 +267,6 @@ class PyrShape(BaseShape):
 			3: south-west
 		
 		'''
-		print(self.tetr.fpts)
-		print()
 		for face in range(1,5):
 			pyr_coords = self.fpts[self.nquadpts + (face-1)*self.ntripts: \
 								   self.nquadpts + (face)*self.ntripts, : ]
@@ -282,10 +295,28 @@ class PyrShape(BaseShape):
 				self.fpts_idxs[n] = offset + locidx
 				n += 1
 
+	def make_upts_map(self):
+		self.upts_map = [None]*self.nupts
+		self.upts_idxs = [None]*self.nupts
 
+		tol = 1e-8
+		for i in range(self.nupts):
+			coord = self.upts[i, :]
+			(x,y,z) = coord
 
-		print(self.fpts_map)
-		print(self.fpts_idxs)
+			if np.abs(x+y) < tol: # Middle/diag points
+				lidx = np.where((self.tetl.upts == coord).all(axis=1))[0][0]
+				ridx = np.where((self.tetr.upts == coord).all(axis=1))[0][0]
+				self.upts_map[i] = 'm'
+				self.upts_idxs[i] = (lidx, ridx)
+			elif x+y > tol:
+				self.upts_map[i] = 'r'
+				idx = np.where((self.tetr.upts == coord).all(axis=1))[0][0]
+				self.upts_idxs[i] = idx
+			elif x+y < -tol:
+				self.upts_map[i] = 'l'
+				idx = np.where((self.tetl.upts == coord).all(axis=1))[0][0]
+				self.upts_idxs[i] = idx
 
 	def expand_upts_row(row, side):
 		pass
@@ -296,9 +327,10 @@ class PyrShape(BaseShape):
 	@cached_property
 	def m0(self):
 		M = np.zeros((self.nfpts, self.nupts))
-		m0l = self.tetl.m0
+		tol = 1e-8
+
 		for i, (x,y,z) in enumerate(self.fpts):
-			if (x + y) > 1e-8: # Strict-right
+			if (x + y) > tol: # Strict-right
 				row = self.tetr.ubasis.nodal_basis_at([[x,y,z]])
 			else: # Left or diag
 				row = self.tetl.ubasis.nodal_basis_at([[x,y,z]])
