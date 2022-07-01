@@ -221,24 +221,27 @@ class PyrShape(BaseShape):
 
 		tetl_bot = self.tetl.fpts[:self.ntripts]
 		tetr_bot = self.tetr.fpts[:self.ntripts]
+
+		tol = 1e-8
 		for i in range(self.nquadpts):
 			coord = self.fpts[n, :]
-			iidx = i % (self.order+1)
-			negiidx = (self.order) - iidx
-			jidx = i // (self.order+1)
+			[x,y,z] = coord
+			# iidx = i % (self.order+1)
+			# negiidx = (self.order) - iidx
+			# jidx = i // (self.order+1)
 
-			if negiidx == jidx:
+			if np.abs(x+y) < tol:
 				tag = 'm'
-				idxl = np.where((tetl_bot == coord).all(axis=1))[0][0]
-				idxr = np.where((tetr_bot == coord).all(axis=1))[0][0]
+				idxl = np.where((np.abs(tetl_bot - coord) < tol).all(axis=1))[0][0]
+				idxr = np.where((np.abs(tetr_bot - coord) < tol).all(axis=1))[0][0]
 				assert idxl == idxr, f'{idxl}, {idxr}'
 				self.fpts_idxs[n] = idxl
-			elif negiidx > jidx:
+			elif x + y < -tol:
 				tag = 'l'
-				self.fpts_idxs[n] = np.where((tetl_bot == coord).all(axis=1))[0][0]
+				self.fpts_idxs[n] = np.where((np.abs(tetl_bot - coord) < tol).all(axis=1))[0][0]
 			else:
 				tag = 'r'
-				self.fpts_idxs[n] = np.where((tetr_bot == coord).all(axis=1))[0][0]
+				self.fpts_idxs[n] = np.where((np.abs(tetr_bot - coord) < tol).all(axis=1))[0][0]
 
 			self.fpts_map[n] = tag
 
@@ -535,16 +538,23 @@ def test_m3():
 
 
 ''' 
-Matrices to redo:
-M0: Interpolation to fpts (piece-wise)
-M1: Divergence of interior flux at upts (piece-wise, average at interior diagonal)
-M3: Divergence of interface flux at upts (piece-wise, average at interior diagonal)
+To do:
+	Remove linear elements check
+	Create quad-fpts using dual tri?
+	Create uniform points?
 
-Make map for which upts/fpts indices correspond to which indices of which side half-tet
 
-Remove interior interface rows from correction matrix?
+Done:
+	Matrices to redo:
+	M0: Interpolation to fpts (piece-wise)
+	M1: Divergence of interior flux at upts (piece-wise, average at interior diagonal)
+	M3: Divergence of interface flux at upts (piece-wise, average at interior diagonal)
 
-Write M0 tests with analytic 
+	Make map for which upts/fpts indices correspond to which indices of which side half-tet
+
+	Remove interior interface rows from correction matrix?
+
+	Write M0 tests with analytic 
 '''
 
 tetl = TetLShape(False, cfg)
