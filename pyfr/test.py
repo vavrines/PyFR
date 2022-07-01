@@ -486,32 +486,33 @@ def test_m1():
 
 	# Test 1: Constant states should give zero grad
 	f = np.ones(3*pyr.nupts)
-	print(m1 @ f)
 	assert np.amax(m1 @ f) < tol
 	print('Passed M1 test 1: Constant')
-	print(m1)
 
 	# Test 2: Linear x
 	x = pyr.upts[:,0]
 	y = np.ones_like(x)
 	z = np.ones_like(x)
 	f = np.array([x,y,z]).reshape(-1, order='C')
-	print(m1 @ f)
+	assert np.amax(m1 @ f - 1) < tol
 
 	# Test 2: Linear x
 	y = pyr.upts[:,1]
 	x = np.ones_like(y)
 	z = np.ones_like(y)
 	f = np.array([x,y,z]).reshape(-1, order='C')
-	print(m1 @ f)
-
+	assert np.amax(m1 @ f - 1) < tol
 
 	# Test 2: Linear x
 	z = pyr.upts[:,2]
 	x = np.ones_like(z)
 	y = np.ones_like(z)
 	f = np.array([x,y,z]).reshape(-1, order='C')
-	print(m1 @ f)
+	assert np.amax(m1 @ f - 1) < tol
+	print('Passed M1 test 2: Linear')
+
+	if pyr.order > 1:
+		pass
 	# print(f)
 
 	# assert np.amax(m1 @ f - x) < tol
