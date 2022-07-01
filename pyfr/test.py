@@ -395,20 +395,7 @@ class PyrShape(BaseShape):
 		M = np.zeros((self.nupts, 3*self.nupts))
 		tol = 1e-8
 
-		def expand_grad(mat, side):
-			# rmat = np.reshape(mat, (-1, 3))
-			# f = self.expand_upts_row(rmat[:,0], side)
-			# g = self.expand_upts_row(rmat[:,1], side)
-			# h = self.expand_upts_row(rmat[:,2], side)
-
-			# newmat = np.zeros((self.nupts, 3))
-			# newmat[:,0] = f 
-			# newmat[:,1] = g
-			# newmat[:,2] = h
-
-			# return np.reshape(newmat, (-1))
-
-			
+		def expand_grad(mat, side):			
 			r1 = self.expand_upts_row(mat[0,0,:], side)
 			r2 = self.expand_upts_row(mat[0,1,:], side)
 			r3 = self.expand_upts_row(mat[0,2,:], side)
@@ -416,16 +403,8 @@ class PyrShape(BaseShape):
 			newmat = np.array([r1, r2, r3])
 			return newmat
 
-		# ml = np.rollaxis(self.tetl.ubasis.jac_nodal_basis_at(self.upts), 2)
-		# ml = ml.reshape(self.nupts, -1)
-
-		# mr = np.rollaxis(self.tetr.ubasis.jac_nodal_basis_at(self.upts), 2)
-		# mr = mr.reshape(self.nupts, -1)
-
 		for i, (x,y,z) in enumerate(self.upts):
 			if np.abs(x + y) < tol: # Midpoints
-				# M[i,:] = 0.5*(expand_grad(ml[i,:], 'left') + expand_grad(mr[i,:], 'right'))
-
 				ml = np.rollaxis(self.tetl.ubasis.jac_nodal_basis_at([[x,y,z]]), 2)
 				ml = expand_grad(ml, 'left')
 
@@ -433,20 +412,21 @@ class PyrShape(BaseShape):
 				mr = expand_grad(mr, 'right')
 
 				M[i, :] =  0.5*ml.reshape(1, -1) + 0.5*mr.reshape(1, -1)
-
 			elif (x + y) > tol: # Right
 				m = np.rollaxis(self.tetr.ubasis.jac_nodal_basis_at([[x,y,z]]), 2)
 				m = expand_grad(m, 'right')
 				M[i, :] = m.reshape(1, -1)
-
-				# M[i, :] = expand_grad(mr[i,:], 'right')
 			else: # Left 
 				m = np.rollaxis(self.tetl.ubasis.jac_nodal_basis_at([[x,y,z]]), 2)
 				m = expand_grad(m, 'left')
 				M[i, :] = m.reshape(1, -1)
-				# M[i, :] = expand_grad(ml[i,:], 'left')
 
 		return M
+
+	@cached_property
+	def m2(self):
+		M = np.zeros((self.nupts, self.nfpts))
+		tol = 1e-8
 
 
 def test_m0():
@@ -480,7 +460,7 @@ def test_m0():
 
 
 def test_m1():
-	pyr = TetShape(False, cfg)
+	pyr = PyrShape(False, cfg)
 	m1 = pyr.m1
 	tol = 1e-6
 
@@ -517,6 +497,8 @@ def test_m1():
 		y = np.ones_like(x)
 		z = np.ones_like(x)
 		f = np.array([x**2,y,z]).reshape(-1, order='C')
+		print(m1 @ f)
+		print(2*x)
 		assert np.amax(m1 @ f - 2*x) < tol
 
 		# Test 3: Quadratic y
@@ -533,13 +515,6 @@ def test_m1():
 		f = np.array([x,y,z**2]).reshape(-1, order='C')
 		assert np.amax(m1 @ f - 2*z) < tol
 		print('Passed M1 test 3: Quadratic')
-	# print(f)
-
-	# assert np.amax(m1 @ f - x) < tol
-	# print(f)
-
-	# for i in range()
-	# print(x)
 
 ''' 
 Matrices to redo:
@@ -554,25 +529,9 @@ Remove interior interface rows from correction matrix?
 Write M0 tests with analytic 
 '''
 
-# test1()
-# test2()
 tetl = TetLShape(False, cfg)
 tetr = TetRShape(False, cfg)
 pyr = PyrShape(False, cfg)
 
 test_m0()
 test_m1()
-# print(pyr.std_ele(1))
-# print(tetl.std_ele(1))
-# print(tetr.std_ele(1))
-
-# print()
-# print(tetl.fpts)
-# print(tetr.fpts)
-# print(pyr.fpts)
-# print()
-# print(pyr.m0)
-# print(pyr.m1)
-
-# print(pyr.ubasis.nodal_basis_at([[0.1, 0.2, 0.3]]))
-# print(pyr.ubasis.ortho_basis_at([[0.1, 0.2, 0.3]]))

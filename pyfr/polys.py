@@ -403,58 +403,6 @@ class TetLPolyBasis(BasePolyBasis):
 
         return Mout
 
-
-
-        # x = pts[:,0]
-        # y = pts[:,1]
-        # z = pts[:,2]
-        # M = np.zeros((3, len(pts), len(self.Minv)))
-        # for i in range(len(pts)):
-        #     dd = self.deg[i]
-        #     print(dd)
-
-        #     tmp =  dd[0]*x**(dd[0] - 1) if dd[0] > 0 else 0.0
-        #     tmp *= y**(dd[1])
-        #     tmp *= z**(dd[2])
-        #     M[0,i,:] = tmp
-
-        #     tmp =  x**(dd[0])
-        #     tmp *= dd[1]*y**(dd[1] - 1) if dd[1] > 0 else 0.0
-        #     tmp *= z**(dd[2])
-        #     M[1,i,:] = tmp
-
-        #     tmp =  x**(dd[0])
-        #     tmp *= y**(dd[1])
-        #     tmp *= dd[2]*z**(dd[2] - 1) if dd[2] > 0 else 0.0
-        #     M[2,i,:] = tmp
-
-        # M[0,:,:] = M[0,:,:] @ self.Minv
-        # M[1,:,:] = M[1,:,:] @ self.Minv
-        # M[2,:,:] = M[2,:,:] @ self.Minv
-
-        # print(M[0,:,:] @ [1,1,1,1])
-
-        # print(M[0,:,:])
-
-        # M = M.swapaxes(1,2)
-        return M 
-
-
-    # def nodal_basis_at(self, pts):
-    #     pts = np.array(pts)
-    #     x = pts[:,0]
-    #     y = pts[:,1]
-    #     z = pts[:,2]
-
-    #     M = np.zeros((len(pts), len(self.Minv)))
-    #     for i in range(len(self.Minv)):
-    #         dd = self.deg[i]
-    #         M[:, i] = (x**dd[0])*(y**dd[1])*(z**dd[2])
-
-    #     return M @ self.Minv
-
-    # def 
-
     def _ortho_basis_at(self, p, q, r):
         with np.errstate(divide='ignore', invalid='ignore'):
             '''
@@ -555,6 +503,68 @@ class TetLPolyBasis(BasePolyBasis):
 
 class TetRPolyBasis(BasePolyBasis):
     name = 'tetr'
+
+    def __init__(self, order, pts):
+        super().__init__(order, pts)
+
+        self.create_mono_basis(pts, order)
+        self.create_deriv_basis()
+
+    def create_mono_basis(self, pts, p):
+        M = np.zeros((len(pts), len(pts)))
+        x = pts[:,0]
+        y = pts[:,1]
+        z = pts[:,2]
+
+        self.deg =  [(i, j, k)
+                for i in range(p)
+                for j in range(p - i)
+                for k in range(p - i - j)]
+
+        for i in range(len(pts)):
+            dd = self.deg[i]
+            M[:, i] = (x**dd[0])*(y**dd[1])*(z**dd[2])
+
+        self.Minv = np.linalg.inv(M)
+
+    def create_deriv_basis(self):
+        self.Minv_dx = np.zeros_like(self.Minv)
+        self.Minv_dy = np.zeros_like(self.Minv)
+        self.Minv_dz = np.zeros_like(self.Minv)
+
+        for i in range(len(self.deg)):
+            dd = self.deg[i]
+
+            if dd[0] > 0:
+                idx = self.deg.index((dd[0]-1, dd[1], dd[2]))
+                self.Minv_dx[idx, :] = (dd[0])*self.Minv[i, :]
+            if dd[1] > 0:
+                idx = self.deg.index((dd[0], dd[1]-1, dd[2]))
+                self.Minv_dy[idx, :] = (dd[1])*self.Minv[i, :]
+            if dd[2] > 0:
+                idx = self.deg.index((dd[0], dd[1], dd[2]-1))
+                self.Minv_dz[idx, :] = (dd[2])*self.Minv[i, :]
+
+    def jac_nodal_basis_at(self, pts):
+        pts = np.array(pts)
+        x = pts[:,0]
+        y = pts[:,1]
+        z = pts[:,2]
+
+        M = np.zeros((len(pts), len(self.Minv)))
+        for i in range(len(self.Minv)):
+            dd = self.deg[i]
+            M[:, i] = (x**dd[0])*(y**dd[1])*(z**dd[2])
+
+        Mout = np.zeros((3, len(pts), len(self.Minv)))
+        Mout[0,:,:] = M @ self.Minv_dx
+        Mout[1,:,:] = M @ self.Minv_dy
+        Mout[2,:,:] = M @ self.Minv_dz
+
+        Mout = Mout.swapaxes(1,2)
+
+        return Mout
+
 
     def _ortho_basis_at(self, p, q, r):
         with np.errstate(divide='ignore', invalid='ignore'):
