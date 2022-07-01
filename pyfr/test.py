@@ -512,7 +512,27 @@ def test_m1():
 	print('Passed M1 test 2: Linear')
 
 	if pyr.order > 1:
-		pass
+		# Test 3: Quadratic x
+		x = pyr.upts[:,0]
+		y = np.ones_like(x)
+		z = np.ones_like(x)
+		f = np.array([x**2,y,z]).reshape(-1, order='C')
+		assert np.amax(m1 @ f - 2*x) < tol
+
+		# Test 3: Quadratic y
+		y = pyr.upts[:,1]
+		x = np.ones_like(y)
+		z = np.ones_like(y)
+		f = np.array([x,y**2,z]).reshape(-1, order='C')
+		assert np.amax(m1 @ f - 2*y) < tol
+
+		# Test 2: Quadratic z
+		z = pyr.upts[:,2]
+		x = np.ones_like(z)
+		y = np.ones_like(z)
+		f = np.array([x,y,z**2]).reshape(-1, order='C')
+		assert np.amax(m1 @ f - 2*z) < tol
+		print('Passed M1 test 3: Quadratic')
 	# print(f)
 
 	# assert np.amax(m1 @ f - x) < tol
