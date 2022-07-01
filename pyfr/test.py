@@ -344,31 +344,23 @@ class PyrShape(BaseShape):
 			newrow[newidx] = v
 		return newrow
 
-	# def expand_fpts_row(self, row, side):
-		# newrow = np.zeros(self.nfpts)
-		# #Arbitrarily choose right side to include midpoints as well
-		# for i,v in enumerate(row):
-		# 	newidx = None
-		# 	if side == 'right':
-		# 		for j, vv in enumerate(self.fpts_idxs):
-		# 			if isinstance(vv, np.int64):
-		# 				if vv == i and self.fpts_map[j] == 'r':
-		# 					newidx = j
-		# 			elif isinstance(vv, tuple):
-		# 				if vv[1] == i:
-		# 					newidx = j
-		# 	elif side == 'left':
-		# 		for j, vv in enumerate(self.upts_idxs):
-		# 			if isinstance(vv, np.int64):
-		# 				if vv == i and self.upts_map[j] == 'l':
-		# 					newidx = j
-		# 			elif isinstance(vv, tuple):
-		# 				if vv[0] == i:
-		# 					newidx = j
+	def expand_fpts_row(self, row, side):
+		newrow = np.zeros(self.nfpts)
+		#Arbitrarily choose right side to include midpoints as well
+		for i,v in enumerate(row):
+			newidx = None
+			if side == 'right':
+				for j, vv in enumerate(self.fpts_idxs):
+					if vv == i and self.fpts_map[j] in ['r', 'm']:
+						newidx = j
+			elif side == 'left':
+				for j, vv in enumerate(self.fpts_idxs):
+					if vv == i and self.fpts_map[j] in ['l', 'm']:
+						newidx = j
 
-		# 	assert newidx is not None
-		# 	newrow[newidx] = v
-		# return newrow
+			assert newidx is not None
+			newrow[newidx] = v
+		return newrow
 	
 	@cached_property
 	def m0(self):
@@ -424,10 +416,26 @@ class PyrShape(BaseShape):
 		return M
 
 	@cached_property
-	def m2(self):
+	def m3(self):
 		M = np.zeros((self.nupts, self.nfpts))
 		tol = 1e-8
 
+		# Remove contribution of interior interface (tet diagonal)
+		def remove_diag(m):
+			return m[:-self.ntripts]
+
+
+		for i, (x,y,z) in enumerate(self.upts):
+			ml = remove_diag(self.tetl.gbasis_at([[x,y,z]])[0])
+			mr = remove_diag(self.tetr.gbasis_at([[x,y,z]])[0])
+
+			if np.abs(x + y) < tol: # Midpoints
+				M[i, :] = 0.5*(self.expand_fpts_row(ml, 'left') + self.expand_fpts_row(mr, 'right'))
+			elif (x + y) > tol: # Right
+				M[i, :] = self.expand_fpts_row(mr, 'right')
+			else: # Left 
+				M[i, :] = self.expand_fpts_row(ml, 'left')
+		return M
 
 def test_m0():
 
@@ -516,6 +524,16 @@ def test_m1():
 		assert np.amax(m1 @ f - 2*z) < tol
 		print('Passed M1 test 3: Quadratic')
 
+def test_m3():
+	pyr = PyrShape(False, cfg)
+	m3 = pyr.m3
+	tol = 1e-6
+
+	u = np.zeros(pyr.nfpts)
+	u[0] = 1.
+	print(m3 @ u)
+
+
 ''' 
 Matrices to redo:
 M0: Interpolation to fpts (piece-wise)
@@ -535,3 +553,4 @@ pyr = PyrShape(False, cfg)
 
 test_m0()
 test_m1()
+test_m3()
