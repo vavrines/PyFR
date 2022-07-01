@@ -186,8 +186,84 @@ class QuadPolyBasis(BasePolyBasis):
         return [(i, j) for i in range(self.order) for j in range(self.order)]
 
 
-class TetPolyBasis(BasePolyBasis):
+class OldTetPolyBasis(BasePolyBasis):
     name = 'tet'
+
+    def __init__(self, order, pts):
+        super().__init__(order, pts)
+
+        [self.Minv, self.deg] = self.create_mono_basis(pts, order)
+
+    def create_mono_basis(self, pts, p):
+        M = np.zeros((len(pts), len(pts)))
+        x = pts[:,0]
+        y = pts[:,1]
+        z = pts[:,2]
+
+        deg =  [(i, j, k)
+                for i in range(p)
+                for j in range(p - i)
+                for k in range(p - i - j)]
+
+        for i in range(len(pts)):
+            dd = deg[i]
+            M[:, i] = (x**dd[0])*(y**dd[1])*(z**dd[2])
+
+        return [np.linalg.inv(M), deg]
+
+    def create_uniform_tri(self, p):
+        r = np.linspace(-1, 1, p+1)
+
+        x = list(r)
+        y = list(-1*np.ones_like(r))
+        for i in range(p+1):
+            x += list(r)[:-i]
+            y += list(r[i]*np.ones_like(r)[:-i])
+
+        return np.array([x,y]).T
+
+    def create_uniform_tet(self, p):
+        z = np.linspace(-1, 1, p+1)
+        tri = self.create_uniform_tri(p)
+        ntri = len(tri)
+        X = np.zeros(((p+1)*ntri, 3))
+
+        for i in range(p+1):
+            X[i*ntri:(i+1)*ntri, :2] = tri
+            X[i*ntri:(i+1)*ntri, 2] = z[i]
+
+        return X
+
+    def integrate_single(self, c, i, j, k):
+        '''
+        Integrating c * x**i * y**j * z**k
+        on the limits 
+
+        Integration limits triangle:
+            x: -1 to -y
+            y: -1 to 1
+
+        Integration limits tet:
+            x: (-1 + 0.5*(z+1)) to (-y)
+            y: (-1 + 0.5*(z+1)) to (1 - 0.5*(z+1))
+            z: -1 to 1
+        '''
+
+        pass
+
+    def integrate_all(self, c, deg):
+        pass
+
+    def integrate_product(self, u, v, p):
+        pass
+
+    def create_ortho_basis(self):
+        '''
+        2) Arbitrary nodal bases
+        3) Expand monomial basis to 2p order
+        4) Integrate monomials
+        5) Create ortho basis
+        '''
 
     def _ortho_basis_at(self, p, q, r):
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -210,12 +286,322 @@ class TetPolyBasis(BasePolyBasis):
 
                     ob.append(cij*ck*pij*pk)
 
+
         return ob
 
     def _jac_ortho_basis_at(self, p, q, r):
         with np.errstate(divide='ignore', invalid='ignore'):
             a = np.where(r != -q, -2*(1 + p)/(q + r) - 1, -1)
             b = np.where(r != 1, 2*(1 + q)/(1 - r) - 1, -1)
+            c = r
+
+        f = jacobi(self.order - 1, 0, 0, a)
+        df = jacobi_diff(self.order - 1, 0, 0, a)
+
+        ob = []
+        for i, (fi, dfi) in enumerate(zip(f, df)):
+            ci = 2**(-2*i - 1)*(2*i + 1)**0.5
+            g = jacobi(self.order - i - 1, 2*i + 1, 0, b)
+            dg = jacobi_diff(self.order - i - 1, 2*i + 1, 0, b)
+
+            for j, (gj, dgj) in enumerate(zip(g, dg)):
+                cj = (i + j + 1)**0.5*2**-j
+                cij = ci*cj
+                h = jacobi(self.order - i - j - 1, 2*(i + j + 1), 0, c)
+                dh = jacobi_diff(self.order - i - j - 1, 2*(i + j + 1), 0, c)
+
+                for k, (hk, dhk) in enumerate(zip(h, dh)):
+                    ck = (2*(k + j + i) + 3)**0.5
+                    cijk = cij*ck
+
+                    tmp1 = (1 - c)**(i + j - 1) if i + j > 0 else 1
+                    tmp2 = tmp1*(1 - b)**(i - 1) if i > 0 else 1
+
+                    pijk = 4*tmp2*dfi*gj*hk
+                    qijk = 2*(tmp2*(-i*fi + (1 + a)*dfi)*gj
+                              + tmp1*(1 - b)**i*fi*dgj)*hk
+
+                    rijk = (
+                        2*(1 + a)*tmp2*dfi*gj*hk
+                        + (1 + b)*tmp1*(1 - b)**i*fi*dgj*hk
+                        + (1 - c)**(i + j)*(1 - b)**i*fi*gj*dhk
+                        - (i*(1 + b)*tmp2 + (i + j)*tmp1*(1 - b)**i)*fi*gj*hk
+                    )
+
+                    ob.append([cijk*pijk, cijk*qijk, cijk*rijk])
+
+        return ob
+
+    @cached_property
+    def degrees(self):
+        return [(i, j, k)
+                for i in range(self.order)
+                for j in range(self.order - i)
+                for k in range(self.order - i - j)]
+
+class TetLPolyBasis(BasePolyBasis):
+    name = 'tetl'
+
+    def __init__(self, order, pts):
+        super().__init__(order, pts)
+
+        self.create_mono_basis(pts, order)
+        self.create_deriv_basis()
+
+    def create_mono_basis(self, pts, p):
+        M = np.zeros((len(pts), len(pts)))
+        x = pts[:,0]
+        y = pts[:,1]
+        z = pts[:,2]
+
+        self.deg =  [(i, j, k)
+                for i in range(p)
+                for j in range(p - i)
+                for k in range(p - i - j)]
+
+        for i in range(len(pts)):
+            dd = self.deg[i]
+            M[:, i] = (x**dd[0])*(y**dd[1])*(z**dd[2])
+
+        self.Minv = np.linalg.inv(M)
+
+    def create_deriv_basis(self):
+        self.Minv_dx = np.zeros_like(self.Minv)
+        self.Minv_dy = np.zeros_like(self.Minv)
+        self.Minv_dz = np.zeros_like(self.Minv)
+
+        for i in range(len(self.deg)):
+            dd = self.deg[i]
+
+            if dd[0] > 0:
+                idx = self.deg.index((dd[0]-1, dd[1], dd[2]))
+                self.Minv_dx[idx, :] = (dd[0])*self.Minv[i, :]
+            if dd[1] > 0:
+                idx = self.deg.index((dd[0], dd[1]-1, dd[2]))
+                self.Minv_dy[idx, :] = (dd[1])*self.Minv[i, :]
+            if dd[2] > 0:
+                idx = self.deg.index((dd[0], dd[1], dd[2]-1))
+                self.Minv_dz[idx, :] = (dd[2])*self.Minv[i, :]
+
+    def jac_nodal_basis_at(self, pts):
+        pts = np.array(pts)
+        x = pts[:,0]
+        y = pts[:,1]
+        z = pts[:,2]
+
+        M = np.zeros((len(pts), len(self.Minv)))
+        for i in range(len(self.Minv)):
+            dd = self.deg[i]
+            M[:, i] = (x**dd[0])*(y**dd[1])*(z**dd[2])
+
+        Mout = np.zeros((3, len(pts), len(self.Minv)))
+        Mout[0,:,:] = M @ self.Minv_dx
+        Mout[1,:,:] = M @ self.Minv_dy
+        Mout[2,:,:] = M @ self.Minv_dz
+
+        Mout = Mout.swapaxes(1,2)
+
+        return Mout
+
+
+
+        # x = pts[:,0]
+        # y = pts[:,1]
+        # z = pts[:,2]
+        # M = np.zeros((3, len(pts), len(self.Minv)))
+        # for i in range(len(pts)):
+        #     dd = self.deg[i]
+        #     print(dd)
+
+        #     tmp =  dd[0]*x**(dd[0] - 1) if dd[0] > 0 else 0.0
+        #     tmp *= y**(dd[1])
+        #     tmp *= z**(dd[2])
+        #     M[0,i,:] = tmp
+
+        #     tmp =  x**(dd[0])
+        #     tmp *= dd[1]*y**(dd[1] - 1) if dd[1] > 0 else 0.0
+        #     tmp *= z**(dd[2])
+        #     M[1,i,:] = tmp
+
+        #     tmp =  x**(dd[0])
+        #     tmp *= y**(dd[1])
+        #     tmp *= dd[2]*z**(dd[2] - 1) if dd[2] > 0 else 0.0
+        #     M[2,i,:] = tmp
+
+        # M[0,:,:] = M[0,:,:] @ self.Minv
+        # M[1,:,:] = M[1,:,:] @ self.Minv
+        # M[2,:,:] = M[2,:,:] @ self.Minv
+
+        # print(M[0,:,:] @ [1,1,1,1])
+
+        # print(M[0,:,:])
+
+        # M = M.swapaxes(1,2)
+        return M 
+
+
+    # def nodal_basis_at(self, pts):
+    #     pts = np.array(pts)
+    #     x = pts[:,0]
+    #     y = pts[:,1]
+    #     z = pts[:,2]
+
+    #     M = np.zeros((len(pts), len(self.Minv)))
+    #     for i in range(len(self.Minv)):
+    #         dd = self.deg[i]
+    #         M[:, i] = (x**dd[0])*(y**dd[1])*(z**dd[2])
+
+    #     return M @ self.Minv
+
+    # def 
+
+    def _ortho_basis_at(self, p, q, r):
+        with np.errstate(divide='ignore', invalid='ignore'):
+            '''
+            Original limits:
+                x = -1 to -1-y-z
+                y = -1 to -z
+                z = -1 to -1
+            a = np.where(r != -q, -2*(1 + p)/(q + r) - 1, -1)
+            b = np.where(r != 1, 2*(1 + q)/(1 - r) - 1, -1)
+            c = r
+
+            New limits:
+                x = 0.5*(z-1) to -y
+                y = 0.5*(z-1) to -0.5*(z-1)
+                z = -1 to 1
+
+            a = -2*(x+y)/(z-1) + 1
+            b = -2*(y)/(z-1)
+
+            '''
+            a = np.where(r != 1, -2*(p + q)/(r-1) + 1, -1)
+            b = np.where(r != 1, -2*(q)/(r-1), -1)
+            c = r
+
+        ob = []
+        for i, pi in enumerate(jacobi(self.order - 1, 0, 0, a)):
+            ci = 2**(-2*i - 1)*(2*i + 1)**0.5*(1 - b)**i
+
+            for j, pj in enumerate(jacobi(self.order - i - 1, 2*i + 1, 0, b)):
+                cj = (i + j + 1)**0.5*2**-j*(1 - c)**(i + j)
+                cij = ci*cj
+                pij = pi*pj
+
+                jp = jacobi(self.order - i - j - 1, 2*(i + j + 1), 0, c)
+                for k, pk in enumerate(jp):
+                    ck = (2*(k + j + i) + 3)**0.5
+
+                    ob.append(cij*ck*pij*pk)
+
+        return ob
+
+    def _jac_ortho_basis_at(self, p, q, r):
+        with np.errstate(divide='ignore', invalid='ignore'):
+            '''
+            OLD:
+            a1 = np.where(r != -q, -2*(1 + p)/(q + r) - 1, -1)
+            b1 = np.where(r != 1, 2*(1 + q)/(1 - r) - 1, -1)
+            c1 = r
+
+            '''
+            a = np.where(r != 1, -2*(p + q)/(r-1) + 1, -1)
+            b = np.where(r != 1, -2*(q)/(r-1), -1)
+            c = r
+
+        f = jacobi(self.order - 1, 0, 0, a)
+        df = jacobi_diff(self.order - 1, 0, 0, a)
+
+        ob = []
+        for i, (fi, dfi) in enumerate(zip(f, df)):
+            ci = 2**(-2*i - 1)*(2*i + 1)**0.5
+            g = jacobi(self.order - i - 1, 2*i + 1, 0, b)
+            dg = jacobi_diff(self.order - i - 1, 2*i + 1, 0, b)
+
+            for j, (gj, dgj) in enumerate(zip(g, dg)):
+                cj = (i + j + 1)**0.5*2**-j
+                cij = ci*cj
+                h = jacobi(self.order - i - j - 1, 2*(i + j + 1), 0, c)
+                dh = jacobi_diff(self.order - i - j - 1, 2*(i + j + 1), 0, c)
+
+                for k, (hk, dhk) in enumerate(zip(h, dh)):
+                    ck = (2*(k + j + i) + 3)**0.5
+                    cijk = cij*ck
+
+                    tmp1 = (1 - c)**(i + j - 1) if i + j > 0 else 1
+                    tmp2 = tmp1*(1 - b)**(i - 1) if i > 0 else 1
+
+                    pijk = 4*tmp2*dfi*gj*hk
+                    qijk = 2*(tmp2*(-i*fi + (1 + a)*dfi)*gj
+                              + tmp1*(1 - b)**i*fi*dgj)*hk
+
+                    rijk = (
+                        2*(1 + a)*tmp2*dfi*gj*hk
+                        + (1 + b)*tmp1*(1 - b)**i*fi*dgj*hk
+                        + (1 - c)**(i + j)*(1 - b)**i*fi*gj*dhk
+                        - (i*(1 + b)*tmp2 + (i + j)*tmp1*(1 - b)**i)*fi*gj*hk
+                    )
+
+                    ob.append([cijk*pijk, cijk*qijk, cijk*rijk])
+
+        return ob
+
+    @cached_property
+    def degrees(self):
+        return [(i, j, k)
+                for i in range(self.order)
+                for j in range(self.order - i)
+                for k in range(self.order - i - j)]
+
+class TetRPolyBasis(BasePolyBasis):
+    name = 'tetr'
+
+    def _ortho_basis_at(self, p, q, r):
+        with np.errstate(divide='ignore', invalid='ignore'):
+            '''
+            Original limits:
+                x = -1 to -1-y-z
+                y = -1 to -z
+                z = -1 to -1
+            a = np.where(r != -q, -2*(1 + p)/(q + r) - 1, -1)
+            b = np.where(r != 1, 2*(1 + q)/(1 - r) - 1, -1)
+            c = r
+
+            New limits:
+                x = 0.5*(z-1) to -y
+                y = 0.5*(z-1) to -0.5*(z-1)
+                z = -1 to 1
+
+            a = -2*(x+y)/(z-1) + 1
+            b = -2*(y)/(z-1)
+
+            '''
+            a = np.where(r != 1, 2*(p + q)/(r-1) + 1, -1)
+            b = np.where(r != 1, 2*(q)/(r-1), -1)
+            c = r
+
+        ob = []
+        for i, pi in enumerate(jacobi(self.order - 1, 0, 0, a)):
+            ci = 2**(-2*i - 1)*(2*i + 1)**0.5*(1 - b)**i
+
+            for j, pj in enumerate(jacobi(self.order - i - 1, 2*i + 1, 0, b)):
+                cj = (i + j + 1)**0.5*2**-j*(1 - c)**(i + j)
+                cij = ci*cj
+                pij = pi*pj
+
+                jp = jacobi(self.order - i - j - 1, 2*(i + j + 1), 0, c)
+                for k, pk in enumerate(jp):
+                    ck = (2*(k + j + i) + 3)**0.5
+
+                    ob.append(cij*ck*pij*pk)
+
+
+        return ob
+
+    def _jac_ortho_basis_at(self, p, q, r):
+        with np.errstate(divide='ignore', invalid='ignore'):
+            a = np.where(r != 1, 2*(p + q)/(r-1) + 1, -1)
+            b = np.where(r != 1, 2*(q)/(r-1), -1)
             c = r
 
         f = jacobi(self.order - 1, 0, 0, a)
