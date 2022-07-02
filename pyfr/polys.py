@@ -185,85 +185,8 @@ class QuadPolyBasis(BasePolyBasis):
     def degrees(self):
         return [(i, j) for i in range(self.order) for j in range(self.order)]
 
-
-class OldTetPolyBasis(BasePolyBasis):
+class TetPolyBasis(BasePolyBasis):
     name = 'tet'
-
-    def __init__(self, order, pts):
-        super().__init__(order, pts)
-
-        [self.Minv, self.deg] = self.create_mono_basis(pts, order)
-
-    def create_mono_basis(self, pts, p):
-        M = np.zeros((len(pts), len(pts)))
-        x = pts[:,0]
-        y = pts[:,1]
-        z = pts[:,2]
-
-        deg =  [(i, j, k)
-                for i in range(p)
-                for j in range(p - i)
-                for k in range(p - i - j)]
-
-        for i in range(len(pts)):
-            dd = deg[i]
-            M[:, i] = (x**dd[0])*(y**dd[1])*(z**dd[2])
-
-        return [np.linalg.inv(M), deg]
-
-    def create_uniform_tri(self, p):
-        r = np.linspace(-1, 1, p+1)
-
-        x = list(r)
-        y = list(-1*np.ones_like(r))
-        for i in range(p+1):
-            x += list(r)[:-i]
-            y += list(r[i]*np.ones_like(r)[:-i])
-
-        return np.array([x,y]).T
-
-    def create_uniform_tet(self, p):
-        z = np.linspace(-1, 1, p+1)
-        tri = self.create_uniform_tri(p)
-        ntri = len(tri)
-        X = np.zeros(((p+1)*ntri, 3))
-
-        for i in range(p+1):
-            X[i*ntri:(i+1)*ntri, :2] = tri
-            X[i*ntri:(i+1)*ntri, 2] = z[i]
-
-        return X
-
-    def integrate_single(self, c, i, j, k):
-        '''
-        Integrating c * x**i * y**j * z**k
-        on the limits 
-
-        Integration limits triangle:
-            x: -1 to -y
-            y: -1 to 1
-
-        Integration limits tet:
-            x: (-1 + 0.5*(z+1)) to (-y)
-            y: (-1 + 0.5*(z+1)) to (1 - 0.5*(z+1))
-            z: -1 to 1
-        '''
-
-        pass
-
-    def integrate_all(self, c, deg):
-        pass
-
-    def integrate_product(self, u, v, p):
-        pass
-
-    def create_ortho_basis(self):
-        '''
-        2) Arbitrary nodal bases
-        3) Expand monomial basis to 2p order
-        4) Integrate monomials
-        5) Create ortho basis
-        '''
 
     def _ortho_basis_at(self, p, q, r):
         with np.errstate(divide='ignore', invalid='ignore'):
@@ -285,7 +208,6 @@ class OldTetPolyBasis(BasePolyBasis):
                     ck = (2*(k + j + i) + 3)**0.5
 
                     ob.append(cij*ck*pij*pk)
-
 
         return ob
 

@@ -4,7 +4,7 @@ from pyfr.inifile import Inifile
 
 
 
-path = '/mnt/c/Users/Tarik/Documents/GitHub/PyFR-PANS/pyfr/test.ini'
+path = '/mnt/c/Users/Tarik-Personal/Documents/GitHub/PyFR/pyfr/test.ini'
 cfg = Inifile.load(path)
 
 

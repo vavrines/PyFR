@@ -54,6 +54,7 @@ class NodalMeshAssembler:
         self._etype_map, self._petype_fnmap, self._nodemaps = maps
 
     def _check_pyr_parallelogram(self, foeles):
+        return
         # Find PyFR node map for the quad face
         fnmap = self._petype_fnmap['pyr']['quad'][0]
         pfnmap = [self._nodemaps['quad', 4][i] for i in fnmap]
