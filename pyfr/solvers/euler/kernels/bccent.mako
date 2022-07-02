@@ -19,5 +19,4 @@
     ${pyfr.expand('compute_entropy', 'ur', 'd', 'p', 'entmin_rhs')};
 
     entmin_lhs = fmin(entmin_lhs, entmin_rhs);
-
 </%pyfr:kernel>

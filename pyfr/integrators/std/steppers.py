@@ -28,7 +28,7 @@ class StdEulerStepper(BaseStdStepper):
         ut, f = self._regidx
 
         # Perform any necessary pre-processing
-        preproc(t, ut)
+        preproc(ut)
 
         rhs(t, ut, f)
         add(1.0, ut, dt, f)
@@ -61,7 +61,7 @@ class StdTVDRK3Stepper(BaseStdStepper):
             r0, r1 = r1, r0
 
         # Perform any necessary pre-processing
-        preproc(t, r0)
+        preproc(r0)
 
         # First stage; r2 = -∇·f(r0); r1 = r0 + dt*r2
         rhs(t, r0, r2)
@@ -105,7 +105,7 @@ class StdRK4Stepper(BaseStdStepper):
             r0, r1 = r1, r0
 
         # Perform any necessary pre-processing
-        preproc(t, r0)
+        preproc(r0)
 
         # First stage; r1 = -∇·f(r0)
         rhs(t, r0, r1)
@@ -204,6 +204,7 @@ class StdRKVdH2RStepper(BaseStdStepper):
 
     def step(self, t, dt):
         run_kernels, rhs = self.backend.run_kernels, self.system.rhs
+        preproc, postproc = self.system.preproc, self.system.postproc
 
         r1 = self._idxcurr
         r2, *rs = set(self._regidx) - {r1}
@@ -211,6 +212,7 @@ class StdRKVdH2RStepper(BaseStdStepper):
         # Evaluate the stages in the scheme
         for i, ci in enumerate(self.c):
             # Compute -∇·f
+            preproc(r2 if i > 0 else r1)
             rhs(t + ci*dt, r2 if i > 0 else r1, r2)
 
             # Fetch the appropriate RK accumulation kernels
@@ -224,6 +226,7 @@ class StdRKVdH2RStepper(BaseStdStepper):
             run_kernels(kerns)
 
             # Swap
+            postproc(r1)
             r1, r2 = r2, r1
 
         # Return

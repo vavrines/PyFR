@@ -83,33 +83,26 @@ class BaseAdvectionSystem(BaseSystem):
                 g1.add_mpi_req(send, deps=[pack])
 
             # Compute common entropy minima at internal/boundary interfaces
-            g1.add_all(k['iint/comm_entropy'],
-                    deps=k['eles/local_entropy'] + k['mpiint/ent_fpts_pack'])
+            g1.add_all(k['iint/comm_entropy'], deps=k['eles/local_entropy'])
             g1.add_all(k['bcint/comm_entropy'], deps=k['eles/local_entropy'])
-            g1.commit()
 
-            g2 = self.backend.graph()
-            
             # Compute common entropy minima at our MPI interfaces
-            g2.add_all(k['mpiint/comm_entropy'])
+            g1.add_all(k['mpiint/ent_fpts_unpack'], deps=k['mpiint/ent_fpts_pack'])
             for l in k['mpiint/comm_entropy']:
-                g2.add(l, deps=deps(l, 'mpiint/ent_fpts_unpack'))
+                g1.add(l, deps=deps(l, 'mpiint/ent_fpts_unpack'))
 
             # Compute minimum entropy constraint within elements
-            g2.add_all(k['eles/min_entropy'], deps=k['mpiint/comm_entropy'])
-            g2.commit()
+            g1.add_all(k['eles/min_entropy'], deps=k['iint/comm_entropy'] +
+                                                   k['bcint/comm_entropy'] +
+                                                   k['mpiint/comm_entropy'])
+            g1.commit()
         
-            return g1, g2
+            return g1,
 
-    @memoize
-    def _postproc_graphs(self, uinbank):
+        return []
+
+    def postproc(self, uinbank):
         k, _ = self._get_kernels(uinbank, None)
 
         if 'eles/filter_solution' in k:
-            g1 = self.backend.graph()
-
-            # Apply entropy filter
-            g1.add_all(k['eles/filter_solution'])
-            g1.commit()
-
-            return g1,
+            self.backend.run_kernels(k['eles/filter_solution'])

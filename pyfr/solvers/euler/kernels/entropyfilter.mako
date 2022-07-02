@@ -3,8 +3,10 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 <%include file='pyfr.solvers.euler.kernels.entropy'/>
 
-<% inf = 1e20%>
-<% rf_tol = 1e-6%>
+<% inf = 1e20 %>
+<% ill_tol = 1e-6 %>
+<% zeta_tol = 1e-3 %>
+<% niters = 20 %>
 
 <%pyfr:macro name='get_minima' params='u, dmin, pmin, emin'>
     fpdtype_t d, p, e;
@@ -13,9 +15,10 @@
     dmin = ${inf}, pmin = ${inf}, emin = ${inf};
 
     for (int i = 0; i < ${nupts}; i++) {
-        for (int j = 0; j < ${nvars}; j++) {
-            ui[j] = u[i][j];
-        }
+        % for j in range(nvars):
+        ui[${j}] = u[i][${j}];
+        % endfor
+
         ${pyfr.expand('compute_entropy', 'ui', 'd', 'p', 'e')};
         dmin = fmin(dmin, d); pmin = fmin(pmin, p); emin = fmin(emin, e);
     }
@@ -24,30 +27,24 @@
     % if con_fpts:
     for (int i = 0; i < ${nfpts}; i++) {
         for (int j = 0; j < ${nvars}; j++) {
-            // Interpolate to fpts
-            ui[j] = 0.0;
-            for (int k = 0; k < ${nupts}; k++) {
-                ui[j] += intfpts[i][k]*u[k][j];
-            }
+            ui[j] = ${pyfr.dot('intfpts[i][{k}]*u[{k}][j]', k=nupts)};
         }
 
         ${pyfr.expand('compute_entropy', 'ui', 'd', 'p', 'e')};
-        dmin = fmin(dmin, d); pmin = fmin(pmin, p); emin = fmin(emin, e);
+        // Enforce only positivity constraints
+        dmin = fmin(dmin, d); pmin = fmin(pmin, p);
     }
     % endif
 
     % if con_qpts:
     for (int i = 0; i < ${nqpts}; i++) {
         for (int j = 0; j < ${nvars}; j++) {
-            // Interpolate to qpts
-            ui[j] = 0.0;
-            for (int k = 0; k < ${nupts}; k++) {
-                ui[j] += intqpts[i][k]*u[k][j];
-            }
+            ui[j] = ${pyfr.dot('intqpts[i][{k}]*u[{k}][j]', k=nupts)};
         }
 
         ${pyfr.expand('compute_entropy', 'ui', 'd', 'p', 'e')};
-        dmin = fmin(dmin, d); pmin = fmin(pmin, p); emin = fmin(emin, e);
+        // Enforce only positivity constraints
+        dmin = fmin(dmin, d); pmin = fmin(pmin, p);
     }
     % endif
 </%pyfr:macro>
@@ -60,10 +57,12 @@
 
     // Compute filtered solution
     for (int uidx = 0; uidx < ${nupts}; uidx++) {
-        for (int vidx = 0; vidx < ${nvars}; vidx++) {
-            uf[uidx][vidx] = 0.0;
+        % for j in range(nvars):
+        uf[uidx][${j}] = 0.0;
+        % endfor
 
-            for (int midx = 0; midx < ${nupts}; midx++) {
+        for (int midx = 0; midx < ${nupts}; midx++) {
+            for (int vidx = 0; vidx < ${nvars}; vidx++) {
                 tmp = ffac[midx]*umodes[midx][vidx]; // Filtered mode
                 uf[uidx][vidx] += vdm[uidx][midx]*tmp;
             }
@@ -84,7 +83,7 @@
     ${pyfr.expand('get_minima', 'u', 'dmin', 'pmin', 'emin')};
 
     // Filter if out of bounds
-    if ((dmin < ${d_min}) || (pmin < ${p_min}) || (emin < entmin - ${e_atol})) {
+    if ((dmin < ${d_min}) || (pmin < ${p_min}) || (emin < entmin - ${e_tol})) {
         // Compute modal basis
         fpdtype_t umodes[${nupts}][${nvars}] = {{0}};
 
@@ -104,47 +103,51 @@
         fpdtype_t dmin_high, pmin_high, emin_high;
 
         fpdtype_t uf[${nupts}][${nvars}] = {{0}};
-        fpdtype_t ffac[${nupts}] = {{0}};
+        fpdtype_t ffac[${nupts}];
 
         // Get bracketed guesses for regula falsi method;
         dmin_low = dmin; pmin_low = pmin; emin_low = emin; // Unfiltered minima were precomputed
         ${pyfr.expand('apply_filter', 'umodes', 'ffac', 'uf', 'zeta_high')};
         ${pyfr.expand('get_minima', 'uf', 'dmin_high', 'pmin_high', 'emin_high')};
 
-        // Iterate filter strength
-        for (int iter = 0; iter < ${niters}; iter++) {
-            // Regularize constraints to be around zero
-            dmin_low -= ${d_min}; dmin_high -= ${d_min};
-            pmin_low -= ${p_min}; pmin_high -= ${p_min};
-            emin_low -= entmin - ${e_atol}; emin_high -= entmin - ${e_atol};
+        // Regularize constraints to be around zero
+        dmin_low -= ${d_min}; dmin_high -= ${d_min};
+        pmin_low -= ${p_min}; pmin_high -= ${p_min};
+        emin_low -= entmin - ${e_tol}; emin_high -= entmin - ${e_tol};
 
-            // Compute regular falsi for each constraint (catch if root is not bracketed)
-            z1 = (dmin_low > 0.0) ? zeta_low : (zeta_low*dmin_high - zeta_high*dmin_low)/(dmin_high - dmin_low + ${rf_tol});
-            z2 = (pmin_low > 0.0) ? zeta_low : (zeta_low*pmin_high - zeta_high*pmin_low)/(pmin_high - pmin_low + ${rf_tol});
-            z3 = (emin_low > 0.0) ? zeta_low : (zeta_low*emin_high - zeta_high*emin_low)/(emin_high - emin_low + ${rf_tol});
+        // Iterate filter strength with Illinois algorithm
+        for (int iter = 0; iter < ${niters}; iter++) {
+
+            // Compute new guess for each constraint (catch if root is not bracketed)
+            z1 = (dmin_low > 0.0) ? zeta_low : (0.5*zeta_low*dmin_high - zeta_high*dmin_low)/(0.5*dmin_high - dmin_low + ${ill_tol});
+            z2 = (pmin_low > 0.0) ? zeta_low : (0.5*zeta_low*pmin_high - zeta_high*pmin_low)/(0.5*pmin_high - pmin_low + ${ill_tol});
+            z3 = (emin_low > 0.0) ? zeta_low : (0.5*zeta_low*emin_high - zeta_high*emin_low)/(0.5*emin_high - emin_low + ${ill_tol});
 
             // Compute guess as maxima of individual constraints
             zeta = max(z1, max(z2, z3));
 
             // In case of bracketing failure (due to roundoff errors), revert to bisection
-            zeta = ((zeta > zeta_high) || (zeta < zeta_low)) ? 0.5*(zeta_low + zeta_high): zeta;
+            zeta = ((zeta > zeta_high) || (zeta < zeta_low)) ? 0.5*(zeta_low + zeta_high) : zeta;
 
             ${pyfr.expand('apply_filter', 'umodes', 'ffac', 'uf', 'zeta')};
             ${pyfr.expand('get_minima', 'uf', 'dmin', 'pmin', 'emin')};
 
             // Compute new bracket and constraint values
-            if ((dmin < ${d_min}) || (pmin < ${p_min}) || (emin < entmin - ${e_atol})) {
+            if ((dmin < ${d_min}) || (pmin < ${p_min}) || (emin < entmin - ${e_tol})) {
                 zeta_low = zeta;
-                dmin_low = dmin;
-                pmin_low = pmin;
-                emin_low = emin;
+                dmin_low = dmin - ${d_min};
+                pmin_low = pmin - ${p_min};
+                emin_low = emin - (entmin - ${e_tol});
             }
             else {
                 zeta_high = zeta;
-                dmin_high = dmin;
-                pmin_high = pmin;
-                emin_high = emin;
+                dmin_high = dmin - ${d_min};
+                pmin_high = pmin - ${p_min};
+                emin_high = emin - (entmin - ${e_tol});
             }
+
+            // Stopping criteria
+            if (zeta_high - zeta_low < ${zeta_tol}) break;
         }
 
         // Apply filtered solution with bounds-preserving filter strength
