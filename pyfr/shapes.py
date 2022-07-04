@@ -90,32 +90,6 @@ class BaseShape:
         return eval(expr, {'__builtins__': None}, mats)
 
     @cached_property
-    def m0(self):
-        return self.ubasis.nodal_basis_at(self.fpts)
-
-    @cached_property
-    def m1(self):
-        m = np.rollaxis(self.ubasis.jac_nodal_basis_at(self.upts), 2)
-        return m.reshape(self.nupts, -1)
-
-    @cached_property
-    def m2(self):
-        m = self.norm_fpts[..., None]*self.m0[:, None, :]
-        return m.reshape(self.nfpts, -1)
-
-    @cached_property
-    def m3(self):
-        m = self.gbasis_at(self.upts)
-
-        if 'surf-flux' in self.antialias:
-            fp = [_proj_l2(self._iqrules[kind], self.facebases[kind])
-                  for kind, proj, norm in self.faces]
-
-            m = m @ block_diag(fp)
-
-        return m
-
-    @cached_property
     def m4(self):
         m = self.m1.reshape(self.nupts, -1, self.nupts).swapaxes(0, 1)
         return m.reshape(-1, self.nupts)
@@ -406,6 +380,31 @@ class HexShape(TensorProdShape, BaseShape):
          f' ( x[0]*x[1] + x[0] + x[1] + 1)*V[7][{i}])/8'
          for i in range(3)]
     ]
+    @cached_property
+    def m0(self):
+        return self.ubasis.nodal_basis_at(self.fpts)
+
+    @cached_property
+    def m1(self):
+        m = np.rollaxis(self.ubasis.jac_nodal_basis_at(self.upts), 2)
+        return m.reshape(self.nupts, -1)
+
+    @cached_property
+    def m2(self):
+        m = self.norm_fpts[..., None]*self.m0[:, None, :]
+        return m.reshape(self.nfpts, -1)
+
+    @cached_property
+    def m3(self):
+        m = self.gbasis_at(self.upts)
+
+        if 'surf-flux' in self.antialias:
+            fp = [_proj_l2(self._iqrules[kind], self.facebases[kind])
+                  for kind, proj, norm in self.faces]
+
+            m = m @ block_diag(fp)
+
+        return m
 
 
 class TriShape(BaseShape):
@@ -436,6 +435,31 @@ class TriShape(BaseShape):
         return [(p, q)
                 for i, q in enumerate(pts1d)
                 for p in pts1d[:(sptord + 1 - i)]]
+    @cached_property
+    def m0(self):
+        return self.ubasis.nodal_basis_at(self.fpts)
+
+    @cached_property
+    def m1(self):
+        m = np.rollaxis(self.ubasis.jac_nodal_basis_at(self.upts), 2)
+        return m.reshape(self.nupts, -1)
+
+    @cached_property
+    def m2(self):
+        m = self.norm_fpts[..., None]*self.m0[:, None, :]
+        return m.reshape(self.nfpts, -1)
+
+    @cached_property
+    def m3(self):
+        m = self.gbasis_at(self.upts)
+
+        if 'surf-flux' in self.antialias:
+            fp = [_proj_l2(self._iqrules[kind], self.facebases[kind])
+                  for kind, proj, norm in self.faces]
+
+            m = m @ block_diag(fp)
+
+        return m
 
 
 class TetShape(BaseShape):
@@ -468,6 +492,31 @@ class TetShape(BaseShape):
                 for i, r in enumerate(pts1d)
                 for j, q in enumerate(pts1d[:(sptord + 1 - i)])
                 for p in pts1d[:(sptord + 1 - i - j)]]
+    @cached_property
+    def m0(self):
+        return self.ubasis.nodal_basis_at(self.fpts)
+
+    @cached_property
+    def m1(self):
+        m = np.rollaxis(self.ubasis.jac_nodal_basis_at(self.upts), 2)
+        return m.reshape(self.nupts, -1)
+
+    @cached_property
+    def m2(self):
+        m = self.norm_fpts[..., None]*self.m0[:, None, :]
+        return m.reshape(self.nfpts, -1)
+
+    @cached_property
+    def m3(self):
+        m = self.gbasis_at(self.upts)
+
+        if 'surf-flux' in self.antialias:
+            fp = [_proj_l2(self._iqrules[kind], self.facebases[kind])
+                  for kind, proj, norm in self.faces]
+
+            m = m @ block_diag(fp)
+
+        return m
 
 
 class PriShape(BaseShape):
@@ -512,7 +561,6 @@ class PriShape(BaseShape):
 
 
 class TetLShape(BaseShape):
-
     '''
     This tet defined by points
     
@@ -544,8 +592,8 @@ class TetLShape(BaseShape):
     faces = [
         ('tri', lambda s, t: (s, t, -1), (0, 0, -1)),
         ('tri', lambda s, t: (s + (t + 1)/2, (t - 1)/2, t), (0, -1, 0.5)),
-        ('tri', lambda s, t: ((t - 1)/2, s + (t + 1)/2, t), (-1, 0, 0.5)),
-        ('tri', lambda s, t: (-s - (t + 1)/2, s + (t + 1)/2, t), (1, 1, 0))
+        ('tri', lambda s, t: ((s - 1)/2, t + (s + 1)/2, s), (-1, 0, 0.5)),
+        ('tri', lambda s, t: (s - (s+t)/2, t - (s+t)/2, -(s+t) - 1), (1, 1, 0))
     ]
 
 
@@ -575,6 +623,31 @@ class TetLShape(BaseShape):
             newvals.append( (pnew, qnew, r))
 
         return newvals
+    @cached_property
+    def m0(self):
+        return self.ubasis.nodal_basis_at(self.fpts)
+
+    @cached_property
+    def m1(self):
+        m = np.rollaxis(self.ubasis.jac_nodal_basis_at(self.upts), 2)
+        return m.reshape(self.nupts, -1)
+
+    @cached_property
+    def m2(self):
+        m = self.norm_fpts[..., None]*self.m0[:, None, :]
+        return m.reshape(self.nfpts, -1)
+
+    @cached_property
+    def m3(self):
+        m = self.gbasis_at(self.upts)
+
+        if 'surf-flux' in self.antialias:
+            fp = [_proj_l2(self._iqrules[kind], self.facebases[kind])
+                  for kind, proj, norm in self.faces]
+
+            m = m @ block_diag(fp)
+
+        return m
 
 class TetRShape(BaseShape):
 
@@ -603,11 +676,10 @@ class TetRShape(BaseShape):
     # Faces: type, reference-to-face projection, normal
 
     faces = [
-
-        ('tri', lambda s, t: (t, s, -1), (0, 0, -1)),
-        ('tri', lambda s, t: ((t - 1)/2, s + (t + 1)/2, t), (-1, 0, 0.5)),
-        ('tri', lambda s, t: (s + (t + 1)/2, (t - 1)/2, t), (0, -1, 0.5)),
-        ('tri', lambda s, t: (s + (t + 1)/2, -s - (t + 1)/2, t), (1, 1, 0))
+        ('tri', lambda s, t: (-s, -t, -1), (0, 0, -1)),
+        ('tri', lambda s, t: (-(s + (t + 1)/2), -((t - 1)/2), t), (0, -1, 0.5)),
+        ('tri', lambda s, t: (-((s - 1)/2), -(t + (s + 1)/2), s), (-1, 0, 0.5)),
+        ('tri', lambda s, t: (-(s - (s+t)/2), -(t - (s+t)/2), -(s+t) - 1), (1, 1, 0))
     ]
 
     def __init__(self, nspts, cfg):
@@ -618,7 +690,7 @@ class TetRShape(BaseShape):
         self.upts[:,1] += rfac
         # Flip upts/fpts
         self.upts[:,:2] *= -1
-        self.fpts[:,:2] *= -1
+        # self.fpts[:,:2] *= -1
         self.ubasis = get_polybasis('tetr', self.order + 1, self.upts)
 
     @classmethod
@@ -640,6 +712,31 @@ class TetRShape(BaseShape):
             newvals.append( (-pnew, -qnew, r)) # rotate
 
         return newvals
+    @cached_property
+    def m0(self):
+        return self.ubasis.nodal_basis_at(self.fpts)
+
+    @cached_property
+    def m1(self):
+        m = np.rollaxis(self.ubasis.jac_nodal_basis_at(self.upts), 2)
+        return m.reshape(self.nupts, -1)
+
+    @cached_property
+    def m2(self):
+        m = self.norm_fpts[..., None]*self.m0[:, None, :]
+        return m.reshape(self.nfpts, -1)
+
+    @cached_property
+    def m3(self):
+        m = self.gbasis_at(self.upts)
+
+        if 'surf-flux' in self.antialias:
+            fp = [_proj_l2(self._iqrules[kind], self.facebases[kind])
+                  for kind, proj, norm in self.faces]
+
+            m = m @ block_diag(fp)
+
+        return m
 
 class PyrShape(BaseShape):
     name = 'pyr'
@@ -727,15 +824,13 @@ class PyrShape(BaseShape):
         for i in range(self.nquadpts):
             coord = self.fpts[n, :]
             [x,y,z] = coord
-            # iidx = i % (self.order+1)
-            # negiidx = (self.order) - iidx
-            # jidx = i // (self.order+1)
+
             if np.abs(x+y) < tol:
                 tag = 'm'
                 idxl = np.where((np.abs(tetl_bot - coord) < tol).all(axis=1))[0][0]
                 idxr = np.where((np.abs(tetr_bot - coord) < tol).all(axis=1))[0][0]
-                assert idxl == idxr, f'{idxl}, {idxr}'
-                self.fpts_idxs[n] = idxl
+                # assert idxl == idxr, f'{idxl}, {idxr}'
+                self.fpts_idxs[n] = (idxl, idxr)
             elif x + y < -tol:
                 tag = 'l'
                 self.fpts_idxs[n] = np.where((np.abs(tetl_bot - coord) < tol).all(axis=1))[0][0]
@@ -765,8 +860,8 @@ class PyrShape(BaseShape):
 
         TetR faces:
             0: bottom
-            1: east
-            2: north
+            1: north
+            2: east
             3: south-west
         
         '''
@@ -779,11 +874,11 @@ class PyrShape(BaseShape):
                 tet_coords = self.tetl.fpts[offset:offset+self.ntripts,:]
             elif face == 2:
                 tag = 'r'
-                offset = 1*self.ntripts
+                offset = 2*self.ntripts
                 tet_coords = self.tetr.fpts[offset:offset+self.ntripts,:]
             elif face == 3:
                 tag = 'r'
-                offset = 2*self.ntripts
+                offset = 1*self.ntripts
                 tet_coords = self.tetr.fpts[offset:offset+self.ntripts,:]
             elif face == 4:
                 tag = 'l'
@@ -854,12 +949,20 @@ class PyrShape(BaseShape):
             newidx = None
             if side == 'right':
                 for j, vv in enumerate(self.fpts_idxs):
-                    if vv == i and self.fpts_map[j] in ['r', 'm']:
-                        newidx = j
+                    if isinstance(vv, np.int64):
+                        if vv == i and self.fpts_map[j] == 'r':
+                            newidx = j
+                    elif isinstance(vv, tuple):
+                        if vv[1] == i:
+                            newidx = j
             elif side == 'left':
                 for j, vv in enumerate(self.fpts_idxs):
-                    if vv == i and self.fpts_map[j] in ['l', 'm']:
-                        newidx = j
+                    if isinstance(vv, np.int64):
+                        if vv == i and self.fpts_map[j] == 'l':
+                            newidx = j
+                    elif isinstance(vv, tuple):
+                        if vv[0] == i:
+                            newidx = j
 
             assert newidx is not None
             newrow[newidx] = v
@@ -919,6 +1022,11 @@ class PyrShape(BaseShape):
         return M
 
     @cached_property
+    def m2(self):
+        m = self.norm_fpts[..., None]*self.m0[:, None, :]
+        return m.reshape(self.nfpts, -1)
+
+    @cached_property
     def m3(self):
         M = np.zeros((self.nupts, self.nfpts))
         tol = 1e-8
@@ -938,6 +1046,7 @@ class PyrShape(BaseShape):
                     r3[i] = 0.5*(r1[i] + r2[i])
             return r3
         
+                
         for i, (x,y,z) in enumerate(self.upts):
             ml = remove_diag(self.tetl.gbasis_at([[x,y,z]])[0])
             mr = remove_diag(self.tetr.gbasis_at([[x,y,z]])[0])
@@ -948,4 +1057,5 @@ class PyrShape(BaseShape):
                 M[i, :] = np.nan_to_num(self.expand_fpts_row(mr, 'right'), 0.0)
             else: # Left 
                 M[i, :] = np.nan_to_num(self.expand_fpts_row(ml, 'left'), 0.0)
+
         return M
