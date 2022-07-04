@@ -267,6 +267,7 @@ class NodalMeshAssembler:
         spts = {}
 
         # Apply tolerance-based linearisation to the elements
+        lintol = -1
         lidx = self._linearise_eles(lintol)
 
         for etype, pent in self._elenodes:
