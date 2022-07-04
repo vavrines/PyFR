@@ -218,7 +218,6 @@ class BaseShape:
             'quad': ('gauss-legendre', (self.order + 1)**2),
             'tri': ('williams-shunn', 36)
         }
-
         for kind, proj, norm in self.faces:
             # Obtain a quadrature rule for integrating on the reference face
             # and evaluate this rule at the nodal basis defined by the flux
@@ -677,9 +676,9 @@ class TetRShape(BaseShape):
 
     faces = [
         ('tri', lambda s, t: (-s, -t, -1), (0, 0, -1)),
-        ('tri', lambda s, t: (-(s + (t + 1)/2), -((t - 1)/2), t), (0, -1, 0.5)),
-        ('tri', lambda s, t: (-((s - 1)/2), -(t + (s + 1)/2), s), (-1, 0, 0.5)),
-        ('tri', lambda s, t: (-(s - (s+t)/2), -(t - (s+t)/2), -(s+t) - 1), (1, 1, 0))
+        ('tri', lambda s, t: (-(s + (t + 1)/2), -((t - 1)/2), t), (0, 1, 0.5)),
+        ('tri', lambda s, t: (-((s - 1)/2), -(t + (s + 1)/2), s), (1, 0, 0.5)),
+        ('tri', lambda s, t: (-(s - (s+t)/2), -(t - (s+t)/2), -(s+t) - 1), (-1, -1, 0))
     ]
 
     def __init__(self, nspts, cfg):
@@ -791,6 +790,7 @@ class PyrShape(BaseShape):
         super().__init__(nspts, cfg)
         self.tetl = TetLShape(False, self.cfg)
         self.tetr = TetRShape(False, self.cfg)
+        self.tet = TetShape(False, self.cfg)
 
         p = self.order
         self.ntripts = (p+1)*(p+2)//2
@@ -1046,7 +1046,8 @@ class PyrShape(BaseShape):
                     r3[i] = 0.5*(r1[i] + r2[i])
             return r3
         
-                
+        mold = self.tet.gbasis_at(self.upts)
+        
         for i, (x,y,z) in enumerate(self.upts):
             ml = remove_diag(self.tetl.gbasis_at([[x,y,z]])[0])
             mr = remove_diag(self.tetr.gbasis_at([[x,y,z]])[0])
@@ -1055,7 +1056,9 @@ class PyrShape(BaseShape):
                 M[i, :] = average_rows(self.expand_fpts_row(ml, 'left'), self.expand_fpts_row(mr, 'right'))
             elif (x + y) > tol: # Right
                 M[i, :] = np.nan_to_num(self.expand_fpts_row(mr, 'right'), 0.0)
-            else: # Left 
+            else: # Left
                 M[i, :] = np.nan_to_num(self.expand_fpts_row(ml, 'left'), 0.0)
-
+        # print(M)
+        # print()
+        # print(mold)
         return M
