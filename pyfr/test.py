@@ -541,16 +541,13 @@ def test_m3():
     m3 = pyr.m3
     tol = 1e-6
 
+    # Test 1: Constant state
     f = np.ones(pyr.nupts*3)
-    f2 = np.ones((pyr.nfpts, 3))*pyr.norm_fpts
-    f2 = np.linalg.norm(f2, axis=1)
-    d1 = (m1 - m3 @ m2) @ f
-    # print(m2)
-    print(m2 @ f)
-    d2 = m3 @ f2
-    print(d2)
-    print(d1 + d2)
-    print( )
+    f2 = np.ones(pyr.nfpts)*np.sum(pyr.norm_fpts, axis=1)
+
+    d = (m1 - m3 @ m2) @ f + m3 @ f2
+    assert np.amax(d) < tol
+    print('Passed M3 test 1: Constant')
 
 
 ''' 
