@@ -78,8 +78,6 @@ def test_m1():
         y = np.ones_like(x)
         z = np.ones_like(x)
         f = np.array([x**2,y,z]).reshape(-1, order='C')
-        print(m1 @ f)
-        print(2*x)
         assert np.amax(m1 @ f - 2*x) < tol
 
         # Test 3: Quadratic y
@@ -98,7 +96,7 @@ def test_m1():
         print('Passed M1 test 3: Quadratic')
 
 def test_m3():
-    pyr = TetShape(False, cfg)
+    pyr = PyrShape(False, cfg)
     m1 = pyr.m1
     m2 = pyr.m2
     m3 = pyr.m3
@@ -123,31 +121,50 @@ def compute_tri_area_and_norm(x1, x2, x3):
 def test_norms():
     tetl = TetLShape(False, cfg)
     tetr = TetRShape(False, cfg)
-    pyr = PyrShape(False, cfg)
+    tet = TetShape(False, cfg)
+    # pyr = PyrShape(False, cfg)
 
-    print(pyr.norm_fpts)
 
     tol = 1e-6
 
-    for ftype, fun, norms in pyr.faces:
-        if ftype == 'quad':
-            vals = np.array([fun(-1, -1), fun(1, -1), fun(-1, 1), fun(1, 1)])
-        elif ftype == 'tri':
-            vals = np.array([fun(-1, -1), fun(1, -1), fun(-1, 1)])
-        for val in vals:
-            assert np.min(val) >= -1-tol and np.max(val) <= 1 + tol
-        print(compute_tri_area_and_norm(vals[0], vals[1], vals[2]))
+    # for ftype, fun, norms in pyr.faces:
+    #     if ftype == 'quad':
+    #         vals = np.array([fun(-1, -1), fun(1, -1), fun(-1, 1), fun(1, 1)])
+    #     elif ftype == 'tri':
+    #         vals = np.array([fun(-1, -1), fun(1, -1), fun(-1, 1)])
+    #     for val in vals:
+    #         assert np.min(val) >= -1-tol and np.max(val) <= 1 + tol
+
+    for ftype, fun, norms in tet.faces:
+        vals = [fun(-1, -1), fun(1, -1), fun(-1, 1)]
+        print(vals)
+    print()
 
     for ftype, fun, norms in tetl.faces:
         vals = [fun(-1, -1), fun(1, -1), fun(-1, 1)]
-        for val in vals:
-            assert np.min(val) >= -1-tol and np.max(val) <= 1 + tol
+        # for val in vals:
+            # assert np.min(val) >= -1-tol and np.max(val) <= 1 + tol
+        print(vals)
+
+    print()
 
     for ftype, fun, norms in tetr.faces:
         vals = [fun(-1, -1), fun(1, -1), fun(-1, 1)]
-        for val in vals:
-            assert np.min(val) >= -1-tol and np.max(val) <= 1 + tol
+        # for val in vals:
+            # assert np.min(val) >= -1-tol and np.max(val) <= 1 + tol
+        print(vals)
     
+def test_gbasis():
+    tetl = TetLShape(False, cfg)
+    tetr = TetRShape(False, cfg)
+    tet = TetShape(False, cfg)
+
+    shape = tetl
+    # for i in range(shape.nfpts):
+    #     print(shape.gbasis_at([shape.fpts[i,:]]))
+
+    # for i in range(tetl.nfpts):
+    #     print(tetl.gbasis_at([tetl.fpts[i,:]]))
 
 
 ''' 
@@ -170,11 +187,12 @@ Done:
     Write M0 tests with analytic 
 '''
 
-tetl = TetLShape(False, cfg)
-tetr = TetRShape(False, cfg)
-pyr = PyrShape(False, cfg)
+# tetl = TetLShape(False, cfg)
+# tetr = TetRShape(False, cfg)
+# pyr = PyrShape(False, cfg)
 
 test_m0()
 test_m1()
 test_m3()
 test_norms()
+# test_gbasis()
