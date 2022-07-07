@@ -828,9 +828,11 @@ class PyrShape(BaseShape):
 
     def __init__(self, nspts, cfg):
         super().__init__(nspts, cfg)
-        self.tetl = TetLShape(False, self.cfg)
-        self.tetr = TetRShape(False, self.cfg)
-        self.tet = TetShape(False, self.cfg)
+        
+        tnspts = 4 if nspts == 5 else 10
+        self.tetl = TetLShape(tnspts, self.cfg)
+        self.tetr = TetRShape(tnspts, self.cfg)
+        self.tet = TetShape(tnspts, self.cfg)
 
         p = self.order
         self.ntripts = (p+1)*(p+2)//2
@@ -838,7 +840,10 @@ class PyrShape(BaseShape):
 
         self.make_fpts_map()
         self.make_upts_map()
-
+        self.make_spts_map()
+        self.make_mpts_map()
+        self.setup_sbasis()
+        self.setup_mbasis()
 
     @classmethod
     def std_ele(cls, sptord):
@@ -956,23 +961,69 @@ class PyrShape(BaseShape):
                 idx = np.where((self.tetl.upts == coord).all(axis=1))[0][0]
                 self.upts_idxs[i] = idx
 
-    def expand_upts_row(self, row, side):
-        newrow = np.zeros(self.nupts)
+    def make_spts_map(self):
+        self.spts_map = [None]*self.nspts
+        self.spts_idxs = [None]*self.nspts
+
+        tol = 1e-8
+        for i in range(self.nspts):
+            coord = np.array(self.spts[i])
+            (x,y,z) = coord
+
+            if np.abs(x+y) < tol: # Middle/diag points
+                lidx = np.where((self.tetl.spts == coord).all(axis=1))[0][0]
+                ridx = np.where((self.tetr.spts == coord).all(axis=1))[0][0]
+                self.spts_map[i] = 'm'
+                self.spts_idxs[i] = (lidx, ridx)
+            elif x+y > tol:
+                self.spts_map[i] = 'r'
+                idx = np.where((self.tetr.spts == coord).all(axis=1))[0][0]
+                self.spts_idxs[i] = idx
+            elif x+y < -tol:
+                self.spts_map[i] = 'l'
+                idx = np.where((self.tetl.spts == coord).all(axis=1))[0][0]
+                self.spts_idxs[i] = idx
+    
+    def make_mpts_map(self):
+        self.mpts_map = [None]*self.nmpts
+        self.mpts_idxs = [None]*self.nmpts
+
+        tol = 1e-8
+        for i in range(self.nmpts):
+            coord = np.array(self.mpts[i])
+            (x,y,z) = coord
+
+            if np.abs(x+y) < tol: # Middle/diag points
+                lidx = np.where((self.tetl.mpts == coord).all(axis=1))[0][0]
+                ridx = np.where((self.tetr.mpts == coord).all(axis=1))[0][0]
+                self.mpts_map[i] = 'm'
+                self.mpts_idxs[i] = (lidx, ridx)
+            elif x+y > tol:
+                self.mpts_map[i] = 'r'
+                idx = np.where((self.tetr.mpts == coord).all(axis=1))[0][0]
+                self.mpts_idxs[i] = idx
+            elif x+y < -tol:
+                self.mpts_map[i] = 'l'
+                idx = np.where((self.tetl.mpts == coord).all(axis=1))[0][0]
+                self.mpts_idxs[i] = idx
+
+    def expand_row(self, row, side, idxs, map, npts):
+        newrow = np.zeros(npts)
         #Arbitrarily choose right side to include midpoints as well
         for i,v in enumerate(row):
             newidx = None
             if side == 'right':
-                for j, vv in enumerate(self.upts_idxs):
+                for j, vv in enumerate(idxs):
                     if isinstance(vv, np.int64):
-                        if vv == i and self.upts_map[j] == 'r':
+                        if vv == i and map[j] == 'r':
                             newidx = j
                     elif isinstance(vv, tuple):
                         if vv[1] == i:
                             newidx = j
             elif side == 'left':
-                for j, vv in enumerate(self.upts_idxs):
+                for j, vv in enumerate(idxs):
                     if isinstance(vv, np.int64):
-                        if vv == i and self.upts_map[j] == 'l':
+                        if vv == i and map[j] == 'l':
                             newidx = j
                     elif isinstance(vv, tuple):
                         if vv[0] == i:
@@ -981,32 +1032,81 @@ class PyrShape(BaseShape):
             assert newidx is not None
             newrow[newidx] = v
         return newrow
+
+    def expand_upts_row(self, row, side):
+        return self.expand_row(row, side, self.upts_idxs, self.upts_map, self.nupts)
 
     def expand_fpts_row(self, row, side):
-        newrow = np.ones(self.nfpts)*np.nan
-        #Arbitrarily choose right side to include midpoints as well
-        for i,v in enumerate(row):
-            newidx = None
-            if side == 'right':
-                for j, vv in enumerate(self.fpts_idxs):
-                    if isinstance(vv, np.int64):
-                        if vv == i and self.fpts_map[j] == 'r':
-                            newidx = j
-                    elif isinstance(vv, tuple):
-                        if vv[1] == i:
-                            newidx = j
-            elif side == 'left':
-                for j, vv in enumerate(self.fpts_idxs):
-                    if isinstance(vv, np.int64):
-                        if vv == i and self.fpts_map[j] == 'l':
-                            newidx = j
-                    elif isinstance(vv, tuple):
-                        if vv[0] == i:
-                            newidx = j
+        return self.expand_row(row, side, self.fpts_idxs, self.fpts_map, self.nfpts)
+        
+    def expand_spts_row(self, row, side):
+        return self.expand_row(row, side, self.spts_idxs, self.spts_map, self.nspts)
+    
+    def expand_mpts_row(self, row, side):
+        return self.expand_row(row, side, self.mpts_idxs, self.mpts_map, self.nmpts)
+    
+    def setup_sbasis(self):
+        self.sbasis.nodal_basis_at = self.new_sbasis_nodal_basis_at
 
-            assert newidx is not None
-            newrow[newidx] = v
-        return newrow
+    def new_sbasis_nodal_basis_at(self, epts):
+        tol = 1e-8
+        M = np.zeros((len(epts), self.nspts))
+        for i, (x,y,z) in enumerate(epts):
+            if np.abs(x + y) < tol: # Midpoints
+                rowl = self.tetl.sbasis.nodal_basis_at([[x,y,z]])[0]
+                rowr = self.tetr.sbasis.nodal_basis_at([[x,y,z]])[0]
+                M[i, :] =  0.5*self.expand_spts_row(rowl, 'left') + 0.5*self.expand_spts_row(rowr, 'right')
+            elif (x + y) > tol: # Right
+                row = self.tetr.sbasis.nodal_basis_at([[x,y,z]])[0]
+                M[i, :] = self.expand_spts_row(row, 'right')
+            else: # Left
+                row = self.tetl.sbasis.nodal_basis_at([[x,y,z]])[0]
+                M[i, :] = self.expand_spts_row(row, 'left')
+        return M
+
+    def setup_mbasis(self):
+        self.mbasis.nodal_basis_at = self.new_mbasis_nodal_basis_at
+        self.mbasis.jac_nodal_basis_at = self.new_mbasis_jac_nodal_basis_at
+    
+    def new_mbasis_nodal_basis_at(self, epts):
+        tol = 1e-8
+        M = np.zeros((len(epts), self.nmpts))
+        for i, (x,y,z) in enumerate(epts):
+            if np.abs(x + y) < tol: # Midpoints
+                rowl = self.tetl.mbasis.nodal_basis_at([[x,y,z]])[0]
+                rowr = self.tetr.mbasis.nodal_basis_at([[x,y,z]])[0]
+                M[i, :] =  0.5*self.expand_mpts_row(rowl, 'left') + 0.5*self.expand_mpts_row(rowr, 'right')
+            elif (x + y) > tol: # Right
+                row = self.tetr.mbasis.nodal_basis_at([[x,y,z]])[0]
+                M[i, :] = self.expand_mpts_row(row, 'right')
+            else: # Left
+                row = self.tetl.mbasis.nodal_basis_at([[x,y,z]])[0]
+                M[i, :] = self.expand_mpts_row(row, 'left')
+        return M
+
+    def new_mbasis_jac_nodal_basis_at(self, epts):
+        tol = 1e-8
+        M = np.zeros((3, len(epts), self.nmpts))
+
+        def expand_grad(mat, side):
+            r1 = self.expand_mpts_row(mat[0,:,:], side)
+            r2 = self.expand_mpts_row(mat[1,:,:], side)
+            r3 = self.expand_mpts_row(mat[2,:,:], side)
+
+            newmat = np.array([r1, r2, r3])
+            return newmat
+
+        for i, (x,y,z) in enumerate(epts):
+            if np.abs(x + y) < tol: # Midpoints
+                ml = expand_grad(self.tetl.mbasis.jac_nodal_basis_at([[x,y,z]]), 'left')
+                mr = expand_grad(self.tetr.mbasis.jac_nodal_basis_at([[x,y,z]]), 'right')
+
+                M[:,:,i] =  0.5*(ml + mr)
+            elif (x + y) > tol: # Right
+                M[:,:,i] = expand_grad(self.tetr.mbasis.jac_nodal_basis_at([[x,y,z]]), 'right')
+            else: # Left 
+                M[:,:,i] = expand_grad(self.tetl.mbasis.jac_nodal_basis_at([[x,y,z]]), 'left')
+        return M
     
     @cached_property
     def m0(self):
