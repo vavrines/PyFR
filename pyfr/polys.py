@@ -272,6 +272,7 @@ class TetLPolyBasis(BasePolyBasis):
 
     def create_mono_basis(self, pts, p):
         M = np.zeros((len(pts), len(pts)))
+        pts = np.array(pts)
         x = pts[:,0]
         y = pts[:,1]
         z = pts[:,2]
@@ -434,6 +435,7 @@ class TetRPolyBasis(BasePolyBasis):
 
     def create_mono_basis(self, pts, p):
         M = np.zeros((len(pts), len(pts)))
+        pts = np.array(pts)
         x = pts[:,0]
         y = pts[:,1]
         z = pts[:,2]

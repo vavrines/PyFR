@@ -595,9 +595,29 @@ class TetLShape(BaseShape):
         ('tri', lambda s, t: (s - (s+t)/2, t - (s+t)/2, -(s+t) - 1), (1, 1, 0))
     ]
 
+    # Jacobian expressions for a linear element
+    jac_exprs = [
+        [f'(V[{i + 1}][{j}] - V[0][{j}])/2' for j in range(3)]
+        for i in range(3)
+    ]
 
     def __init__(self, nspts, cfg):
-        super().__init__(nspts, cfg)
+        self.nspts = nspts
+        self.cfg = cfg
+        self.order = cfg.getint('solver', 'order')
+
+        self.antialias = cfg.get('solver', 'anti-alias', 'none')
+        self.antialias = {s.strip() for s in self.antialias.split(',')}
+        self.antialias.discard('none')
+        if self.antialias - {'flux', 'surf-flux'}:
+            raise ValueError('Invalid anti-alias options')
+
+        if nspts:
+            self.nsptsord = nsptord = self.order_from_nspts(nspts)
+            self.sbasis = get_polybasis('tetl', nsptord, self.spts)
+            self.mbasis = get_polybasis('tetl', max(self.order + 1, 2),
+                                        self.mpts)
+
         # Move upper sol point to (0,0,1) (instead of (-1, -1, 1))
         rfac = 0.5*(self.upts[:,2] + 1.)
         self.upts[:,0] += rfac
@@ -681,8 +701,28 @@ class TetRShape(BaseShape):
         ('tri', lambda s, t: (-(s - (s+t)/2), -(t - (s+t)/2), -(s+t) - 1), (-1, -1, 0))
     ]
 
+    # Jacobian expressions for a linear element
+    jac_exprs = [
+        [f'(V[{i + 1}][{j}] - V[0][{j}])/2' for j in range(3)]
+        for i in range(3)
+    ]
+
     def __init__(self, nspts, cfg):
-        super().__init__(nspts, cfg)
+        self.nspts = nspts
+        self.cfg = cfg
+        self.order = cfg.getint('solver', 'order')
+
+        self.antialias = cfg.get('solver', 'anti-alias', 'none')
+        self.antialias = {s.strip() for s in self.antialias.split(',')}
+        self.antialias.discard('none')
+        if self.antialias - {'flux', 'surf-flux'}:
+            raise ValueError('Invalid anti-alias options')
+
+        if nspts:
+            self.nsptsord = nsptord = self.order_from_nspts(nspts)
+            self.sbasis = get_polybasis('tetr', nsptord, self.spts)
+            self.mbasis = get_polybasis('tetr', max(self.order + 1, 2),
+                                        self.mpts)
         # Move upper sol point to (0,0,1) (instead of (-1, -1, 1))
         rfac = 0.5*(self.upts[:,2] + 1.)
         self.upts[:,0] += rfac
@@ -1043,7 +1083,7 @@ class PyrShape(BaseShape):
                 elif np.isnan(r2[i]):
                     r3[i] = r1[i]
                 else:
-                    r3[i] = 0.5*(r1[i] + r2[i])
+                    r3[i] = (r1[i] + r2[i])
             return r3
         
         mold = self.tet.gbasis_at(self.upts)
