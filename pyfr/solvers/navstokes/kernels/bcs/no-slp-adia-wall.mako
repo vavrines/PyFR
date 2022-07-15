@@ -4,17 +4,25 @@
 
 <%pyfr:macro name='bc_rsolve_state' params='ul, nl, ur' externs='ploc, t'>
     ur[0] = ul[0];
-% for i in range(ndims):
+    % for i in range(ndims):
     ur[${i + 1}] = -ul[${i + 1}];
-% endfor
+    % endfor
     ur[${nvars - 1}] = ul[${nvars - 1}];
 </%pyfr:macro>
 
 <%pyfr:macro name='bc_ldg_state' params='ul, nl, ur' externs='ploc, t'>
     ur[0] = ul[0];
-% for i in range(ndims):
-    ur[${i + 1}] = 0.0;
-% endfor
+% if viscous:
+    % for i in range(ndims):
+    ur[${i + 1}] = -ul[${i + 1}];
+    % endfor
+% else:
+    fpdtype_t nor = ${' + '.join('ul[{0}]*nl[{1}]'.format(i + 1, i)
+                                 for i in range(ndims))};
+    % for i in range(ndims):
+    ur[${i + 1}] = ul[${i + 1}] - 2*nor*nl[${i}];
+    % endfor
+% endif
     ur[${nvars - 1}] = ul[${nvars - 1}]
                      - (0.5/ul[0])*${pyfr.dot('ul[{i}]', i=(1, ndims + 1))};
 </%pyfr:macro>

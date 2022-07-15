@@ -21,6 +21,7 @@
     fpdtype_t ficomm[${nvars}], fvcomm;
     ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'ficomm')};
 
+% if viscous:
 % if beta != -0.5:
     fpdtype_t fvl[${ndims}][${nvars}] = {{0}};
     ${pyfr.expand('viscous_flux_add', 'ul', 'gradul', 'fvl')};
@@ -55,4 +56,10 @@
     ul[${i}] =  magnl*(ficomm[${i}] + fvcomm);
     ur[${i}] = -magnl*(ficomm[${i}] + fvcomm);
 % endfor
+% else:
+% for i in range(nvars):
+    ul[${i}] =  magnl*ficomm[${i}];
+    ur[${i}] = -magnl*ficomm[${i}];
+% endfor
+% endif
 </%pyfr:kernel>

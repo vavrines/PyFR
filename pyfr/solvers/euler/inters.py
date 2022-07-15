@@ -74,8 +74,9 @@ class EulerBaseBCInters(BaseAdvectionBCInters):
         if self.cfg.get('solver', 'shock-capturing') == 'entropy-filter':
             self.kernels['comm_entropy'] = lambda: self._be.kernel(
                 'bccent', tplargs=tplargs, dims=[self.ninterfpts],
-                entmin_lhs=self._entmin_lhs, ul=self._scal_lhs, 
-                nl=self._norm_pnorm_lhs, **self._external_vals
+                extrns=self._external_args, entmin_lhs=self._entmin_lhs,
+                ul=self._scal_lhs, nl=self._norm_pnorm_lhs,
+                **self._external_vals
             )
 
 

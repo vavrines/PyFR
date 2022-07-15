@@ -17,7 +17,9 @@
     fpdtype_t ftemp[${ndims}][${nvars}];
     fpdtype_t p, v[${ndims}];
     ${pyfr.expand('inviscid_flux', 'u', 'ftemp', 'p', 'v')};
+% if viscous:
     ${pyfr.expand('viscous_flux_add', 'u', 'f', 'ftemp')};
+% endif
     ${pyfr.expand('artificial_viscosity_add', 'f', 'ftemp', 'artvisc')};
 
     // Compute the S matrices

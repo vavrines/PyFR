@@ -5,6 +5,7 @@ from pyfr.util import memoize
 
 
 class BaseAdvectionSystem(BaseSystem):
+    split_system = False
     @memoize
     def _rhs_graphs(self, uinbank, foutbank):
         m = self._mpireqs

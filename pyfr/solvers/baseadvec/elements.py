@@ -120,15 +120,7 @@ class BaseAdvectionElements(BaseElements):
                                              extent='vdm')
             self.invvdm = self._be.const_matrix(self.basis.ubasis.invvdm.T,
                                                 extent='invvdm')
-            
-            # Setup interpolation matrices if applying constraints on fpts/qpts
-            con_fpts = self.cfg.getbool('solver-entropy-filter', 'constrain-fpts', False)
-            con_qpts = self.cfg.getbool('solver-entropy-filter', 'constrain-qpts', False)
 
-            self.intfpts = self._be.const_matrix(self.basis.m0,
-                                                 extent='intfpts') if con_fpts else None
-            self.intqpts = self._be.const_matrix(self.basis.m7,
-                                                 extent='intqpts') if con_qpts else None
         elif shock_capturing == 'none':
             self.entmin = None
             self.entmin_int = None

@@ -11,5 +11,5 @@
     p = ${c['gamma'] - 1}*(E - 0.5*(${pyfr.dot('u[{i}+1]', i=ndims)})/d);
 
     // Compute specific physical entropy
-    e = ((d > 0) && (p > 0)) ? p*pow(d, ${-c['gamma']}) : ${inf};
+    e = ((d > 0) && (p > 0)) ? d*(log(p) - ${c['gamma']}*log(d)) : ${inf};
 </%pyfr:macro>

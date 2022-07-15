@@ -119,20 +119,14 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             eps = np.finfo(self._be.fpdtype).eps
             zeta_max = -math.log(eps)
 
-            # See if applying constraints to fpts/qpts
-            con_fpts = self.cfg.getbool('solver-entropy-filter', 'constrain-fpts', False)
-            con_qpts = self.cfg.getbool('solver-entropy-filter', 'constrain-qpts', False)
-            nqpts = self.nqpts or 1
-
             # Precompute basis orders for filter
             ubdegs2 = [max(dd)**2 for dd in self.basis.ubasis.degrees]
 
             eftplargs = {
                 'ndims': self.ndims, 'nupts': self.nupts, 'nfpts': self.nfpts,
-                'nqpts': nqpts, 'nvars': self.nvars,
-                'c': self.cfg.items_as('constants', float),
+                'nvars': self.nvars, 'c': self.cfg.items_as('constants', float),
                 'd_min': d_min, 'p_min': p_min, 'e_tol': e_tol, 'zeta_max': zeta_max,
-                'con_fpts': con_fpts, 'con_qpts': con_qpts, 'ubdegs2': ubdegs2,
+                'ubdegs2': ubdegs2,
             }
 
             # Compute local entropy bounds
@@ -146,6 +140,5 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             self.kernels['filter_solution'] = lambda uin: self._be.kernel(
                 'entropyfilter', tplargs=eftplargs, dims=[self.neles],
                 u=self.scal_upts[uin], entmin=self.entmin,
-                vdm=self.vdm, invvdm=self.invvdm,
-                intfpts=self.intfpts, intqpts=self.intqpts
+                vdm=self.vdm, invvdm=self.invvdm
             )
