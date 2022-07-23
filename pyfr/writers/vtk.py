@@ -10,6 +10,8 @@ from pyfr.shapes import BaseShape
 from pyfr.util import memoize, subclass_where
 from pyfr.writers import BaseWriter
 
+from pyfr.solvers.bgk.elements import setup_BGK
+
 
 class VTKWriter(BaseWriter):
     # Supported file types and extensions
@@ -359,6 +361,8 @@ class VTKWriter(BaseWriter):
     def __init__(self, args):
         super().__init__(args)
 
+        [self.u, self.PSint, self.moments, self.quasi1d] = setup_BGK(self.cfg, self.ndims)
+
         self.dtype = np.dtype(args.precision).type
 
         # Divisor for each type element
@@ -395,7 +399,8 @@ class VTKWriter(BaseWriter):
 
     def _pre_proc_fields_soln(self, name, mesh, soln):
         # Convert from conservative to primitive variables
-        return np.array(self.elementscls.con_to_pri(soln, self.cfg))
+        # return np.repeat(np.sum(soln, axis=0)[np.newaxis,...], 5, axis=0)
+        return np.array(self.elementscls.con_to_pri(soln, self.cfg, self.PSint, self.u, self.ndims))
 
     def _pre_proc_fields_scal(self, name, mesh, soln):
         return soln

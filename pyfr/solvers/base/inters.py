@@ -16,6 +16,7 @@ class BaseInters:
         self._be = be
         self.elemap = elemap
         self.cfg = cfg
+        self.u = next(iter(elemap.values())).u
 
         # Get the number of dimensions and variables
         self.ndims = next(iter(elemap.values())).ndims
