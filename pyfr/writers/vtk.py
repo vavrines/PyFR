@@ -361,7 +361,7 @@ class VTKWriter(BaseWriter):
     def __init__(self, args):
         super().__init__(args)
 
-        [self.u, self.PSint, self.moments, self.quasi1d] = setup_BGK(self.cfg, self.ndims)
+        [self.u, self.PSint, self.moments] = setup_BGK(self.cfg, self.ndims)
 
         self.dtype = np.dtype(args.precision).type
 

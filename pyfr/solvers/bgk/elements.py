@@ -8,15 +8,9 @@ def setup_BGK(cfg, ndims):
     Ny = cfg.getint('solver', 'Ny', 8)
     Nz = cfg.getint('solver', 'Nz', 1)
 
-    quasi1d = (Ny == 1 and Ny == 1)
-
     Lx = cfg.getliteral('solver', 'Lx', [-1, 1])
-    if quasi1d:
-        Ly = [-0.5, 0.5]
-        Lz = [-0.5, 0.5]
-    else:
-        Ly = cfg.getliteral('solver', 'Ly', [-0.5, 0.5])
-        Lz = cfg.getliteral('solver', 'Lz', [-0.5, 0.5])
+    Ly = cfg.getliteral('solver', 'Ly', [-0.5, 0.5])
+    Lz = cfg.getliteral('solver', 'Lz', [-0.5, 0.5])
 
     basistype = cfg.get('solver', 'basistype', 'gauss-radial')
 
@@ -136,7 +130,7 @@ def setup_BGK(cfg, ndims):
             psi[i, 1+j] = u[i, j]
         psi[i, -1] = 0.5*np.linalg.norm(u[i,:])**2
     
-    return [u, PSint, psi, quasi1d]
+    return [u, PSint, psi]
     
 
 class BGKElements(BaseAdvectionElements):    
@@ -163,7 +157,7 @@ class BGKElements(BaseAdvectionElements):
     def __init__(self, basiscls, eles, cfg):
         self.ndims = eles.shape[2]
 
-        [self.u, self.PSint, self.moments, self.quasi1d] = setup_BGK(cfg, self.ndims)
+        [self.u, self.PSint, self.moments] = setup_BGK(cfg, self.ndims)
         self.K = 1 # Definitely 1 for ndims==2
         self.nvars = len(self.u)
 
@@ -172,37 +166,92 @@ class BGKElements(BaseAdvectionElements):
     # Initial Maxwellian state
     def pri_to_con(self, pris, cfg):
         rho, U, p = pris[0], pris[1:-1], pris[-1]
+        
+        # Multiply velocity components by rho
+        rhoUs = [rho*c for c in U]
 
-        # Compute the macro/micro velocity defect
-        dv2 = 0
-        for i in range(self.ndims):
-            dv2 += (self.u[...,i] - U[i])**2
-
-        # Compute the internal energy
+        # Compute the internal/total energy
         gamma = cfg.getfloat('constants', 'gamma')
+        E = p/(gamma - 1) + 0.5*rho*sum(c*c for c in U)
         e = p/(gamma-1)
 
-        if self.quasi1d:
-            ndims = 1
-        else:
-            ndims = self.ndims
-        if ndims == 1:
-            lam = (0.25)*rho/e
-        if ndims == 2:
+        if self.ndims == 2:
             lam = (0.5)*rho/e
-        if ndims == 3:
+        elif self.ndims == 3:
             raise NotImplementedError()
-            lam = (0.5)*rho/e
-        # lam = (0.5)*rho/e
 
-        A = rho*(lam/np.pi)**(ndims/2.0)
-        if np.isscalar(A):
-            M = A*np.exp(-lam*dv2)
-        else:
-            M = np.repeat(A[...,np.newaxis], self.nvars, axis=-1)
-            for i in range(self.nvars):
-                M[..., i] = A*np.exp(-lam*dv2[i])
-            M = M.swapaxes(1,2)
+        def compute_discrete_maxwellian(alpha):
+            if self.ndims == 2:
+                [A,B,C,D] = alpha
+            elif self.ndims == 3:
+                [A,B,C,D,E] = alpha
+
+            # Compute the macro/micro velocity defect
+            dv2 = 0
+            dv2 += (self.u[...,0] - C)**2
+            dv2 += (self.u[...,1] - D)**2
+            if self.ndims == 3:
+                dv2 += (self.u[...,2] - D)**2
+
+            if np.isscalar(A):
+                M = np.atleast_3d(A*np.exp(-B*dv2))
+            else:
+                M = np.repeat(A[...,np.newaxis], self.nvars, axis=-1)
+                for i in range(self.nvars):
+                    M[..., i] = A*np.exp(-B*dv2[i])
+                M = M.swapaxes(1,2)
+            return M
+
+        # Target conserved variables
+        Ucon = np.atleast_3d(np.array([rho] + rhoUs + [E]))
+        alpha = [None]*(self.ndims+2)
+        alpha[0] = rho*(lam/np.pi)**(self.ndims/2.0) # A
+        alpha[1] = lam # B
+        for i in range(self.ndims):
+            alpha[2+i] = U[i] # C,D,E
+
+        M = compute_discrete_maxwellian(alpha)
+        
+        (nupts, _, nelems) = np.shape(M)
+
+        niters = 5 # Large iteration count for ICs
+        for uidx in range(nupts):
+            for eidx in range(nelems):
+                Uloc = Ucon[:, uidx, eidx]
+                Mloc = M[uidx, :, eidx]
+
+                alphaloc = [None]*(self.ndims+2)
+                for aidx in range(self.ndims+2):
+                    if np.isscalar(alpha[aidx]):
+                        alphaloc[aidx] = alpha[aidx]
+                    else:
+                        alphaloc[aidx] = alpha[aidx][uidx, eidx]
+
+                for it in range(niters):
+                    # Derivatives with respect to alpha
+                    Q = [None]*(self.ndims+2)
+                    Q[0] = 1.0/alphaloc[0]
+                    if self.ndims == 2:
+                        Q[1] = -((self.u[...,0] - alphaloc[2])**2 + (self.u[...,1] - alphaloc[3])**2)
+                        Q[2] = 2*alphaloc[1]*(self.u[...,0] - alphaloc[2])
+                        Q[3] = 2*alphaloc[1]*(self.u[...,1] - alphaloc[3])
+                    elif self.ndims == 3:
+                        Q[1] = np.atleast_2d(-((self.u[...,0] - alphaloc[2])**2 + (self.u[...,1] - alphaloc[3])**2 + (self.u[...,2] - alphaloc[4])**2))
+                        Q[2] = 2*alphaloc[1]*(self.u[...,0] - alphaloc[2])
+                        Q[3] = 2*alphaloc[1]*(self.u[...,1] - alphaloc[3])
+                        Q[4] = 2*alphaloc[1]*(self.u[...,2] - alphaloc[4])
+                    
+                    F = [None]*(self.ndims+2)
+                    J = np.zeros((self.ndims+2, self.ndims+2))
+                    for ivar in range(self.ndims+2):
+                        psiM = self.moments[:,ivar]*Mloc
+                        F[ivar] = np.dot(self.PSint, psiM) - Uloc[ivar]
+                        for jvar in range(self.ndims+2):
+                            J[ivar, jvar] = np.dot(self.PSint, Q[jvar]*psiM)
+                    alphaloc = alphaloc - np.linalg.inv(J) @ F
+                    Mloc = np.squeeze(compute_discrete_maxwellian(alphaloc))
+                
+                M[uidx, :, eidx] = Mloc
 
         return M
 
@@ -253,7 +302,7 @@ class BGKElements(BaseAdvectionElements):
             'srcex': self._src_exprs,
             'pi': np.pi,
             'tau': tau,
-            'quasi1d': self.quasi1d
+            'niters': 2
         }
 
         # Helpers
