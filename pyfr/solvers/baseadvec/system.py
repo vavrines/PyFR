@@ -15,8 +15,11 @@ class BaseAdvectionSystem(BaseSystem):
         g1 = self.backend.graph()
         g1.add_mpi_reqs(m['scal_fpts_recv'])
 
+        # Apply positivity-preserving limiter
+        g1.add_all(k['eles/limiter'])
+
         # Interpolate the solution to the flux points
-        g1.add_all(k['eles/disu'])
+        g1.add_all(k['eles/disu'], deps=k['eles/limiter'])
 
         # Pack and send these interpolated solutions to our neighbours
         g1.add_all(k['mpiint/scal_fpts_pack'], deps=k['eles/disu'])

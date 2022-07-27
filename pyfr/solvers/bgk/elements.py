@@ -158,7 +158,6 @@ class BGKElements(BaseAdvectionElements):
         self.ndims = eles.shape[2]
 
         [self.u, self.PSint, self.moments] = setup_BGK(cfg, self.ndims)
-        self.K = 1 # Definitely 1 for ndims==2
         self.nvars = len(self.u)
 
         super().__init__(basiscls, eles, cfg)
@@ -285,24 +284,21 @@ class BGKElements(BaseAdvectionElements):
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.tfluxlin')
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.negdivconfbgk')
+        self._be.pointwise.register('pyfr.solvers.bgk.kernels.limiter')
 
-        tau = self.cfg.getfloat('constants', 'tau')
+        ub = self.basis.ubasis
+        meanweights = ub.invvdm[:,0]/np.sum(ub.invvdm[:,0])
 
         # Template parameters for the flux kernels
         tplargs = {
-            'ndims': self.ndims,
-            'nvars': self.nvars,
-            'nverts': len(self.basis.linspts),
+            'ndims': self.ndims, 'nupts': self.nupts, 
+            'nvars': self.nvars, 'nverts': len(self.basis.linspts), 
             'c': self.cfg.items_as('constants', float),
-            'jac_exprs': self.basis.jac_exprs,
-            'u': self.u,
-            'moments': self.moments,
-            'PSint': self.PSint,
-            'K': self.K,
-            'srcex': self._src_exprs,
-            'pi': np.pi,
-            'tau': tau,
-            'niters': 2
+            'jac_exprs': self.basis.jac_exprs, 
+            'u': self.u, 'moments': self.moments, 'PSint': self.PSint,
+            'srcex': self._src_exprs, 'pi': np.pi,
+            'tau': self.cfg.getfloat('constants', 'tau'), 'niters': 2,
+            'wts': meanweights
         }
 
         # Helpers
@@ -338,10 +334,16 @@ class BGKElements(BaseAdvectionElements):
         
         plocsrc = self._ploc_in_src_exprs
         plocupts = self.ploc_at('upts') if plocsrc else None
-        # solnupts = self._scal_upts_cpy
     
         self.kernels['negdivconf'] = lambda fout: self._be.kernel(
             'negdivconfbgk', tplargs=tplargs,
             dims=[self.nupts, self.neles], tdivtconf=self.scal_upts[fout],
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, f=self._scal_upts_cpy
         )
+
+        # Positivity-preserving squeeze limiter
+        if self.cfg.getbool('solver', 'limiter', True):
+            self.kernels['limiter'] = lambda : self._be.kernel(
+                'limiter', tplargs=tplargs,
+                dims=[self.neles], f=self._scal_upts_cpy
+            )
