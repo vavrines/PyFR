@@ -88,10 +88,10 @@ def setup_BGK(cfg, ndims):
             rmax = 0.5*(Lx[1] - Lx[0])
 
             ur = 0.5*(gauss_pts_x + 1)*rmax
-            ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
-
-            wts_t = np.ones_like(ut)/len(ut)
             wts_r = gauss_wts_x*(ur/rmax)
+
+            ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
+            wts_t = np.ones_like(ut)/len(ut)
 
             ux = r0[0] + np.outer(ur, np.cos(ut))
             uy = r0[1] + np.outer(ur, np.sin(ut))
@@ -101,28 +101,52 @@ def setup_BGK(cfg, ndims):
             u[:,1] = np.reshape(uy, (-1))
             w = np.reshape(wts, (-1))
         elif ndims == 3:
-            raise NotImplementedError
+            nvars = Nx*Ny*Nz
+            u = np.zeros((nvars, ndims))
+            w = np.zeros((nvars))
+
+            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
+
+            r0 = [0.5*(Lx[0] + Lx[1]), 0.5*(Ly[0] + Ly[1]), 0.5*(Lz[0] + Lz[1])] 
+            rmax = 0.5*(Lx[1] - Lx[0])
+
+            ur = 0.5*(gauss_pts_x + 1)*rmax
+            wts_r = (gauss_wts_x)*(ur/rmax)
+            
+            ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
+            wts_t = np.ones_like(ut)/len(ut)
+
+            up = np.linspace(0, np.pi, Nz, endpoint=False)
+            wts_p = np.ones_like(up)/len(up)
+
+            ux = r0[0] + np.outer(np.outer(ur, np.sin(up))      , np.cos(ut))
+            uy = r0[1] + np.outer(np.outer(ur, np.sin(up))      , np.sin(ut))
+            uz = r0[2] + np.outer(np.outer(ur, np.cos(up)), np.ones_like(ut)) 
+            wts = np.outer(np.outer(wts_r, wts_t), wts_p)
+
+            u[:,0] = np.reshape(ux, (-1))
+            u[:,1] = np.reshape(uy, (-1))
+            u[:,2] = np.reshape(uz, (-1))
+            w = np.reshape(wts, (-1))
     
     if basistype == 'uniform':
+        w = np.ones(nvars)/nvars
         if ndims == 2:
-            L = (Lx[1] - Lx[0])*(Ly[1] - Ly[0])
+            PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])
         elif ndims == 3:
-            L = (Lx[1] - Lx[0])*(Ly[1] - Ly[0])*(Lz[1] - Lz[0])
-        PSint = np.ones(nvars)/nvars*L
+            PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])*(Lz[1] - Lz[0])
     elif basistype == 'gauss-uniform':
         if ndims == 2:
-            L = (Lx[1] - Lx[0])*(Ly[1] - Ly[0])
+            PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])
         elif ndims == 3:
-            L = (Lx[1] - Lx[0])*(Ly[1] - Ly[0])*(Lz[1] - Lz[0])
-        PSint = w*L
+            PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])*(Lz[1] - Lz[0])
     elif basistype == 'gauss-radial':
         r = 0.5*(Lx[1] - Lx[0])
         if ndims == 2:
-            A = np.pi*r*r
-        # if ndims == 3:
-        #     L = (Lx[1] - Lx[0])*(Ly[1] - Ly[0])*(Lz[1] - Lz[0])
-        PSint = w*A
-
+            PSint = w*np.pi*r**2
+        elif ndims == 3:
+            PSint = w*(4./3.)*np.pi*r**3
+    
     psi = np.zeros((nvars, ndims+2))
     for i in range(nvars):
         psi[i, 0] = 1
@@ -172,73 +196,73 @@ class BGKElements(BaseAdvectionElements):
         # Compute the internal/total energy
         gamma = cfg.getfloat('constants', 'gamma')
         E = p/(gamma - 1) + 0.5*rho*sum(c*c for c in U)
-        e = p/(gamma-1)
-
-        if self.ndims == 2:
-            lam = (0.5)*rho/e
-        elif self.ndims == 3:
-            raise NotImplementedError()
 
         def compute_discrete_maxwellian(alpha):
-            if self.ndims == 2:
-                [A,B,C,D] = alpha
-            elif self.ndims == 3:
-                [A,B,C,D,E] = alpha
-
             # Compute the macro/micro velocity defect
-            dv2 = 0
-            dv2 += (self.u[...,0] - C)**2
-            dv2 += (self.u[...,1] - D)**2
+            dv2 =  (self.u[...,0] - alpha[2])**2
+            dv2 += (self.u[...,1] - alpha[3])**2
+            # dv2 += (self.u[...,1] - D)**2
             if self.ndims == 3:
-                dv2 += (self.u[...,2] - D)**2
+                dv2 += (self.u[...,2] - alpha[4])**2
 
-            if np.isscalar(A):
-                M = np.atleast_3d(A*np.exp(-B*dv2))
-            else:
-                M = np.repeat(A[...,np.newaxis], self.nvars, axis=-1)
-                for i in range(self.nvars):
-                    M[..., i] = A*np.exp(-B*dv2[i])
-                M = M.swapaxes(1,2)
+            M = (alpha[0]*np.exp(-alpha[1]*dv2))
             return M
 
-        # Target conserved variables
-        Ucon = np.atleast_3d(np.array([rho] + rhoUs + [E]))
-        alpha = [None]*(self.ndims+2)
-        alpha[0] = rho*(lam/np.pi)**(self.ndims/2.0) # A
-        alpha[1] = lam # B
-        for i in range(self.ndims):
-            alpha[2+i] = U[i] # C,D,E
-
-        M = compute_discrete_maxwellian(alpha)
+        M = np.zeros((self.nupts, self.nvars, self.neles))
         
-        (nupts, _, nelems) = np.shape(M)
+        # (nupts, _, nelems) = np.shape(M)
 
         niters = 5 # Large iteration count for ICs
-        for uidx in range(nupts):
-            for eidx in range(nelems):
-                Uloc = Ucon[:, uidx, eidx]
-                Mloc = M[uidx, :, eidx]
+        for uidx in range(self.nupts):
+            for eidx in range(self.neles):
+                # Get local variables
+                rholoc = rho if np.isscalar(rho) else rho[uidx, eidx] 
+                rhouloc = rhoUs[0] if np.isscalar(rhoUs[0]) else rhoUs[0][uidx, eidx] 
+                rhovloc = rhoUs[1] if np.isscalar(rhoUs[1]) else rhoUs[1][uidx, eidx]
+                if self.ndims == 3:
+                    rhowloc = rhoUs[2] if np.isscalar(rhoUs[2]) else rhoUs[2][uidx, eidx]
+                Eloc = E if np.isscalar(E) else E[uidx, eidx]
 
-                alphaloc = [None]*(self.ndims+2)
-                for aidx in range(self.ndims+2):
-                    if np.isscalar(alpha[aidx]):
-                        alphaloc[aidx] = alpha[aidx]
-                    else:
-                        alphaloc[aidx] = alpha[aidx][uidx, eidx]
+                # Change local variables into alpha vector
+                if self.ndims == 2:
+                    Uloc = [rholoc, rhouloc, rhovloc, Eloc]
+                    e = Eloc - 0.5*(rhouloc**2 + rhovloc**2)/rholoc
+                    lam = (0.5)*rholoc/e
+                    alpha = np.zeros(self.ndims+2)
 
-                for it in range(niters):
+                    alpha[0] = rholoc*(lam/np.pi)**(self.ndims/2.0) # A
+                    alpha[1] = lam # B
+                    alpha[2] = rhouloc/rholoc # C,D,E
+                    alpha[3] = rhovloc/rholoc # C,D,E
+                elif self.ndims == 3:
+                    Uloc = [rholoc, rhouloc, rhovloc, rhowloc, Eloc]
+                    e = Eloc - 0.5*(rhouloc**2 + rhovloc**2 + rhowloc**2)/rholoc
+                    lam = (0.5)*rholoc/e # This may not be correct for 3D
+
+                    alpha = np.zeros(self.ndims+2)
+                    alpha[0] = rholoc*(lam/np.pi)**(self.ndims/2.0) # A
+                    alpha[1] = lam # B
+                    alpha[2] = rhouloc/rholoc # C,D,E
+                    alpha[3] = rhovloc/rholoc # C,D,E
+                    alpha[4] = rhowloc/rholoc # C,D,E
+
+                # Compute local Maxwellian
+                Mloc = compute_discrete_maxwellian(alpha)
+
+                # Perform Newton iterations to find optimal Maxwellian
+                for _ in range(niters):
                     # Derivatives with respect to alpha
                     Q = [None]*(self.ndims+2)
-                    Q[0] = 1.0/alphaloc[0]
+                    Q[0] = 1.0/alpha[0]
                     if self.ndims == 2:
-                        Q[1] = -((self.u[...,0] - alphaloc[2])**2 + (self.u[...,1] - alphaloc[3])**2)
-                        Q[2] = 2*alphaloc[1]*(self.u[...,0] - alphaloc[2])
-                        Q[3] = 2*alphaloc[1]*(self.u[...,1] - alphaloc[3])
+                        Q[1] = -((self.u[...,0] - alpha[2])**2 + (self.u[...,1] - alpha[3])**2)
+                        Q[2] = 2*alpha[1]*(self.u[...,0] - alpha[2])
+                        Q[3] = 2*alpha[1]*(self.u[...,1] - alpha[3])
                     elif self.ndims == 3:
-                        Q[1] = np.atleast_2d(-((self.u[...,0] - alphaloc[2])**2 + (self.u[...,1] - alphaloc[3])**2 + (self.u[...,2] - alphaloc[4])**2))
-                        Q[2] = 2*alphaloc[1]*(self.u[...,0] - alphaloc[2])
-                        Q[3] = 2*alphaloc[1]*(self.u[...,1] - alphaloc[3])
-                        Q[4] = 2*alphaloc[1]*(self.u[...,2] - alphaloc[4])
+                        Q[1] = -((self.u[...,0] - alpha[2])**2 + (self.u[...,1] - alpha[3])**2 + (self.u[...,2] - alpha[4])**2)
+                        Q[2] = 2*alpha[1]*(self.u[...,0] - alpha[2])
+                        Q[3] = 2*alpha[1]*(self.u[...,1] - alpha[3])
+                        Q[4] = 2*alpha[1]*(self.u[...,2] - alpha[4])
                     
                     F = [None]*(self.ndims+2)
                     J = np.zeros((self.ndims+2, self.ndims+2))
@@ -247,11 +271,9 @@ class BGKElements(BaseAdvectionElements):
                         F[ivar] = np.dot(self.PSint, psiM) - Uloc[ivar]
                         for jvar in range(self.ndims+2):
                             J[ivar, jvar] = np.dot(self.PSint, Q[jvar]*psiM)
-                    alphaloc = alphaloc - np.linalg.inv(J) @ F
-                    Mloc = np.squeeze(compute_discrete_maxwellian(alphaloc))
-                
+                    alpha = alpha - np.linalg.inv(J) @ F
+                    Mloc = compute_discrete_maxwellian(alpha)
                 M[uidx, :, eidx] = Mloc
-
         return M
 
     @staticmethod
