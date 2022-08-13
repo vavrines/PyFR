@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 <%inherit file='base'/>
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
-<% eps = 1E-14%>
+<% eps = 1E-12%>
 <%pyfr:kernel name='limiter' ndim='1'
               f='inout fpdtype_t[${str(nupts)}][${str(nvars)}]'>
 

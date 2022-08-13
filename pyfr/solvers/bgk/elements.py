@@ -226,22 +226,23 @@ class BGKElements(BaseAdvectionElements):
                 # Change local variables into alpha vector
                 if self.ndims == 2:
                     Uloc = [rholoc, rhouloc, rhovloc, Eloc]
-                    e = Eloc - 0.5*(rhouloc**2 + rhovloc**2)/rholoc
-                    lam = (0.5)*rholoc/e
+                    p = (gamma - 1.)*(Eloc - 0.5*(rhouloc**2 + rhovloc**2)/rholoc)
+                    theta = p/rholoc
                     alpha = np.zeros(self.ndims+2)
 
-                    alpha[0] = rholoc*(lam/np.pi)**(self.ndims/2.0) # A
-                    alpha[1] = lam # B
+                    alpha[0] = rholoc/(2*np.pi*theta)**(self.ndims/2.0) # A
+                    alpha[1] = 1.0/(2*theta) # B
                     alpha[2] = rhouloc/rholoc # C,D,E
                     alpha[3] = rhovloc/rholoc # C,D,E
                 elif self.ndims == 3:
                     Uloc = [rholoc, rhouloc, rhovloc, rhowloc, Eloc]
-                    e = Eloc - 0.5*(rhouloc**2 + rhovloc**2 + rhowloc**2)/rholoc
-                    lam = (0.5)*rholoc/e # This may not be correct for 3D
-
+                    p = (gamma - 1.)*(Eloc - 0.5*(rhouloc**2 + rhovloc**2 + rhowloc**2)/rholoc)
+                    theta = p/rholoc
                     alpha = np.zeros(self.ndims+2)
+
+                    alpha[0] = rholoc/(2*np.pi*theta)**(self.ndims/2.0) # A
                     alpha[0] = rholoc*(lam/np.pi)**(self.ndims/2.0) # A
-                    alpha[1] = lam # B
+                    alpha[1] = 1.0/(2*theta) # B
                     alpha[2] = rhouloc/rholoc # C,D,E
                     alpha[3] = rhovloc/rholoc # C,D,E
                     alpha[4] = rhowloc/rholoc # C,D,E
