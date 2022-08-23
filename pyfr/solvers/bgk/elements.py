@@ -277,6 +277,8 @@ class BGKElements(BaseAdvectionElements):
                 verts=self.ploc_at('linspts', l), upts=self.qpts
             )
 
+        self.umat = self._be.const_matrix(self.u)
+        self.M = self._be.const_matrix(np.reshape(self.PSint, (1, -1)))
         
         plocsrc = self._ploc_in_src_exprs
         plocupts = self.ploc_at('upts') if plocsrc else None
@@ -284,7 +286,8 @@ class BGKElements(BaseAdvectionElements):
         self.kernels['negdivconf'] = lambda fout: self._be.kernel(
             'negdivconfbgk', tplargs=tplargs,
             dims=[self.nupts, self.neles], tdivtconf=self.scal_upts[fout],
-            rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, f=self._scal_upts_cpy
+            rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, f=self._scal_upts_cpy,
+            u=self.umat, M=self.M
         )
 
         # Positivity-preserving squeeze limiter

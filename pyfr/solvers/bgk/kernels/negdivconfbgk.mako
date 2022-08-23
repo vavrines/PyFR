@@ -9,13 +9,29 @@
               tdivtconf='inout fpdtype_t[${str(nvars)}]'
               ploc='in fpdtype_t[${str(ndims)}]'
               f='in fpdtype_t[${str(nvars)}]'
-              rcpdjac='in fpdtype_t'>
+              rcpdjac='in fpdtype_t'
+              u='in broadcast fpdtype_t[${str(nvars)}][${str(ndims)}]'
+              M='in broadcast fpdtype_t[1][${str(nvars)}]'>
     // Navier-Stokes conserved variables
     fpdtype_t w[${ndims+2}] = {0};
-% for i in range(ndims+2):
-    w[${i}] = ${' + '.join('{jx}*f[{j}]*{m}'.format(j=j, jx=jx, m=moments[j][i])
-                       for j, jx in enumerate(PSint) if jx != 0)};
-% endfor
+
+    for (int j = 0; j < ${nvars}; j++)
+    {
+        w[0] += f[j]*M[0][j];
+
+        % if ndims == 2:
+            w[1] += f[j]*M[0][j]*u[j][0];
+            w[2] += f[j]*M[0][j]*u[j][1];
+
+            w[3] += f[j]*M[0][j]*0.5*(u[j][0]*u[j][0] + u[j][1]*u[j][1]);
+        % elif ndims == 3:
+            w[1] += f[j]*M[0][j]*u[j][0];
+            w[2] += f[j]*M[0][j]*u[j][1];
+            w[3] += f[j]*M[0][j]*u[j][2];
+
+            w[4] += f[j]*M[0][j]*0.5*(u[j][0]*u[j][0] + u[j][1]*u[j][1] + u[j][2]*u[j][2]);
+        % endif
+    }
 
     // Convert to primitive
 % if ndims == 2:
@@ -44,16 +60,18 @@
     alpha[4] = W;
 % endif 
 
-    ${pyfr.expand('iterate_DVM', 'alpha')};
+    ${pyfr.expand('iterate_DVM', 'alpha', 'u', 'M')};
 
-% for i in range(nvars):
+for (int i = 0; i < ${nvars}; i++)
+{
     % if ndims == 2:
-    g = alpha[0]*exp(-alpha[1]*(pow(${u[i,0]} - alpha[2], 2.0) + pow(${u[i,1]} - alpha[3], 2.0)));
+        g = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
     % elif ndims == 3:
-    g = alpha[0]*exp(-alpha[1]*(pow(${u[i,0]} - alpha[2], 2.0) + pow(${u[i,1]} - alpha[3], 2.0) + pow(${u[i,2]} - alpha[4], 2.0)));
+        g = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
     % endif
 
-    tdivtconf[${i}] = -rcpdjac*tdivtconf[${i}] + (g - f[${i}])/${tau};
-% endfor
+    tdivtconf[i] = -rcpdjac*tdivtconf[i] + (g - f[i])/${tau};
+}
+
 
 </%pyfr:kernel>
