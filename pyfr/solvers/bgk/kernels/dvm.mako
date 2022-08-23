@@ -4,11 +4,12 @@
 
 <%include file='pyfr.solvers.bgk.kernels.matrices'/>
 
-<%pyfr:macro name='iterate_DVM' params='alpha, u, M'>
+<%pyfr:macro name='iterate_DVM' params='alpha, w, u, M'>
     fpdtype_t newalpha[${ndims+2}];
     fpdtype_t R[${ndims+2}];
     fpdtype_t J[${ndims+2}][${ndims+2}], Jinv[${ndims+2}][${ndims+2}];
     fpdtype_t mmnts[${ndims+2}];
+    fpdtype_t gm;
     
     for (int iter = 0; iter < ${niters}; iter++) {
         // Zero cost-function and Jacobian
@@ -22,9 +23,9 @@
         // Compute discrete Maxwellian
         for (int i = 0; i < ${nvars}; i++) {
             % if ndims == 2:
-                g = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
+                gm = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
             % elif ndims == 3:
-                g = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
+                gm = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
             % endif
 
             // Integrate
@@ -42,17 +43,17 @@
 
 
             % for ivar in range(ndims+2):
-                R[${ivar}] += mmnts[${ivar}]*M[0][i]*g;
+                R[${ivar}] += mmnts[${ivar}]*M[0][i]*gm;
 
-                J[${ivar}][0] += mmnts[${ivar}]*M[0][i]*g/alpha[0];
-                J[${ivar}][2] += mmnts[${ivar}]*M[0][i]*g*2*alpha[1]*(u[i][0] - alpha[2]);
-                J[${ivar}][3] += mmnts[${ivar}]*M[0][i]*g*2*alpha[1]*(u[i][1] - alpha[3]);
+                J[${ivar}][0] += mmnts[${ivar}]*M[0][i]*gm/alpha[0];
+                J[${ivar}][2] += mmnts[${ivar}]*M[0][i]*gm*2*alpha[1]*(u[i][0] - alpha[2]);
+                J[${ivar}][3] += mmnts[${ivar}]*M[0][i]*gm*2*alpha[1]*(u[i][1] - alpha[3]);
 
                 % if ndims == 2:
-                    J[${ivar}][1] += mmnts[${ivar}]*M[0][i]*g*(-(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
+                    J[${ivar}][1] += mmnts[${ivar}]*M[0][i]*gm*(-(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
                 % elif ndims == 3:
-                    J[${ivar}][1] += mmnts[${ivar}]*M[0][i]*g*(-(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
-                    J[${ivar}][4] += mmnts[${ivar}]*M[0][i]*g*2*alpha[1]*(u[i][2] - alpha[4]);
+                    J[${ivar}][1] += mmnts[${ivar}]*M[0][i]*gm*(-(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
+                    J[${ivar}][4] += mmnts[${ivar}]*M[0][i]*gm*2*alpha[1]*(u[i][2] - alpha[4]);
                 % endif
             % endfor
         }

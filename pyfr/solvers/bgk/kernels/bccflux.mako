@@ -6,19 +6,21 @@
 <%include file='pyfr.solvers.bgk.kernels.bcs.${bctype}'/>
 
 <%pyfr:kernel name='bccflux' ndim='1'
-              ul='inout view fpdtype_t[${str(nvars)}]'
+              fl='inout view fpdtype_t[${str(nvars)}]'
               nl='in fpdtype_t[${str(ndims)}]'
-              magnl='in fpdtype_t'>
+              magnl='in fpdtype_t'
+              u='in broadcast fpdtype_t[${str(nvars)}][${str(ndims)}]'
+              M='in broadcast fpdtype_t[1][${str(nvars)}]'>
     // Compute the RHS
-    fpdtype_t ur[${nvars}];
-    ${pyfr.expand('bc_rsolve_state', 'ul', 'nl', 'ur')};
+    fpdtype_t fr[${nvars}];
+    ${pyfr.expand('bc_rsolve_state', 'fl', 'nl', 'fr', 'u', 'M')};
 
     // Perform the Riemann solve
-    fpdtype_t fn[${nvars}];
-    ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'fn')};
+    fpdtype_t Fn[${nvars}];
+    ${pyfr.expand('rsolve', 'fl', 'fr', 'nl', 'Fn')};
 
     // Scale and write out the common normal fluxes
 % for i in range(nvars):
-    ul[${i}] = magnl*fn[${i}];
+    fl[${i}] = magnl*Fn[${i}];
 % endfor
 </%pyfr:kernel>

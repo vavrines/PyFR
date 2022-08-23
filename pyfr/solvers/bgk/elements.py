@@ -79,6 +79,68 @@ def setup_BGK(cfg, ndims):
     
     return [u, PSint, psi]
     
+def iterate_DVM(Uloc, u, ndims, moments, PSint, gamma, niters):
+    def compute_discrete_maxwellian(alpha):
+        # Compute the macro/micro velocity defect
+        dv2 =  (u[...,0] - alpha[2])**2
+        dv2 += (u[...,1] - alpha[3])**2
+        if ndims == 3:
+            dv2 += (u[...,2] - alpha[4])**2
+
+        M = (alpha[0]*np.exp(-alpha[1]*dv2))
+        return M
+    
+    # Change local variables into alpha vector
+    if ndims == 2:
+        [rholoc, rhouloc, rhovloc, Eloc] = Uloc
+        p = (gamma - 1.)*(Eloc - 0.5*(rhouloc**2 + rhovloc**2)/rholoc)
+        theta = p/rholoc
+        alpha = np.zeros(ndims+2)
+
+        alpha[0] = rholoc/(2*np.pi*theta)**(ndims/2.0) # A
+        alpha[1] = 1.0/(2*theta) # B
+        alpha[2] = rhouloc/rholoc # C,D,E
+        alpha[3] = rhovloc/rholoc # C,D,E
+    elif ndims == 3:
+        [rholoc, rhouloc, rhovloc, rhowloc, Eloc] = Uloc
+        p = (gamma - 1.)*(Eloc - 0.5*(rhouloc**2 + rhovloc**2 + rhowloc**2)/rholoc)
+        theta = p/rholoc
+        alpha = np.zeros(ndims+2)
+
+        alpha[0] = rholoc/(2*np.pi*theta)**(ndims/2.0) # A
+        alpha[1] = 1.0/(2*theta) # B
+        alpha[2] = rhouloc/rholoc # C,D,E
+        alpha[3] = rhovloc/rholoc # C,D,E
+        alpha[4] = rhowloc/rholoc # C,D,E
+
+    Mloc = compute_discrete_maxwellian(alpha)
+
+    # Perform Newton iterations to find optimal Maxwellian
+    for _ in range(niters):
+        # Derivatives with respect to alpha
+        Q = [None]*(ndims+2)
+        Q[0] = 1.0/alpha[0]
+        if ndims == 2:
+            Q[1] = -((u[...,0] - alpha[2])**2 + (u[...,1] - alpha[3])**2)
+            Q[2] = 2*alpha[1]*(u[...,0] - alpha[2])
+            Q[3] = 2*alpha[1]*(u[...,1] - alpha[3])
+        elif ndims == 3:
+            Q[1] = -((u[...,0] - alpha[2])**2 + (u[...,1] - alpha[3])**2 + (u[...,2] - alpha[4])**2)
+            Q[2] = 2*alpha[1]*(u[...,0] - alpha[2])
+            Q[3] = 2*alpha[1]*(u[...,1] - alpha[3])
+            Q[4] = 2*alpha[1]*(u[...,2] - alpha[4])
+        
+        F = [None]*(ndims+2)
+        J = np.zeros((ndims+2, ndims+2))
+        for ivar in range(ndims+2):
+            psiM = moments[:,ivar]*Mloc
+            F[ivar] = np.dot(PSint, psiM) - Uloc[ivar]
+            for jvar in range(ndims+2):
+                J[ivar, jvar] = np.dot(PSint, Q[jvar]*psiM)
+
+        alpha = alpha - np.linalg.inv(J) @ F
+        Mloc = compute_discrete_maxwellian(alpha)
+    return Mloc
 
 class BGKElements(BaseAdvectionElements):    
     formulations = ['std', 'dual']
@@ -119,18 +181,6 @@ class BGKElements(BaseAdvectionElements):
         # Compute the internal/total energy
         gamma = cfg.getfloat('constants', 'gamma')
         E = p/(gamma - 1) + 0.5*rho*sum(c*c for c in U)
-
-        def compute_discrete_maxwellian(alpha):
-            # Compute the macro/micro velocity defect
-            dv2 =  (self.u[...,0] - alpha[2])**2
-            dv2 += (self.u[...,1] - alpha[3])**2
-            # dv2 += (self.u[...,1] - D)**2
-            if self.ndims == 3:
-                dv2 += (self.u[...,2] - alpha[4])**2
-
-            M = (alpha[0]*np.exp(-alpha[1]*dv2))
-            return M
-
         M = np.zeros((self.nupts, self.nvars, self.neles))
         
         # (nupts, _, nelems) = np.shape(M)
@@ -146,57 +196,13 @@ class BGKElements(BaseAdvectionElements):
                     rhowloc = rhoUs[2] if np.isscalar(rhoUs[2]) else rhoUs[2][uidx, eidx]
                 Eloc = E if np.isscalar(E) else E[uidx, eidx]
 
-                # Change local variables into alpha vector
                 if self.ndims == 2:
                     Uloc = [rholoc, rhouloc, rhovloc, Eloc]
-                    p = (gamma - 1.)*(Eloc - 0.5*(rhouloc**2 + rhovloc**2)/rholoc)
-                    theta = p/rholoc
-                    alpha = np.zeros(self.ndims+2)
-
-                    alpha[0] = rholoc/(2*np.pi*theta)**(self.ndims/2.0) # A
-                    alpha[1] = 1.0/(2*theta) # B
-                    alpha[2] = rhouloc/rholoc # C,D,E
-                    alpha[3] = rhovloc/rholoc # C,D,E
                 elif self.ndims == 3:
                     Uloc = [rholoc, rhouloc, rhovloc, rhowloc, Eloc]
-                    p = (gamma - 1.)*(Eloc - 0.5*(rhouloc**2 + rhovloc**2 + rhowloc**2)/rholoc)
-                    theta = p/rholoc
-                    alpha = np.zeros(self.ndims+2)
-
-                    alpha[0] = rholoc/(2*np.pi*theta)**(self.ndims/2.0) # A
-                    alpha[1] = 1.0/(2*theta) # B
-                    alpha[2] = rhouloc/rholoc # C,D,E
-                    alpha[3] = rhovloc/rholoc # C,D,E
-                    alpha[4] = rhowloc/rholoc # C,D,E
 
                 # Compute local Maxwellian
-                Mloc = compute_discrete_maxwellian(alpha)
-
-                # Perform Newton iterations to find optimal Maxwellian
-                for _ in range(niters):
-                    # Derivatives with respect to alpha
-                    Q = [None]*(self.ndims+2)
-                    Q[0] = 1.0/alpha[0]
-                    if self.ndims == 2:
-                        Q[1] = -((self.u[...,0] - alpha[2])**2 + (self.u[...,1] - alpha[3])**2)
-                        Q[2] = 2*alpha[1]*(self.u[...,0] - alpha[2])
-                        Q[3] = 2*alpha[1]*(self.u[...,1] - alpha[3])
-                    elif self.ndims == 3:
-                        Q[1] = -((self.u[...,0] - alpha[2])**2 + (self.u[...,1] - alpha[3])**2 + (self.u[...,2] - alpha[4])**2)
-                        Q[2] = 2*alpha[1]*(self.u[...,0] - alpha[2])
-                        Q[3] = 2*alpha[1]*(self.u[...,1] - alpha[3])
-                        Q[4] = 2*alpha[1]*(self.u[...,2] - alpha[4])
-                    
-                    F = [None]*(self.ndims+2)
-                    J = np.zeros((self.ndims+2, self.ndims+2))
-                    for ivar in range(self.ndims+2):
-                        psiM = self.moments[:,ivar]*Mloc
-                        F[ivar] = np.dot(self.PSint, psiM) - Uloc[ivar]
-                        for jvar in range(self.ndims+2):
-                            J[ivar, jvar] = np.dot(self.PSint, Q[jvar]*psiM)
-                    alpha = alpha - np.linalg.inv(J) @ F
-                    Mloc = compute_discrete_maxwellian(alpha)
-                M[uidx, :, eidx] = Mloc
+                M[uidx, :, eidx] = iterate_DVM(Uloc, self.u, self.ndims, self.moments, self.PSint, gamma, niters)
 
         return M
 
@@ -234,6 +240,7 @@ class BGKElements(BaseAdvectionElements):
 
         ub = self.basis.ubasis
         meanweights = ub.invvdm[:,0]/np.sum(ub.invvdm[:,0])
+        self.niters = self.cfg.getint('solver', 'niters')
 
         # Template parameters for the flux kernels
         tplargs = {
@@ -243,7 +250,7 @@ class BGKElements(BaseAdvectionElements):
             'jac_exprs': self.basis.jac_exprs, 
             'u': self.u, 'moments': self.moments, 'PSint': self.PSint,
             'srcex': self._src_exprs, 'pi': np.pi,
-            'tau': self.cfg.getfloat('constants', 'tau'), 'niters': 2,
+            'tau': self.cfg.getfloat('constants', 'tau'), 'niters': self.niters,
             'wts': meanweights
         }
 

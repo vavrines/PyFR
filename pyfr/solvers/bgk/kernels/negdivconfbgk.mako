@@ -60,7 +60,7 @@
     alpha[4] = W;
 % endif 
 
-    ${pyfr.expand('iterate_DVM', 'alpha', 'u', 'M')};
+    ${pyfr.expand('iterate_DVM', 'alpha', 'w', 'u', 'M')};
 
 for (int i = 0; i < ${nvars}; i++)
 {

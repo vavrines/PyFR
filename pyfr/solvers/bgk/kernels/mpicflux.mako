@@ -5,16 +5,16 @@
 <%include file='pyfr.solvers.bgk.kernels.rsolvers.${rsolver}'/>
 
 <%pyfr:kernel name='mpicflux' ndim='1'
-              ul='inout view fpdtype_t[${str(nvars)}]'
-              ur='in mpi fpdtype_t[${str(nvars)}]'
+              fl='inout view fpdtype_t[${str(nvars)}]'
+              fr='in mpi fpdtype_t[${str(nvars)}]'
               nl='in fpdtype_t[${str(ndims)}]'
               magnl='in fpdtype_t'>
     // Perform the Riemann solve
-    fpdtype_t fn[${nvars}];
-    ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'fn')};
+    fpdtype_t Fn[${nvars}];
+    ${pyfr.expand('rsolve', 'fl', 'fr', 'nl', 'Fn')};
 
     // Scale and write out the common normal fluxes
 % for i in range(nvars):
-    ul[${i}] = magnl*fn[${i}];
+    fl[${i}] = magnl*Fn[${i}];
 % endfor
 </%pyfr:kernel>
