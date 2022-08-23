@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from ctypes.wintypes import PSIZE
 from pyfr.solvers.baseadvec import BaseAdvectionElements
 import numpy as np
 
@@ -9,144 +10,66 @@ def setup_BGK(cfg, ndims):
     Nz = cfg.getint('solver', 'Nz', 1)
 
     Lx = cfg.getliteral('solver', 'Lx', [-1, 1])
-    Ly = cfg.getliteral('solver', 'Ly', [-0.5, 0.5])
-    Lz = cfg.getliteral('solver', 'Lz', [-0.5, 0.5])
+    Ly = cfg.getliteral('solver', 'Ly', [-1, 1])
+    Lz = cfg.getliteral('solver', 'Lz', [-1, 1])
 
-    basistype = cfg.get('solver', 'basistype', 'gauss-radial')
 
-    if basistype == 'uniform':
-        if ndims == 2:
-            nvars = Nx*Ny
-            u = np.zeros((nvars, ndims))
+    if ndims == 2:
+        nvars = Nx*Ny 
+        u = np.zeros((nvars, ndims))
+        w = np.zeros((nvars))
 
-            ux = np.linspace(Lx[0], Lx[1], Nx+1)
-            ux = 0.5*(ux[1:] + ux[:-1])
-            uy = np.linspace(Ly[0], Ly[1], Ny+1)
-            uy = 0.5*(uy[1:] + uy[:-1])
-            
-            uxx, uyy = np.meshgrid(ux, uy)
-            u[:,0] = np.reshape(uxx, (-1))
-            u[:,1] = np.reshape(uyy, (-1))
-        elif ndims == 3:
-            nvars = Nx*Ny*Nz
-            u = np.zeros((nvars, ndims))
+        [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
 
-            ux = np.linspace(Lx[0], Lx[1], Nx+1)
-            ux = 0.5*(ux[1:] + ux[:-1])
-            uy = np.linspace(Ly[0], Ly[1], Ny+1)
-            uy = 0.5*(uy[1:] + uy[:-1])
-            uz = np.linspace(Lz[0], Lz[1], Nz+1)
-            uz = 0.5*(uz[1:] + uz[:-1])
-            
-            uxx, uyy, uzz = np.meshgrid(ux, uy, uz)
-            u[:,0] = np.reshape(uxx, (-1))
-            u[:,1] = np.reshape(uyy, (-1))
-            u[:,2] = np.reshape(uzz, (-1))
-    elif basistype == 'gauss-uniform':
-        if ndims == 2:
-            nvars = Nx*Ny
-            u = np.zeros((nvars, ndims))
-            w = np.zeros((nvars))
+        r0 = [0.5*(Lx[0] + Lx[1]), 0.5*(Ly[0] + Ly[1])] 
+        rmax = 0.5*(Lx[1] - Lx[0])
 
-            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
-            [gauss_pts_y, gauss_wts_y] = np.polynomial.legendre.leggauss(Ny)
+        ur = 0.5*(gauss_pts_x + 1)*rmax
+        wts_r = (gauss_wts_x/2.0)*ur
 
-            ux = Lx[0] + 0.5*(Lx[1] - Lx[0])*(gauss_pts_x + 1)
-            uy = Ly[0] + 0.5*(Ly[1] - Ly[0])*(gauss_pts_y + 1)
-            
-            uxx, uyy = np.meshgrid(ux, uy)
-            wxx, wyy = np.meshgrid(gauss_wts_x, gauss_wts_y)
-            u[:,0] = np.reshape(uxx, (-1))
-            u[:,1] = np.reshape(uyy, (-1))
-            w = (1./4.)*np.reshape(wxx, (-1))*np.reshape(wyy, (-1))
-        elif ndims == 3:
-            nvars = Nx*Ny*Nz
-            u = np.zeros((nvars, ndims))
-            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
-            [gauss_pts_y, gauss_wts_y] = np.polynomial.legendre.leggauss(Ny)
-            [gauss_pts_z, gauss_wts_z] = np.polynomial.legendre.leggauss(Nz)
+        ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
+        wts_t = np.ones_like(ut)/len(ut)
 
-            ux = Lx[0] + 0.5*(Lx[1] - Lx[0])*(gauss_pts_x + 1)
-            uy = Ly[0] + 0.5*(Ly[1] - Ly[0])*(gauss_pts_y + 1)
-            uz = Lz[0] + 0.5*(Lz[1] - Lz[0])*(gauss_pts_z + 1)
-            
-            uxx, uyy, uzz = np.meshgrid(ux, uy, uz)
-            wxx, wyy, wzz = np.meshgrid(gauss_wts_x, gauss_wts_y, gauss_wts_z)
-            u[:,0] = np.reshape(uxx, (-1))
-            u[:,1] = np.reshape(uyy, (-1))
-            u[:,2] = np.reshape(uzz, (-1))
-            w = (1./8.)*np.reshape(wxx, (-1))*np.reshape(wyy, (-1))*np.reshape(wzz, (-1))
-    elif basistype == 'gauss-radial':
-        if ndims == 2:
-            nvars = Nx*Ny 
-            u = np.zeros((nvars, ndims))
-            w = np.zeros((nvars))
+        ux = r0[0] + np.outer(ur, np.cos(ut))
+        uy = r0[1] + np.outer(ur, np.sin(ut))
+        wts = np.outer(wts_r, wts_t)            
 
-            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
+        u[:,0] = np.reshape(ux, (-1))
+        u[:,1] = np.reshape(uy, (-1))
+        w = np.reshape(wts, (-1))
 
-            r0 = [0.5*(Lx[0] + Lx[1]), 0.5*(Ly[0] + Ly[1])] 
-            rmax = 0.5*(Lx[1] - Lx[0])
+        PSint = w*(2*np.pi*rmax)
+    elif ndims == 3:
+        nvars = Nx*Ny*Nz
+        u = np.zeros((nvars, ndims))
+        w = np.zeros((nvars))
 
-            ur = 0.5*(gauss_pts_x + 1)*rmax
-            wts_r = gauss_wts_x*(ur/rmax)
+        [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
 
-            ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
-            wts_t = np.ones_like(ut)/len(ut)
+        r0 = [0.5*(Lx[0] + Lx[1]), 0.5*(Ly[0] + Ly[1]), 0.5*(Lz[0] + Lz[1])] 
+        rmax = 0.5*(Lx[1] - Lx[0])
 
-            ux = r0[0] + np.outer(ur, np.cos(ut))
-            uy = r0[1] + np.outer(ur, np.sin(ut))
-            wts = np.outer(wts_r, wts_t)            
+        ur = 0.5*(gauss_pts_x + 1)*rmax
+        wts_r = (gauss_wts_x/2.0)*ur
+        
+        ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
+        wts_t = np.ones_like(ut)/len(ut)
 
-            u[:,0] = np.reshape(ux, (-1))
-            u[:,1] = np.reshape(uy, (-1))
-            w = np.reshape(wts, (-1))
-        elif ndims == 3:
-            nvars = Nx*Ny*Nz
-            u = np.zeros((nvars, ndims))
-            w = np.zeros((nvars))
+        up = np.linspace(0, np.pi, Nz, endpoint=False)
+        wts_p = np.ones_like(up)/len(up)
 
-            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
+        ux = r0[0] + np.outer(np.outer(ur, np.sin(up))      , np.cos(ut))
+        uy = r0[1] + np.outer(np.outer(ur, np.sin(up))      , np.sin(ut))
+        uz = r0[2] + np.outer(np.outer(ur, np.cos(up)), np.ones_like(ut)) 
+        wts = np.outer(np.outer(wts_r, wts_t), wts_p)
 
-            r0 = [0.5*(Lx[0] + Lx[1]), 0.5*(Ly[0] + Ly[1]), 0.5*(Lz[0] + Lz[1])] 
-            rmax = 0.5*(Lx[1] - Lx[0])
+        u[:,0] = np.reshape(ux, (-1))
+        u[:,1] = np.reshape(uy, (-1))
+        u[:,2] = np.reshape(uz, (-1))
+        w = np.reshape(wts, (-1))
 
-            ur = 0.5*(gauss_pts_x + 1)*rmax
-            wts_r = (gauss_wts_x)*(ur/rmax)
-            
-            ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
-            wts_t = np.ones_like(ut)/len(ut)
+        PSint = w*(2*4./3.*np.pi*rmax**2)
 
-            up = np.linspace(0, np.pi, Nz, endpoint=False)
-            wts_p = np.ones_like(up)/len(up)
-
-            ux = r0[0] + np.outer(np.outer(ur, np.sin(up))      , np.cos(ut))
-            uy = r0[1] + np.outer(np.outer(ur, np.sin(up))      , np.sin(ut))
-            uz = r0[2] + np.outer(np.outer(ur, np.cos(up)), np.ones_like(ut)) 
-            wts = np.outer(np.outer(wts_r, wts_t), wts_p)
-
-            u[:,0] = np.reshape(ux, (-1))
-            u[:,1] = np.reshape(uy, (-1))
-            u[:,2] = np.reshape(uz, (-1))
-            w = np.reshape(wts, (-1))
-    
-    if basistype == 'uniform':
-        w = np.ones(nvars)/nvars
-        if ndims == 2:
-            PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])
-        elif ndims == 3:
-            PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])*(Lz[1] - Lz[0])
-    elif basistype == 'gauss-uniform':
-        if ndims == 2:
-            PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])
-        elif ndims == 3:
-            PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])*(Lz[1] - Lz[0])
-    elif basistype == 'gauss-radial':
-        r = 0.5*(Lx[1] - Lx[0])
-        if ndims == 2:
-            PSint = w*np.pi*r**2
-        elif ndims == 3:
-            PSint = w*(4./3.)*np.pi*r**3
-    
     psi = np.zeros((nvars, ndims+2))
     for i in range(nvars):
         psi[i, 0] = 1
@@ -241,7 +164,6 @@ class BGKElements(BaseAdvectionElements):
                     alpha = np.zeros(self.ndims+2)
 
                     alpha[0] = rholoc/(2*np.pi*theta)**(self.ndims/2.0) # A
-                    alpha[0] = rholoc*(lam/np.pi)**(self.ndims/2.0) # A
                     alpha[1] = 1.0/(2*theta) # B
                     alpha[2] = rhouloc/rholoc # C,D,E
                     alpha[3] = rhovloc/rholoc # C,D,E
@@ -275,6 +197,7 @@ class BGKElements(BaseAdvectionElements):
                     alpha = alpha - np.linalg.inv(J) @ F
                     Mloc = compute_discrete_maxwellian(alpha)
                 M[uidx, :, eidx] = Mloc
+
         return M
 
     @staticmethod
