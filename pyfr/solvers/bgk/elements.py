@@ -299,7 +299,7 @@ class BGKElements(BaseAdvectionElements):
 
         # Positivity-preserving squeeze limiter
         if self.cfg.getbool('solver', 'limiter', True):
-            self.kernels['limiter'] = lambda : self._be.kernel(
+            self.kernels['limiter'] = lambda uin: self._be.kernel(
                 'limiter', tplargs=tplargs,
-                dims=[self.neles], f=self._scal_upts_cpy
+                dims=[self.neles], f=self.scal_upts[uin]
             )
