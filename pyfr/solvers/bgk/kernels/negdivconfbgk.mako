@@ -34,14 +34,14 @@
     }
 
     // Convert to primitive
-% if ndims == 2:
     fpdtype_t rho, U, V, p;
+% if ndims == 2:
     rho = w[0];
     U = w[1]/w[0];
     V = w[2]/w[0];
     p = ${c['gamma'] - 1.0}*(w[3] - 0.5*rho*(U*U + V*V));
 % elif ndims == 3:
-    fpdtype_t rho, U, V, W, e;
+    fpdtype_t W;
     rho = w[0];
     U = w[1]/w[0];
     V = w[2]/w[0];
