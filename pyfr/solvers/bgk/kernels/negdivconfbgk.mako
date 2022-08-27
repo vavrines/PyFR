@@ -65,9 +65,9 @@
 for (int i = 0; i < ${nvars}; i++)
 {
     % if ndims == 2:
-        g = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
+        g = alpha[0]*exp(-alpha[1]*((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3])));
     % elif ndims == 3:
-        g = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
+        g = alpha[0]*exp(-alpha[1]*((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3]) + (u[i][2]-alpha[4])*(u[i][2]-alpha[4])));
     % endif
 
     tdivtconf[i] = -rcpdjac*tdivtconf[i] + (g - f[i])/${tau};
