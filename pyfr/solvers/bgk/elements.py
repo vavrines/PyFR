@@ -50,7 +50,7 @@ def setup_BGK(cfg, ndims):
         rmax = 0.5*(Lx[1] - Lx[0])
 
         ur = 0.5*(gauss_pts_x + 1)*rmax
-        wts_r = (gauss_wts_x/2.0)*ur
+        wts_r = (gauss_wts_x/2.0)*ur**2
         
         ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
         wts_t = np.ones_like(ut)/len(ut)
@@ -70,7 +70,7 @@ def setup_BGK(cfg, ndims):
         u[:,2] = np.reshape(uz, (-1))
         w = np.reshape(wts, (-1))
 
-        PSint = w*(2*4./3.*np.pi*rmax**2)
+        PSint = w*(4.*np.pi*rmax)
 
     psi = np.zeros((nvars, ndims+2))
     for i in range(nvars):
