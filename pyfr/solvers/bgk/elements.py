@@ -55,7 +55,9 @@ def setup_BGK(cfg, ndims):
         ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
         wts_t = np.ones_like(ut)/len(ut)
 
-        up = np.linspace(0, np.pi, Nz, endpoint=False)
+        # Create open up set
+        up = np.linspace(0, np.pi, Nz+1, endpoint=False)
+        up = 0.5*(up[1:] + up[:-1])
         wts_p = np.ones_like(up)/len(up)
 
         ux = r0[0] + np.outer(np.outer(ur, np.sin(up))      , np.cos(ut))
