@@ -45,19 +45,33 @@ def setup_BGK(cfg, ndims):
         w = np.zeros((nvars))
 
         [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
-        [gauss_pts_y, gauss_wts_y] = np.polynomial.legendre.leggauss(Ny)
-        [gauss_pts_z, gauss_wts_z] = np.polynomial.legendre.leggauss(Nz)
-        ux = Lx[0] + (Lx[1] - Lx[0])*(gauss_pts_x + 1.0)/2.0
-        uy = Ly[0] + (Ly[1] - Ly[0])*(gauss_pts_y + 1.0)/2.0
-        uz = Lz[0] + (Lz[1] - Lz[0])*(gauss_pts_z + 1.0)/2.0
 
-        uxx, uyy, uzz = np.meshgrid(ux, uy, uz)
-        wxx, wyy, wzz = np.meshgrid(gauss_wts_x, gauss_wts_y, gauss_wts_z)
-        u[:,0] = np.reshape(uxx, (-1))
-        u[:,1] = np.reshape(uyy, (-1))
-        u[:,2] = np.reshape(uzz, (-1))
-        w = (1./8.)*np.reshape(wxx, (-1))*np.reshape(wyy, (-1))*np.reshape(wzz, (-1))
-        PSint = w*(Lx[1] - Lx[0])*(Ly[1] - Ly[0])*(Lz[1] - Lz[0])
+        r0 = [0.5*(Lx[0] + Lx[1]), 0.5*(Ly[0] + Ly[1]), 0.5*(Lz[0] + Lz[1])] 
+        rmax = 0.5*(Lx[1] - Lx[0])
+
+        ur = 0.5*(gauss_pts_x + 1)*rmax
+        wts_r = (gauss_wts_x/2.0)*ur**2
+        
+        ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
+        wts_t = np.ones_like(ut)/len(ut)
+
+        # Create open up set
+        up = np.linspace(0, np.pi, Nz+1, endpoint=False)
+        up = 0.5*(up[1:] + up[:-1])
+        wts_p = np.ones_like(up)/len(up)
+
+        ux = r0[0] + np.outer(np.outer(ur, np.sin(up))      , np.cos(ut))
+        uy = r0[1] + np.outer(np.outer(ur, np.sin(up))      , np.sin(ut))
+        uz = r0[2] + np.outer(np.outer(ur, np.cos(up)), np.ones_like(ut)) 
+        wts = np.outer(np.outer(wts_r, wts_t), wts_p)
+
+        u[:,0] = np.reshape(ux, (-1))
+        u[:,1] = np.reshape(uy, (-1))
+        u[:,2] = np.reshape(uz, (-1))
+        w = np.reshape(wts, (-1))
+
+        PSint = w*(4.*np.pi*rmax)
+
     psi = np.zeros((nvars, ndims+2))
     for i in range(nvars):
         psi[i, 0] = 1
