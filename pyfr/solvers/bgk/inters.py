@@ -15,12 +15,13 @@ class BGKIntInters(BaseAdvectionIntInters):
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self.c, u=self.u)
+                       c=self.c)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'intcflux', tplargs=tplargs, dims=[self.ninterfpts],
             fl=self._scal_lhs, fr=self._scal_rhs,
-            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
+            u=self.umat
         )
 
 
@@ -32,12 +33,13 @@ class BGKMPIInters(BaseAdvectionMPIInters):
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self.c, u=self.u)
+                       c=self.c)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'mpicflux', tplargs, dims=[self.ninterfpts],
             fl=self._scal_lhs, fr=self._scal_rhs,
-            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs
+            magnl=self._mag_pnorm_lhs, nl=self._norm_pnorm_lhs,
+            u=self.umat
         )
 
 

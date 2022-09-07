@@ -7,20 +7,21 @@
               f='in fpdtype_t[${str(nvars)}]'
               F='out fpdtype_t[${str(ndims)}][${str(nvars)}]'
               verts='in broadcast-col fpdtype_t[${str(nverts)}][${str(ndims)}]'
-              upts='in broadcast-row fpdtype_t[${str(ndims)}]'>
+              upts='in broadcast-row fpdtype_t[${str(ndims)}]'
+              u='in broadcast fpdtype_t[${str(nvars)}][${str(ndims)}]'>
     // Compute the S matrices
     fpdtype_t smats[${ndims}][${ndims}], djac;
     ${pyfr.expand('calc_smats_detj', 'verts', 'upts', 'smats', 'djac')};
 
     // Compute and transform the fluxes
     fpdtype_t ftemp[${ndims}];
-% for j in range(nvars):
+for (int j = 0; j < ${nvars}; j++) {
     % for i in range(ndims):
-    ftemp[${i}] = ${-u[j,i]}*f[${j}]; // Flux = -u(x,y,t).f(x,y,t)
+    ftemp[${i}] = -u[j][${i}]*f[j]; // Flux = -u(x,y,t).f(x,y,t)
     % endfor
 
     % for i in range(ndims):
-    F[${i}][${j}] = ${' + '.join(f'smats[{i}][{k}]*ftemp[{k}]' for k in range(ndims))};
+    F[${i}][j] = ${' + '.join(f'smats[{i}][{k}]*ftemp[{k}]' for k in range(ndims))};
     % endfor
-% endfor
+}
 </%pyfr:kernel>

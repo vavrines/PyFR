@@ -242,6 +242,9 @@ class BGKElements(BaseAdvectionElements):
         meanweights = ub.invvdm[:,0]/np.sum(ub.invvdm[:,0])
         self.niters = self.cfg.getint('solver', 'niters')
 
+        self.umat = self._be.const_matrix(self.u)
+        self.M = self._be.const_matrix(np.reshape(self.PSint, (1, -1)))
+        
         # Template parameters for the flux kernels
         tplargs = {
             'ndims': self.ndims, 'nupts': self.nupts, 
@@ -262,31 +265,30 @@ class BGKElements(BaseAdvectionElements):
             self.kernels['tdisf_curved'] = lambda uin: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, r[c]],
                 f=s(self.scal_upts[uin], c), F=s(self._vect_upts, c),
-                smats=self.curved_smat_at('upts')
+                smats=self.curved_smat_at('upts'), u=self.umat
             )
         elif c in r:
             self.kernels['tdisf_curved'] = lambda: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nqpts, r[c]],
                 f=s(self._scal_qpts, c), F=s(self._vect_qpts, c),
-                smats=self.curved_smat_at('qpts')
+                smats=self.curved_smat_at('qpts'), u=self.umat
             )
 
         if l in r and 'flux' not in self.antialias:
             self.kernels['tdisf_linear'] = lambda uin: self._be.kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nupts, r[l]],
                 f=s(self.scal_upts[uin], l), F=s(self._vect_upts, l),
-                verts=self.ploc_at('linspts', l), upts=self.upts
+                verts=self.ploc_at('linspts', l), upts=self.upts,
+                u=self.umat
             )
         elif l in r:
             self.kernels['tdisf_linear'] = lambda: self._be.kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nqpts, r[l]],
                 f=s(self._scal_qpts, l), F=s(self._vect_qpts, l),
-                verts=self.ploc_at('linspts', l), upts=self.qpts
+                verts=self.ploc_at('linspts', l), upts=self.qpts,
+                u=self.umat
             )
 
-        self.umat = self._be.const_matrix(self.u)
-        self.M = self._be.const_matrix(np.reshape(self.PSint, (1, -1)))
-        
         plocsrc = self._ploc_in_src_exprs
         plocupts = self.ploc_at('upts') if plocsrc else None
     

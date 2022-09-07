@@ -8,14 +8,15 @@
               fl='inout view fpdtype_t[${str(nvars)}]'
               fr='inout view fpdtype_t[${str(nvars)}]'
               nl='in fpdtype_t[${str(ndims)}]'
-              magnl='in fpdtype_t'>
+              magnl='in fpdtype_t'
+              u='in broadcast fpdtype_t[${str(nvars)}][${str(ndims)}]'>
     // Perform the Riemann solve
     fpdtype_t Fn[${nvars}];
-    ${pyfr.expand('rsolve', 'fl', 'fr', 'nl', 'Fn')};
+    ${pyfr.expand('rsolve', 'fl', 'fr', 'nl', 'Fn', 'u')};
 
     // Scale and write out the common normal fluxes
-% for i in range(nvars):
-    fl[${i}] =  magnl*Fn[${i}];
-    fr[${i}] = -magnl*Fn[${i}];
-% endfor
+for (int i = 0; i < ${nvars}; i++) {
+    fl[i] =  magnl*Fn[i];
+    fr[i] = -magnl*Fn[i];
+}
 </%pyfr:kernel>
