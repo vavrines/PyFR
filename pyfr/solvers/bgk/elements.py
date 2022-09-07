@@ -166,6 +166,8 @@ class BGKElements(BaseAdvectionElements):
 
         [self.u, self.PSint, self.moments] = setup_BGK(cfg, self.ndims)
         self.nvars = len(self.u)
+        
+        self.iterate_ICs = cfg.getbool('solver', 'iterate_ICs', True)
 
         super().__init__(basiscls, eles, cfg)
 
@@ -183,7 +185,7 @@ class BGKElements(BaseAdvectionElements):
         
         # (nupts, _, nelems) = np.shape(M)
 
-        niters = 5 # Large iteration count for ICs
+        niters = 5 if self.iterate_ICs else 0 # Large iteration count for ICs
         for uidx in range(self.nupts):
             for eidx in range(self.neles):
                 # Get local variables
