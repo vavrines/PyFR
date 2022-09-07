@@ -5,33 +5,32 @@ from pyfr.solvers.baseadvec import BaseAdvectionElements
 import numpy as np
 
 def setup_BGK(cfg, ndims):
-    Nx = cfg.getint('solver', 'Nx', 8)
-    Ny = cfg.getint('solver', 'Ny', 8)
-    Nz = cfg.getint('solver', 'Nz', 1)
+    Nr = cfg.getint('solver', 'Nr')
+    Nt = cfg.getint('solver', 'Nt')
+    if ndims == 3:
+        Np = cfg.getint('solver', 'Np')
 
-    Lx = cfg.getliteral('solver', 'Lx', [-1, 1])
-    Ly = cfg.getliteral('solver', 'Ly', [-1, 1])
-    Lz = cfg.getliteral('solver', 'Lz', [-1, 1])
-
+    rmax = cfg.getfloat('solver', 'rmax')
+    u0 = cfg.getfloat('solver', 'u0')
+    v0 = cfg.getfloat('solver', 'v0')
+    if ndims == 3:
+        w0 = cfg.getfloat('solver', 'w0')
 
     if ndims == 2:
-        nvars = Nx*Ny 
+        nvars = Nr*Nt 
         u = np.zeros((nvars, ndims))
         w = np.zeros((nvars))
 
-        [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
-
-        r0 = [0.5*(Lx[0] + Lx[1]), 0.5*(Ly[0] + Ly[1])] 
-        rmax = 0.5*(Lx[1] - Lx[0])
+        [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
 
         ur = 0.5*(gauss_pts_x + 1)*rmax
         wts_r = (gauss_wts_x/2.0)*ur
 
-        ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
+        ut = np.linspace(-np.pi, np.pi, Nt, endpoint=False)
         wts_t = np.ones_like(ut)/len(ut)
 
-        ux = r0[0] + np.outer(ur, np.cos(ut))
-        uy = r0[1] + np.outer(ur, np.sin(ut))
+        ux = u0 + np.outer(ur, np.cos(ut))
+        uy = v0 + np.outer(ur, np.sin(ut))
         wts = np.outer(wts_r, wts_t)            
 
         u[:,0] = np.reshape(ux, (-1))
@@ -40,29 +39,26 @@ def setup_BGK(cfg, ndims):
 
         PSint = w*(2*np.pi*rmax)
     elif ndims == 3:
-        nvars = Nx*Ny*Nz
+        nvars = Nr*Nt*Np
         u = np.zeros((nvars, ndims))
         w = np.zeros((nvars))
 
-        [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nx)
-
-        r0 = [0.5*(Lx[0] + Lx[1]), 0.5*(Ly[0] + Ly[1]), 0.5*(Lz[0] + Lz[1])] 
-        rmax = 0.5*(Lx[1] - Lx[0])
+        [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
 
         ur = 0.5*(gauss_pts_x + 1)*rmax
         wts_r = (gauss_wts_x/2.0)*ur**2
         
-        ut = np.linspace(-np.pi, np.pi, Ny, endpoint=False)
+        ut = np.linspace(-np.pi, np.pi, Nt, endpoint=False)
         wts_t = np.ones_like(ut)/len(ut)
 
         # Create open up set
-        up = np.linspace(0, np.pi, Nz+1, endpoint=False)
+        up = np.linspace(0, np.pi, Np+1, endpoint=False)
         up = 0.5*(up[1:] + up[:-1])
         wts_p = np.ones_like(up)/len(up)
 
-        ux = r0[0] + np.outer(np.outer(ur, np.sin(up))      , np.cos(ut))
-        uy = r0[1] + np.outer(np.outer(ur, np.sin(up))      , np.sin(ut))
-        uz = r0[2] + np.outer(np.outer(ur, np.cos(up)), np.ones_like(ut)) 
+        ux = u0 + np.outer(np.outer(ur, np.sin(up))      , np.cos(ut))
+        uy = v0 + np.outer(np.outer(ur, np.sin(up))      , np.sin(ut))
+        uz = w0 + np.outer(np.outer(ur, np.cos(up)), np.ones_like(ut)) 
         wts = np.outer(np.outer(wts_r, wts_t), wts_p)
 
         u[:,0] = np.reshape(ux, (-1))
