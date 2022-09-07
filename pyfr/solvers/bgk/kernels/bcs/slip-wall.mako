@@ -15,7 +15,7 @@
             wl[3] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1]);
         % elif ndims == 3:
             wl[3] += fl[i]*M[0][i]*u[i][2];
-            lw[4] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1] + u[i][2]*u[i][2]);
+            wl[4] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1] + u[i][2]*u[i][2]);
         % endif
     }
 
@@ -32,7 +32,9 @@
     // Compute right state (subtract normal velocity)
     fpdtype_t rhor, Ur[${ndims}], pr;
     fpdtype_t wr[${ndims+2}];
-    wr[0] = rhor = rhol;
+    rhor = rhol;
+    
+    wr[0] = rhor;
     fpdtype_t nor = ${' + '.join(f'Ul[{i}]*nl[{i}]' for i in range(ndims))};
     % for i in range(ndims):
     Ur[${i}] = Ul[${i}] - nor*nl[${i}];
