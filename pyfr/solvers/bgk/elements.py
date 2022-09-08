@@ -228,10 +228,6 @@ class BGKElements(BaseAdvectionElements):
     def set_backend(self, *args, **kwargs):
         super().set_backend(*args, **kwargs)
 
-        # Can elide interior flux calculations at p = 0
-        if self.basis.order == 0:
-            return
-
         # Register our flux kernels
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.tfluxlin')
@@ -300,7 +296,7 @@ class BGKElements(BaseAdvectionElements):
         )
 
         # Positivity-preserving squeeze limiter
-        if self.cfg.getbool('solver', 'limiter', True):
+        if self.cfg.getbool('solver', 'limiter', False):
             self.kernels['limiter'] = lambda uin: self._be.kernel(
                 'limiter', tplargs=tplargs,
                 dims=[self.neles], f=self.scal_upts[uin]

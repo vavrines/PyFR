@@ -74,15 +74,15 @@
         % endif
 
         if (un > 0.0) {
-            eta1 += fl[i]*M[0][i];
+            eta1 += fl[i]*M[0][i]*abs(un);
         }
         else {
 
-            eta2 += Mw[i]*M[0][i];
+            eta2 += Mw[i]*M[0][i]*abs(un);
         }
     }
 
-    fpdtype_t eta = eta1/max(eta2, ${10**-12});
+    fpdtype_t eta = eta1/eta2;
 
     for (int i = 0; i < ${nvars}; i++)
     {
