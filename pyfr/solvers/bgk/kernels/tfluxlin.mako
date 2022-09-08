@@ -17,7 +17,7 @@
     fpdtype_t ftemp[${ndims}];
 for (int j = 0; j < ${nvars}; j++) {
     % for i in range(ndims):
-    ftemp[${i}] = -u[j][${i}]*f[j]; // Flux = -u(x,y,t).f(x,y,t)
+    ftemp[${i}] = u[j][${i}]*f[j]; // Flux = u(x,y,t).f(x,y,t)
     % endfor
 
     % for i in range(ndims):

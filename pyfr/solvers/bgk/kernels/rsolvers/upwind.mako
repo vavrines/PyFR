@@ -11,14 +11,14 @@ for (int j = 0; j < ${nvars}; j++)
     nv += n[${i}]*u[j][${i}];
     % endfor
 
-    if (nv < 0.0) {
+    if (nv > 0.0) {
         % for i in range(ndims):
-        nF[j] += n[${i}]*(-u[j][${i}]*fl[j]);
+        nF[j] += n[${i}]*(u[j][${i}]*fl[j]);
         % endfor
     }
     else {
         % for i in range(ndims):
-        nF[j] += n[${i}]*(-u[j][${i}]*fr[j]);
+        nF[j] += n[${i}]*(u[j][${i}]*fr[j]);
         % endfor
     }
 }
