@@ -12,10 +12,18 @@
         wl[2] += fl[i]*M[0][i]*u[i][1];
 
         % if ndims == 2:
-            wl[3] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1]);
+            % if delta:
+                wl[3] += fl[i]*M[0][i]*(0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1]) + u[i][2]);
+            % else:
+                wl[3] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1])
+            % endif
         % elif ndims == 3:
-            wl[3] += fl[i]*M[0][i]*u[i][2];
-            wl[4] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1] + u[i][2]*u[i][2]);
+            wl[3] += fl[i]*M[0][i]*u[i][2];            
+            % if delta:
+                w[4] += f[i]*M[0][i]*(0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1] + u[i][2]*u[i][2]) + u[i][3]);
+            % else:
+                w[4] += f[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1] + u[i][2]*u[i][2]);
+            % endif
         % endif
     }
 
@@ -66,11 +74,19 @@
     for (int i = 0; i < ${nvars}; i++)
     {
         un = ${pyfr.dot('u[i][{j}]', 'nl[{j}]', j=ndims)};
-
+        
         % if ndims == 2:
-        Mw[i] = alpha[0]*exp(-alpha[1]*((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3])));
+            Mw[i] = alpha[0]*exp(-alpha[1]*((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3])));
+            % if delta:
+            fpdtype_t theta = 1.0/(2.0*alpha[1]);
+            Mw[i] *= ${lam}*pow(u[i][2]/theta, ${0.5*delta - 1.})*(1./theta)*exp(-u[i][2]/theta);
+            % endif
         % elif ndims == 3:
-        Mw[i] = alpha[0]*exp(-alpha[1]*((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3]) + (u[i][2]-alpha[4])*(u[i][2]-alpha[4])));
+            Mw[i] = alpha[0]*exp(-alpha[1]*((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3]) + (u[i][2]-alpha[4])*(u[i][2]-alpha[4])));
+            % if delta:
+            fpdtype_t theta = 1.0/(2.0*alpha[1]);
+            Mw[i] *= ${lam}*pow(u[i][3]/theta, ${0.5*delta - 1.})*(1./theta)*exp(-u[i][3]/theta);
+            % endif
         % endif
 
         if (un > 0.0) {

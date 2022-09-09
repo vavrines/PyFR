@@ -5,6 +5,7 @@ from pyfr.solvers.baseadvec import (BaseAdvectionIntInters,
                                     BaseAdvectionBCInters)
 
 import numpy as np
+from math import gamma as gamma_func
 
 class BGKIntInters(BaseAdvectionIntInters):
     def __init__(self, *args, **kwargs):
@@ -51,10 +52,12 @@ class BGKBaseBCInters(BaseAdvectionBCInters):
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         self.niters = self.cfg.getint('solver', 'niters')
+        delta = self.cfg.getint('solver', 'delta')
+        lam = 1.0/gamma_func(delta/2.0) if delta else 0.0
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
                        c=self.c, u=self.u, bctype=self.type, niters=self.niters,
-                       pi=np.pi)
+                       pi=np.pi, delta=delta, lam=lam)
         
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'bccflux', tplargs=tplargs, dims=[self.ninterfpts],

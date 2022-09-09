@@ -3,6 +3,7 @@
 from ctypes.wintypes import PSIZE
 from pyfr.solvers.baseadvec import BaseAdvectionElements
 import numpy as np
+from math import gamma as gamma_func
 
 def setup_BGK(cfg, ndims):
     Nr = cfg.getint('solver', 'Nr')
@@ -16,28 +17,67 @@ def setup_BGK(cfg, ndims):
     if ndims == 3:
         w0 = cfg.getfloat('solver', 'w0')
 
+    delta = cfg.getint('solver', 'delta')
+    if delta != 0:
+        zmax = cfg.getfloat('solver', 'zmax')
+        Nz = cfg.getint('solver', 'Nz')
+
     if ndims == 2:
-        nvars = Nr*Nt 
-        u = np.zeros((nvars, ndims))
-        w = np.zeros((nvars))
+        if delta:
+            nvars = Nr*Nt*Nz
+            u = np.zeros((nvars, ndims + 1))
+            w = np.zeros((nvars))
 
-        [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
+            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
 
-        ur = 0.5*(gauss_pts_x + 1)*rmax
-        wts_r = (gauss_wts_x/2.0)*ur
+            ur = 0.5*(gauss_pts_x + 1)*rmax
+            wts_r = (gauss_wts_x/2.0)*ur
 
-        ut = np.linspace(-np.pi, np.pi, Nt, endpoint=False)
-        wts_t = np.ones_like(ut)/len(ut)
+            ut = np.linspace(-np.pi, np.pi, Nt, endpoint=False)
+            wts_t = np.ones_like(ut)/len(ut)
 
-        ux = u0 + np.outer(ur, np.cos(ut))
-        uy = v0 + np.outer(ur, np.sin(ut))
-        wts = np.outer(wts_r, wts_t)            
+            
+            [gauss_pts_z, gauss_wts_z] = np.polynomial.legendre.leggauss(Nz)
+            uz = 0.5*(gauss_pts_z + 1)*zmax
+            wts_z = (gauss_wts_z/2.0)*zmax
 
-        u[:,0] = np.reshape(ux, (-1))
-        u[:,1] = np.reshape(uy, (-1))
-        w = np.reshape(wts, (-1))
+            ux = u0 + np.outer(ur, np.cos(ut))
+            uy = v0 + np.outer(ur, np.sin(ut))
+            wts = np.outer(wts_z, np.outer(wts_r, wts_t))
 
-        PSint = w*(2*np.pi*rmax)
+            [uxx, uzz] = np.meshgrid(ux, uz)
+            [uyy, uzz] = np.meshgrid(uy, uz)
+
+            u[:,0] = np.reshape(uxx, (-1))
+            u[:,1] = np.reshape(uyy, (-1))
+            u[:,2] = np.reshape(uzz, (-1))
+
+            w = np.reshape(wts, (-1))
+
+            PSint = w*(2*np.pi*rmax)
+        else:
+            nvars = Nr*Nt
+            u = np.zeros((nvars, ndims))
+            w = np.zeros((nvars))
+
+            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
+
+            ur = 0.5*(gauss_pts_x + 1)*rmax
+            wts_r = (gauss_wts_x/2.0)*ur
+
+            ut = np.linspace(-np.pi, np.pi, Nt, endpoint=False)
+            wts_t = np.ones_like(ut)/len(ut)
+
+            ux = u0 + np.outer(ur, np.cos(ut))
+            uy = v0 + np.outer(ur, np.sin(ut))
+            wts = np.outer(wts_r, wts_t)            
+
+            u[:,0] = np.reshape(ux, (-1))
+            u[:,1] = np.reshape(uy, (-1))
+            w = np.reshape(wts, (-1))
+
+            PSint = w*(2*np.pi*rmax)
+
     elif ndims == 3:
         nvars = Nr*Nt*Np
         u = np.zeros((nvars, ndims))
@@ -68,25 +108,49 @@ def setup_BGK(cfg, ndims):
 
         PSint = w*(4.*np.pi*rmax)
 
+
     psi = np.zeros((nvars, ndims+2))
     for i in range(nvars):
         psi[i, 0] = 1
         for j in range(ndims):
             psi[i, 1+j] = u[i, j]
-        psi[i, -1] = 0.5*np.linalg.norm(u[i,:])**2
+
+        if delta != 0:
+            psi[i, -1] = 0.5*np.linalg.norm(u[i,:-1])**2 + u[i,-1]
+        else:
+            psi[i, -1] = 0.5*np.linalg.norm(u[i,:])**2
     
     return [u, PSint, psi]
     
-def iterate_DVM(Uloc, u, ndims, moments, PSint, gamma, niters):
-    def compute_discrete_maxwellian(alpha):
-        # Compute the macro/micro velocity defect
-        dv2 =  (u[...,0] - alpha[2])**2
-        dv2 += (u[...,1] - alpha[3])**2
-        if ndims == 3:
-            dv2 += (u[...,2] - alpha[4])**2
+def iterate_DVM(Uloc, u, ndims, moments, PSint, gamma, niters, delta):
+    if delta != 0:
+        def compute_discrete_maxwellian(alpha):
+            # Compute the macro/micro velocity defect
+            dv2 =  (u[...,0] - alpha[2])**2
+            dv2 += (u[...,1] - alpha[3])**2
+            if ndims == 3:
+                dv2 += (u[...,2] - alpha[4])**2
 
-        M = (alpha[0]*np.exp(-alpha[1]*dv2))
-        return M
+            Mv = (alpha[0]*np.exp(-alpha[1]*dv2))
+
+            theta = 1.0/(2.0*alpha[1])
+            zeta = u[...,-1]
+            lam = 1.0/gamma_func(delta/2.0)
+            Me = lam*(zeta/theta)**(0.5*delta - 1.)*(1./theta)*np.exp(-zeta/theta)
+
+            M = Mv*Me
+
+            return M
+    else:
+        def compute_discrete_maxwellian(alpha):
+            # Compute the macro/micro velocity defect
+            dv2 =  (u[...,0] - alpha[2])**2
+            dv2 += (u[...,1] - alpha[3])**2
+            if ndims == 3:
+                dv2 += (u[...,2] - alpha[4])**2
+
+            M = (alpha[0]*np.exp(-alpha[1]*dv2))
+            return M
     
     # Change local variables into alpha vector
     if ndims == 2:
@@ -114,6 +178,7 @@ def iterate_DVM(Uloc, u, ndims, moments, PSint, gamma, niters):
     Mloc = compute_discrete_maxwellian(alpha)
 
     # Perform Newton iterations to find optimal Maxwellian
+    F = [0.0]*(ndims+2)
     for _ in range(niters):
         # Derivatives with respect to alpha
         Q = [None]*(ndims+2)
@@ -128,7 +193,9 @@ def iterate_DVM(Uloc, u, ndims, moments, PSint, gamma, niters):
             Q[3] = 2*alpha[1]*(u[...,1] - alpha[3])
             Q[4] = 2*alpha[1]*(u[...,2] - alpha[4])
         
-        F = [None]*(ndims+2)
+        if delta:
+            Q[1] += (delta - 4*u[:,-1]*alpha[1])/(2*alpha[1])
+        
         J = np.zeros((ndims+2, ndims+2))
         for ivar in range(ndims+2):
             psiM = moments[:,ivar]*Mloc
@@ -138,6 +205,8 @@ def iterate_DVM(Uloc, u, ndims, moments, PSint, gamma, niters):
 
         alpha = alpha - np.linalg.inv(J) @ F
         Mloc = compute_discrete_maxwellian(alpha)
+    if np.max(F) > 1e-6:
+        print('Did not converge: ', F)
     return Mloc
 
 class BGKElements(BaseAdvectionElements):    
@@ -168,6 +237,7 @@ class BGKElements(BaseAdvectionElements):
         self.nvars = len(self.u)
         
         self.iterate_ICs = cfg.getbool('solver', 'iterate_ICs', True)
+        self.delta = cfg.getint('solver', 'delta')
 
         super().__init__(basiscls, eles, cfg)
 
@@ -202,7 +272,7 @@ class BGKElements(BaseAdvectionElements):
                     Uloc = [rholoc, rhouloc, rhovloc, rhowloc, Eloc]
 
                 # Compute local Maxwellian
-                M[uidx, :, eidx] = iterate_DVM(Uloc, self.u, self.ndims, self.moments, self.PSint, gamma, niters)
+                M[uidx, :, eidx] = iterate_DVM(Uloc, self.u, self.ndims, self.moments, self.PSint, gamma, niters, self.delta)
 
         return M
 
@@ -217,7 +287,13 @@ class BGKElements(BaseAdvectionElements):
             rhoU = np.dot(PSint, (f.swapaxes(0,2)*u[:,i]).swapaxes(1,2)).T
             Vs.append(rhoU/rho)
 
-        E = np.dot(PSint, 0.5*(f.swapaxes(0,2)*np.linalg.norm(u, axis=1)**2).swapaxes(1,2)).T
+        idofs = len(u.T) == ndims
+
+        if idofs:
+            E = np.dot(PSint, 0.5*(f.swapaxes(0,2)*np.linalg.norm(u[:,:-1], axis=1)**2).swapaxes(1,2)).T
+            E += np.dot(PSint, (f.swapaxes(0,2)*u[:,-1]).swapaxes(1,2)).T
+        else:
+            E = np.dot(PSint, 0.5*(f.swapaxes(0,2)*np.linalg.norm(u, axis=1)**2).swapaxes(1,2)).T
 
         # Compute the pressure
         gamma = cfg.getfloat('constants', 'gamma')
@@ -240,6 +316,7 @@ class BGKElements(BaseAdvectionElements):
 
         self.umat = self._be.const_matrix(self.u)
         self.M = self._be.const_matrix(np.reshape(self.PSint, (1, -1)))
+        lam = 1.0/gamma_func(self.delta/2.0)
         
         # Template parameters for the flux kernels
         tplargs = {
@@ -250,7 +327,7 @@ class BGKElements(BaseAdvectionElements):
             'u': self.u, 'moments': self.moments, 'PSint': self.PSint,
             'srcex': self._src_exprs, 'pi': np.pi,
             'tau': self.cfg.getfloat('constants', 'tau'), 'niters': self.niters,
-            'wts': meanweights
+            'wts': meanweights, 'delta': self.delta, 'lam': lam
         }
 
         # Helpers

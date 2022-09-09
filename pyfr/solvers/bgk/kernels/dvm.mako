@@ -23,9 +23,19 @@
         for (int i = 0; i < ${nvars}; i++) {
             % if ndims == 2:
                 gm = alpha[0]*exp(-alpha[1]*((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3])));
+                % if delta:
+                fpdtype_t theta = 1.0/(2.0*alpha[1]);
+                gm *= ${lam}*pow(u[i][2]/theta, ${0.5*delta - 1.})*(1./theta)*exp(-u[i][2]/theta);
+                % endif 
             % elif ndims == 3:
                 gm = alpha[0]*exp(-alpha[1]*((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3]) + (u[i][2]-alpha[4])*(u[i][2]-alpha[4])));
+                % if delta:
+                fpdtype_t theta = 1.0/(2.0*alpha[1]);
+                gm *= ${lam}*pow(u[i][3]/theta, ${0.5*delta - 1.})*(1./theta)*exp(-u[i][3]/theta);
+                % endif 
             % endif
+
+  
 
             // Integrate
             mmnts[0] = 1.0;
@@ -33,13 +43,18 @@
             mmnts[1] = u[i][0];
             mmnts[2] = u[i][1];
             mmnts[3] = 0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1]);
+                % if delta:
+                mmnts[3] += u[i][2];
+                % endif 
             % elif ndims == 3:
             mmnts[1] = u[i][0];
             mmnts[2] = u[i][1];
             mmnts[3] = u[i][2];
             mmnts[4] = 0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1] + u[i][2]*u[i][2]);
+                % if delta:
+                mmnts[4] += u[i][3];
+                % endif 
             % endif
-
 
             % for ivar in range(ndims+2):
                 R[${ivar}] += mmnts[${ivar}]*M[0][i]*gm;
@@ -50,9 +65,17 @@
 
                 % if ndims == 2:
                     J[${ivar}][1] += mmnts[${ivar}]*M[0][i]*gm*(-((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3])));
+                    
+                    % if delta:
+                    J[${ivar}][1] += mmnts[${ivar}]*M[0][i]*gm*(${delta} - 4*u[i][2]*alpha[1])/(2*alpha[1]);
+                    % endif
                 % elif ndims == 3:
                     J[${ivar}][1] += mmnts[${ivar}]*M[0][i]*gm*(-((u[i][0]-alpha[2])*(u[i][0]-alpha[2]) + (u[i][1]-alpha[3])*(u[i][1]-alpha[3]) + (u[i][2]-alpha[4])*(u[i][2]-alpha[4])));
                     J[${ivar}][4] += mmnts[${ivar}]*M[0][i]*gm*2*alpha[1]*(u[i][2] - alpha[4]);
+
+                    % if delta:
+                    J[${ivar}][1] += mmnts[${ivar}]*M[0][i]*gm*(${delta} - 4*u[i][3]*alpha[1])/(2*alpha[1]);
+                    % endif
                 % endif
             % endfor
         }

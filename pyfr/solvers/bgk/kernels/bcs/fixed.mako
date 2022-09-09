@@ -30,9 +30,17 @@
     for (int i = 0; i < ${nvars}; i++)
     {
         % if ndims == 2:
-        fr[i] = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
+            fr[i] = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
+            % if delta:
+            fpdtype_t theta = 1.0/(2.0*alpha[1]);
+            fr[i] *= ${lam}*pow(u[i][2]/theta, ${0.5*delta - 1.})*(1./theta)*exp(-u[i][2]/theta);
+            % endif
         % elif ndims == 3:
-        fr[i] = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
+            fr[i] = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
+            % if delta:
+            fpdtype_t theta = 1.0/(2.0*alpha[1]);
+            fr[i] *= ${lam}*pow(u[i][3]/theta, ${0.5*delta - 1.})*(1./theta)*exp(-u[i][3]/theta);
+            % endif
         % endif
     }
     
