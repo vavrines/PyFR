@@ -12,6 +12,7 @@ from pyfr.util import memoize
 
 class BaseElements:
     privarmap = None
+    pasvarmap = {}
     convarmap = None
 
     def __init__(self, basiscls, eles, cfg):
@@ -34,6 +35,9 @@ class BaseElements:
         # Determine the number of dynamical variables
         self.nvars = len(self.privarmap[ndims])
 
+        # Determine the number of passive variables
+        self.npass = len(self.pasvarmap[ndims])
+
         # Instantiate the basis class
         self.basis = basis = basiscls(nspts, cfg)
 
@@ -54,10 +58,10 @@ class BaseElements:
     def validate_formulation(form, intg, cfg):
         pass
 
-    def pri_to_con(pris, cfg):
+    def pri_to_con(pris, cfg, passive=None):
         pass
 
-    def con_to_pri(cons, cfg):
+    def con_to_pri(cons, cfg, passive=None):
         pass
 
     def set_ics_from_cfg(self):
@@ -78,9 +82,21 @@ class BaseElements:
         # Allocate
         self.scal_upts = np.empty((self.nupts, self.nvars, self.neles))
 
-        # Convert from primitive to conservative form
-        for i, v in enumerate(self.pri_to_con(ics, self.cfg)):
-            self.scal_upts[:, i, :] = v
+        if self.npass != 0:
+            ics_p = [npeval(self.cfg.getexpr('soln-ics', dv), vars)
+                for dv in self.pasvarmap[self.ndims]]
+
+            # Allocate
+            self.pass_upts = np.empty((self.nupts, self.npass, self.neles))
+            # Convert from primitive to conservative form
+            for i, v in enumerate(self.pri_to_con(ics, self.cfg, ics_p)):
+                    self.scal_upts[:, i, :] = v
+                    self.pass_upts[:, i, :] = ics_p
+        else:
+            self.pass_upts = None
+            # Convert from primitive to conservative form
+            for i, v in enumerate(self.pri_to_con(ics, self.cfg)):
+                    self.scal_upts[:, i, :] = v
 
     def set_ics_from_soln(self, solnmat, solncfg):
         # Recreate the existing solution basis
@@ -182,6 +198,7 @@ class BaseElements:
         # Sizes
         ndims, nvars, neles = self.ndims, self.nvars, self.neles
         nfpts, nupts, nqpts = self.nfpts, self.nupts, self.nqpts
+        npass = self.npass
         sbufs, abufs = self._scratch_bufs, []
 
         # Convenience functions for scalar/vector allocation
@@ -196,6 +213,10 @@ class BaseElements:
             self._scal_fpts = salloc('scal_fpts', nfpts)
         if 'scal_qpts' in sbufs:
             self._scal_qpts = salloc('scal_qpts', nqpts)
+        if 'pass_upts' in sbufs:
+            self._pass_upts = alloc('pass_upts', (nupts, npass, neles))
+        if 'pass_fpts' in sbufs:
+            self._pass_fpts = alloc('pass_fpts', (nfpts, npass, neles))
 
         # Allocate additional scalar scratch space
         if 'scal_upts_cpy' in sbufs:
@@ -392,6 +413,14 @@ class BaseElements:
         cmap = (eidx,)*nfp
 
         return (self._scal_fpts.mid,)*nfp, rmap, cmap
+
+    def get_pass_fpts_for_inter(self, eidx, fidx):
+        nfp = self.nfacefpts[fidx]
+
+        rmap = self._srtd_face_fpts[fidx][eidx]
+        cmap = (eidx,)*nfp
+
+        return (self._pass_fpts.mid,)*nfp, rmap, cmap
 
     def get_vect_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]

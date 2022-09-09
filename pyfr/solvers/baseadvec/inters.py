@@ -18,6 +18,11 @@ class BaseAdvectionIntInters(BaseInters):
         self._scal_lhs = self._scal_view(lhs, 'get_scal_fpts_for_inter')
         self._scal_rhs = self._scal_view(rhs, 'get_scal_fpts_for_inter')
 
+        # Generate the left and right hand side view matrices for passives
+        if self.npass != 0:
+            self._pass_lhs = self._scal_view(lhs, 'get_pass_fpts_for_inter')
+            self._pass_rhs = self._scal_view(rhs, 'get_pass_fpts_for_inter')
+
         # Generate the additional view matrices for entropy filtering
         if cfg.get('solver', 'shock-capturing') == 'entropy-filter':
             self._entmin_lhs = self._view(lhs, 'get_entmin_int_fpts_for_inter')
@@ -55,6 +60,11 @@ class BaseAdvectionMPIInters(BaseInters):
         self._scal_lhs = self._scal_xchg_view(lhs, 'get_scal_fpts_for_inter')
         self._scal_rhs = be.xchg_matrix_for_view(self._scal_lhs)
 
+        # Generate the left hand view matrix and its dual for passives
+        if self.npass != 0:
+            self._pass_lhs = self._scal_xchg_view(lhs, 'get_pass_fpts_for_inter')
+            self._pass_rhs = be.xchg_matrix_for_view(self._scal_lhs)
+
         self._pnorm_lhs = self._const_mat(lhs, 'get_pnorms_for_inter')
 
         # Kernels
@@ -73,6 +83,25 @@ class BaseAdvectionMPIInters(BaseInters):
         self.mpireqs['scal_fpts_recv'] = lambda: self._scal_rhs.recvreq(
             self._rhsrank, scal_fpts_tag
         )
+
+        if self.npass != 0:
+            # Kernels
+            self.kernels['pass_fpts_pack'] = lambda: be.kernel(
+                'pack', self._pass_lhs
+            )
+            self.kernels['pass_fpts_unpack'] = lambda: be.kernel(
+                'unpack', self._pass_rhs
+            )
+
+            # Associated MPI requests
+            pass_fpts_tag = next(self._mpi_tag_counter)
+            self.mpireqs['pass_fpts_send'] = lambda: self._pass_lhs.sendreq(
+                self._rhsrank, pass_fpts_tag
+            )
+            self.mpireqs['pass_fpts_recv'] = lambda: self._pass_rhs.recvreq(
+                self._rhsrank, pass_fpts_tag
+            )
+
 
         if cfg.get('solver', 'shock-capturing') == 'entropy-filter':
             self._entmin_lhs = self._xchg_view(
