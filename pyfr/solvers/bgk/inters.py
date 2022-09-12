@@ -7,6 +7,30 @@ from pyfr.solvers.baseadvec import (BaseAdvectionIntInters,
 import numpy as np
 from math import gamma as gamma_func
 
+def reflect2D(side, Nr, Nt, Nz=1):
+      N = Nr*Nt*Nz
+      pairs = np.zeros(N, dtype=int)
+
+      assert Nt % 4 == 0, 'Nt must be div4 for wall BCs.'
+
+      if side == 'lr':
+            tpairs = np.linspace(0, Nt-1, Nt, dtype=int)[::-1]
+            tpairs = np.roll(tpairs, Nt//2 + 1) 
+      elif side == 'ud':
+            tpairs = np.linspace(0, Nt-1, Nt, dtype=int)[::-1]
+            tpairs = np.roll(tpairs, 1)
+      elif side == 'diagr':
+            tpairs = np.linspace(0, Nt-1, Nt, dtype=int)[::-1]
+            tpairs = np.roll(tpairs, Nt//4 + 1)
+
+      n = 0
+      for i in range(Nz):
+            for j in range(Nr):
+                  for k in range(Nt):
+                        pairs[n + k] = n + tpairs[k]
+                  n += Nt
+      return pairs
+
 class BGKIntInters(BaseAdvectionIntInters):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -55,9 +79,19 @@ class BGKBaseBCInters(BaseAdvectionBCInters):
         delta = self.cfg.getint('solver', 'delta')
         lam = 1.0/gamma_func(delta/2.0) if delta else 0.0
 
+                # Get reflections for wall BCs
+        Nr = self.cfg.getint('solver', 'Nr')
+        Nt = self.cfg.getint('solver', 'Nt')
+        Nz = self.cfg.getint('solver', 'Nz') if delta else 1
+
+        self.LRidxs = reflect2D('lr', Nr, Nt, Nz)
+        self.UDidxs = reflect2D('ud', Nr, Nt, Nz)
+        self.DRidxs = reflect2D('diagr', Nr, Nt, Nz)
+
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
                        c=self.c, u=self.u, bctype=self.type, niters=self.niters,
-                       pi=np.pi, delta=delta, lam=lam)
+                       pi=np.pi, delta=delta, lam=lam, LRidxs=self.LRidxs, 
+                       UDidxs=self.UDidxs, DRidxs=self.DRidxs)
         
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'bccflux', tplargs=tplargs, dims=[self.ninterfpts],
@@ -83,7 +117,7 @@ class BGKFixedBCInters(BGKBaseBCInters):
 class BGKSlipWallBCInters(BGKBaseBCInters):
     type = 'slip-wall'
 
-class BGKNoSlipWallBCInters(BGKBaseBCInters):
-    type = 'no-slip-wall'
+class BGKSpecularBCInters(BGKBaseBCInters):
+    type = 'specular'
 
 
