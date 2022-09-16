@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from collections import defaultdict
 
 from pyfr.solvers.baseadvec import BaseAdvectionElements
 
@@ -9,22 +10,26 @@ class BaseMPFluidElements:
     @classmethod
     def privarmap(cls, cfg, ndims):
         ns = cfg.getint('solver', 'species')
-        return {2: ([f'rho{i}' for i in range(ns)] + ['u', 'v', 'p'] +
-                    [f'alpha{i}' for i in range(ns - 1)]),
-                3: ([f'rho{i}' for i in range(ns)] + ['u', 'v', 'w', 'p'] +
-                    [f'alpha{i}' for i in range(ns - 1)]),
-               }[ndims]
+        m = defaultdict(lambda: None)
+        m |= {2: ([f'rho{i}' for i in range(ns)] + ['u', 'v', 'p'] +
+                  [f'alpha{i}' for i in range(ns - 1)]),
+              3: ([f'rho{i}' for i in range(ns)] + ['u', 'v', 'w', 'p'] +
+                  [f'alpha{i}' for i in range(ns - 1)]),
+             }
+        return m[ndims]
 
     @classmethod
     def convarmap(cls, cfg, ndims):
         ns = cfg.getint('solver', 'species')
-        return {2: ([f'a{i}rho{i}' for i in range(ns)] + 
-                    ['rhou', 'rhov', 'E'] +
-                    [f'alpha{i}' for i in range(ns - 1)]),
-                3: ([f'a{i}rho{i}' for i in range(ns)] + 
-                    ['rhou', 'rhov', 'rhow', 'E'] +  
-                    [f'alpha{i}' for i in range(ns - 1)]),
-               }[ndims]
+        m = defaultdict(lambda: None)
+        m |= {2: ([f'a{i}rho{i}' for i in range(ns)] + 
+                  ['rhou', 'rhov', 'E'] +
+                  [f'alpha{i}' for i in range(ns - 1)]),
+              3: ([f'a{i}rho{i}' for i in range(ns)] + 
+                  ['rhou', 'rhov', 'rhow', 'E'] +  
+                  [f'alpha{i}' for i in range(ns - 1)]),
+             }
+        return m[ndims]
 
     @classmethod
     def dualcoeffs(cls, cfg, ndims):
@@ -33,15 +38,17 @@ class BaseMPFluidElements:
     @classmethod
     def visvarmap(cls, cfg, ndims):
         ns = cfg.getint('solver', 'species')
-        return {2: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] +
-                   [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] +
-                   [('velocity', ['u', 'v']),
-                    ('pressure', ['p'])],
-                3: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] + 
-                   [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] + 
-                   [('velocity', ['u', 'v', 'w']),
-                    ('pressure', ['p'])],
-               }[ndims]
+        m = defaultdict(lambda: None)
+        m |= {2: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] +
+                 [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] +
+                 [('velocity', ['u', 'v']),
+                  ('pressure', ['p'])],
+              3: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] + 
+                 [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] + 
+                 [('velocity', ['u', 'v', 'w']),
+                  ('pressure', ['p'])],
+             }
+        return m[ndims]
 
     @staticmethod
     def pri_to_con(pris, cfg):
