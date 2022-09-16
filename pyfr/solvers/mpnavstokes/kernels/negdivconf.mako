@@ -14,7 +14,7 @@
 % if i <= nvars - nspec:
     tdivtconf[${i}] = -rcpdjac*tdivtconf[${i}] + ${ex};
 % else:
-    tdivtconf[${i}] = -rcpdjac*inv_rho*(${' + '.join('u[{k}]*grad[{l}][{j}]'.format(k=nspec+l, j=nspec+ndims+1+i) for l in range(ndims))}) + ${ex};
+    tdivtconf[${i}] = -inv_rho*(${' + '.join('u[{k}]*grad[{l}][{j}]'.format(k=nspec+l, j=nspec+ndims+1+i) for l in range(ndims))}) + ${ex};
 % endif
 % endfor
 </%pyfr:kernel>

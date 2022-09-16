@@ -10,6 +10,18 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
     # Use the density field for shock sensing
     shockvar = 'rho'
 
+    @property
+    def _scratch_bufs(self):
+        if 'flux' in self.antialias:
+            bufs = {'vect_qpts_cpy', 'scal_qpts', 'vect_qpts'}
+        else:
+            bufs = {'scal_fpts', 'vect_upts'}
+
+        if self._soln_in_src_exprs:
+            bufs |= {'scal_upts_cpy'}
+
+        bufs |= {'scal_fpts', 'vect_upts_cpy'}
+
     @staticmethod
     def grad_con_to_pri(cons, grad_cons, cfg):
         rho, *rhouvw = cons[:-1]
@@ -67,29 +79,31 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
         if c in r and 'flux' not in self.antialias:
             self.kernels['tdisf_curved'] = lambda uin: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, r[c]],
-                u=s(self.scal_upts[uin], c), f=s(self._vect_upts, c),
-                artvisc=s(av, c), smats=self.curved_smat_at('upts')
+                u=s(self.scal_upts[uin], c), grad=s(self._vect_upts_cpy, l),
+                f=s(self._vect_upts, c), artvisc=s(av, c), 
+                smats=self.curved_smat_at('upts')
             )
         elif c in r:
             self.kernels['tdisf_curved'] = lambda: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nqpts, r[c]],
-                u=s(self._scal_qpts, c), f=s(self._vect_qpts, c),
-                artvisc=s(av, c), smats=self.curved_smat_at('qpts')
+                u=s(self._scal_qpts, c), grad=s(self._vect_qpts_cpy, l),
+                f=s(self._vect_qpts, c), artvisc=s(av, c), 
+                smats=self.curved_smat_at('qpts')
             )
 
         if l in r and 'flux' not in self.antialias:
             self.kernels['tdisf_linear'] = lambda uin: self._be.kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nupts, r[l]],
-                u=s(self.scal_upts[uin], l), f=s(self._vect_upts, l),
-                artvisc=s(av, l), verts=self.ploc_at('linspts', l),
-                upts=self.upts
+                u=s(self.scal_upts[uin], l), grad=s(self._vect_upts_cpy, l),
+                f=s(self._vect_upts, l), artvisc=s(av, l), 
+                verts=self.ploc_at('linspts', l), upts=self.upts
             )
         elif l in r:
             self.kernels['tdisf_linear'] = lambda: self._be.kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nqpts, r[l]],
-                u=s(self._scal_qpts, l), f=s(self._vect_qpts, l),
-                artvisc=s(av, l), verts=self.ploc_at('linspts', l),
-                upts=self.qpts
+                u=s(self._scal_qpts, l), grad=s(self._vect_qpts_cpy, l),
+                f=s(self._vect_qpts, l), artvisc=s(av, l), 
+                verts=self.ploc_at('linspts', l), upts=self.qpts
             )
 
         self.kernels['copy_grad'] = lambda: self._be.kernel(
@@ -116,3 +130,66 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, 
             u=self._scal_upts_cpy, grad=self._vect_upts_cpy,
         )
+
+        # Re-register kernels for gradient calcs
+        kernel = self._be.kernel
+        slicem = self._slice_mat
+
+        # Mesh regions
+        regions = self._mesh_regions
+
+        if self.basis.order > 0:
+            self.kernels['tgradpcoru_upts'] = lambda uin: kernel(
+                'mul', self.opmat('M4 - M6*M0'), self.scal_upts[uin],
+                out=self._vect_upts_cpy
+            )
+        self.kernels['tgradcoru_upts'] = lambda: kernel(
+            'mul', self.opmat('M6'), self._vect_fpts.slice(0, self.nfpts),
+            out=self._vect_upts_cpy, beta=float(self.basis.order > 0)
+        )
+
+        if 'curved' in regions:
+            self.kernels['gradcoru_upts_curved'] = lambda: kernel(
+                'gradcoru', tplargs=tplargs,
+                dims=[self.nupts, regions['curved']],
+                gradu=slicem(self._vect_upts_cpy, 'curved'),
+                smats=self.curved_smat_at('upts'),
+                rcpdjac=self.rcpdjac_at('upts', 'curved')
+            )
+
+        if 'linear' in regions:
+            self.kernels['gradcoru_upts_linear'] = lambda: kernel(
+                'gradcorulin', tplargs=tplargs,
+                dims=[self.nupts, regions['linear']],
+                gradu=slicem(self._vect_upts_cpy, 'linear'),
+                upts=self.upts, verts=self.ploc_at('linspts', 'linear')
+            )
+
+        def gradcoru_fpts():
+            nupts, nfpts = self.nupts, self.nfpts
+            vupts, vfpts = self._vect_upts_cpy, self._vect_fpts
+
+            # Exploit the block-diagonal form of the operator
+            muls = [kernel('mul', self.opmat('M0'),
+                           vupts.slice(i*nupts, (i + 1)*nupts),
+                           vfpts.slice(i*nfpts, (i + 1)*nfpts))
+                    for i in range(self.ndims)]
+
+            return self._be.unordered_meta_kernel(muls)
+
+        self.kernels['gradcoru_fpts'] = gradcoru_fpts
+
+        if 'flux' in self.antialias and self.basis.order > 0:
+            def gradcoru_qpts():
+                nupts, nqpts = self.nupts, self.nqpts
+                vupts, vqpts = self._vect_upts_cpy, self._vect_qpts_cpy
+
+                # Exploit the block-diagonal form of the operator
+                muls = [self._be.kernel('mul', self.opmat('M7'),
+                                        vupts.slice(i*nupts, (i + 1)*nupts),
+                                        vqpts.slice(i*nqpts, (i + 1)*nqpts))
+                        for i in range(self.ndims)]
+
+                return self._be.unordered_meta_kernel(muls)
+
+            self.kernels['gradcoru_qpts'] = gradcoru_qpts

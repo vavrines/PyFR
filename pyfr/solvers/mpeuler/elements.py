@@ -39,7 +39,7 @@ class BaseMPFluidElements:
 
     @staticmethod
     def pri_to_con(pris, cfg):
-        ns = cfg.getint('solver', 'species', 2)
+        ns = cfg.getint('solver', 'species')
         alpha = pris[1-ns:] + [sum(1 - pris[1-ns:])]
         p = pris[-ns-1]
         arho = [alpha[i]*pris[i] for i in range(ns)]

@@ -240,6 +240,8 @@ class BaseElements:
             self._scal_upts_cpy = salloc('scal_upts_cpy', nupts)
         if 'vect_upts_cpy' in sbufs:
             self._vect_upts_cpy = valloc('vect_upts_cpy', nupts)
+        if 'vect_qpts_cpy' in sbufs:
+            self._vect_qpts_cpy = valloc('vect_qpts_cpy', nqpts)
 
         # Allocate required vector scratch space
         if 'vect_upts' in sbufs:
