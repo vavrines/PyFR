@@ -40,13 +40,13 @@ class BaseMPFluidElements:
     @staticmethod
     def pri_to_con(pris, cfg):
         ns = cfg.getint('solver', 'species')
-        alpha = pris[1-ns:] + [sum(1 - pris[1-ns:])]
+        alpha = pris[1-ns:] + [1- sum(pris[1-ns:])]
         p = pris[-ns-1]
         arho = [alpha[i]*pris[i] for i in range(ns)]
         rho = sum(arho)
 
         # Multiply velocity components by rho
-        rhovs = [rho*c for c in pris[ns-1:-ns]]
+        rhovs = [rho*c for c in pris[ns:-ns]]
 
         # Compute the energy
         gamma = [cfg.getfloat('constants', f'gamma{i}') for i in range(ns)]
@@ -54,6 +54,7 @@ class BaseMPFluidElements:
 
         E = rhoe + 0.5*rho*sum(c*c for c in pris[ns-1:-ns])
 
+        print(np.shape(arho), np.shape(rhovs), np.shape(alpha))
         return arho + rhovs + [E] + alpha[:ns-1]
 
     @staticmethod
@@ -66,7 +67,7 @@ class BaseMPFluidElements:
         Rho = [arho[i]/alpha[i] for i in range(ns)]
 
         # Divide momentum components by rho
-        vs = [rhov/rho for rhov in cons[ns-1:-ns]]
+        vs = [rhov/rho for rhov in cons[ns:-ns]]
 
         # Compute the pressure
         gamma = [cfg.getfloat('constants', f'gamma{i}') for i in range(ns)]

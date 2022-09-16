@@ -15,8 +15,8 @@
               upts='in broadcast-row fpdtype_t[${str(ndims)}]'>
     // Compute the flux (F = Fi + Fv)
     fpdtype_t ftemp[${ndims}][${nvars}];
-    fpdtype_t p, v[${ndims}];
-    ${pyfr.expand('inviscid_flux', 'u', 'ftemp', 'p', 'v')};
+    fpdtype_t a[${nspec}], d, p, v[${ndims}];
+    ${pyfr.expand('inviscid_flux', 'u', 'ftemp',  'a', 'd', 'p', 'v')};
     ${pyfr.expand('viscous_flux_add', 'u', 'grad', 'ftemp')};
 
     // Compute the S matrices

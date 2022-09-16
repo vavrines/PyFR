@@ -16,7 +16,7 @@ class TplargsMixin:
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         visc_corr = self.cfg.get('solver', 'viscosity-correction', 'none')
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
-        self._tplargs = dict(ndims=self.ndims, nvars=self.nvars,
+        self._tplargs = dict(ndims=self.ndims, nvars=self.nvars, nspec=self.nspec,
                              rsolver=rsolver, visc_corr=visc_corr,
                              shock_capturing=shock_capturing, c=self.c)
 

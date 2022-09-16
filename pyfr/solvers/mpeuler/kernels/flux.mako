@@ -19,7 +19,7 @@
 
     // Compute the pressure
     fpdtype_t rhoe = E - 0.5*invrho*${pyfr.dot('rhov[{i}]', i=ndims)};
-    fpdtype_t agm = ${' + '.join('a[{i}]*{rgm}').format(i=i, rgm=1/(c[f'gamma{i}']-1)) for i in range(nspec)};
+    fpdtype_t agm = ${' + '.join('a[{i}]*{rgm}'.format(i=i, rgm=1/(c[f'gamma{i}']-1)) for i in range(nspec))};
     p = rhoe/agm;
 
     // Mass flux
@@ -37,9 +37,9 @@
     f[${i}][${ndims + nspec}] = (E + p)*v[${i}];
 % endfor
 
-    // Species flux
+    // Species flux (zeroed as set in negdivconf)
 % for i, j in pyfr.ndrange(ndims, nspec-1):
-    f[${i}][${j + nspec + ndims + 1}] = a[j]*v[i];
+    f[${i}][${j + nspec + ndims + 1}] = 0.;
 % endfor
 
 </%pyfr:macro>

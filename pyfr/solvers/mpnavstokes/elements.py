@@ -12,15 +12,14 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
 
     @property
     def _scratch_bufs(self):
+
+        bufs = {'scal_fpts', 'vect_fpts', 'vect_upts', 'vect_upts_cpy',
+                'scal_upts_cpy'}
+
         if 'flux' in self.antialias:
-            bufs = {'vect_qpts_cpy', 'scal_qpts', 'vect_qpts'}
-        else:
-            bufs = {'scal_fpts', 'vect_upts'}
+            bufs |= {'vect_qpts_cpy', 'scal_qpts', 'vect_qpts'}
 
-        if self._soln_in_src_exprs:
-            bufs |= {'scal_upts_cpy'}
-
-        bufs |= {'scal_fpts', 'vect_upts_cpy'}
+        return bufs
 
     @staticmethod
     def grad_con_to_pri(cons, grad_cons, cfg):
@@ -64,6 +63,7 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
         tplargs = {
             'ndims': self.ndims,
             'nvars': self.nvars,
+            'nspec': self.nspec,
             'nverts': len(self.basis.linspts),
             'c': self.cfg.items_as('constants', float),
             'jac_exprs': self.basis.jac_exprs,
