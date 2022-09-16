@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
-<%include file='pyfr.solvers.mpaceuler.kernels.density'/>
 
 <%pyfr:macro name='inviscid_flux' params='s, q, f, v, p'>
     fpdtype_t phi = s[${ndims + 1}];
@@ -15,7 +14,7 @@
 
 % for i in range(ndims):
     // Mass flux
-    f[${i}][0] = ${c['ac-zeta']}*rhov[${i}];
+    f[${i}][0] = ${c['mpac-zeta']}*rhov[${i}];
     // Interface flux
     f[${i}][${ndims + 1}] = v[${i}]*phi;
 % endfor

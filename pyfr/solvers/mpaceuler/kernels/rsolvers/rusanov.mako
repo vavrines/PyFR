@@ -4,18 +4,19 @@
 
 <%pyfr:macro name='rsolve' params='ul, ql, ur, qr, n, nf'>
     fpdtype_t fl[${ndims}][${nvars}], fr[${ndims}][${nvars}];
+    fpdtype_t vl[${ndims}], vr[${ndims}], pl, pr;
 
     ${pyfr.expand('inviscid_flux', 'ul', 'ql', 'fl', 'vl', 'pl')};
     ${pyfr.expand('inviscid_flux', 'ur', 'qr', 'fr', 'vr', 'pr')};
 
-    fpdtype_t vl[${ndims}] = ${pyfr.array('ul[{i}]', i=(1, ndims + 1))};
-    fpdtype_t vr[${ndims}] = ${pyfr.array('ur[{i}]', i=(1, ndims + 1))};
-
     // Normal of the average interface velocity
-    fpdtype_t nv = 0.5*${pyfr.dot('n[{i}]', 'vl[{i}] + vr[{i}]', i=ndims)};
+    fpdtype_t nvl = ${pyfr.dot('n[{i}]', 'vl[{i}]', i=ndims)};
+    fpdtype_t nvr = ${pyfr.dot('n[{i}]', 'vr[{i}]', i=ndims)};
 
     // Estimate the wave speed
-    fpdtype_t a = fabs(nv) + sqrt(nv*nv + ${c['ac-zeta']});
+    fpdtype_t al = fabs(nvl) + sqrt(nvl*nvl + ql[0]*${c['mpac-zeta']});
+    fpdtype_t ar = fabs(nvr) + sqrt(nvr*nvr + qr[0]*${c['mpac-zeta']});
+    fpdtype_t a  = max(al, ar);
 
     // Output
 % for i in range(nvars):

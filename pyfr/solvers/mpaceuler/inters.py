@@ -12,13 +12,13 @@ class MPACEulerIntInters(BaseAdvectionIntInters):
         self._be.pointwise.register('pyfr.solvers.mpaceuler.kernels.intcflux')
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
-        tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self.c)
+        tplargs = dict(ndims=self.ndims, nvars=self.nvars, npass=self.npass, 
+                       rsolver=rsolver, c=self.c)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'intcflux', tplargs=tplargs, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs, 
-            ql=self._pass_lhs, qr=self._pass_rhs, nl=self._pnorm_lhs
+            ql=self._pasv_lhs, qr=self._pasv_rhs, nl=self._pnorm_lhs
         )
 
 
@@ -29,13 +29,13 @@ class MPACEulerMPIInters(BaseAdvectionMPIInters):
         self._be.pointwise.register('pyfr.solvers.mpaceuler.kernels.mpicflux')
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
-        tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self.c)
+        tplargs = dict(ndims=self.ndims, nvars=self.nvars, npass=self.npass,
+                       rsolver=rsolver, c=self.c)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'mpicflux', tplargs, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs, 
-            ql=self._pass_lhs, qr=self._pass_rhs, nl=self._pnorm_lhs
+            ql=self._pasv_lhs, qr=self._pasv_rhs, nl=self._pnorm_lhs
         )
 
 
@@ -46,13 +46,13 @@ class MPACEulerBaseBCInters(BaseAdvectionBCInters):
         self._be.pointwise.register('pyfr.solvers.mpaceuler.kernels.bccflux')
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
-        tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self.c, bctype=self.type)
+        tplargs = dict(ndims=self.ndims, nvars=self.nvars, npass=self.npass, 
+                       rsolver=rsolver, c=self.c, bctype=self.type)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'bccflux', tplargs=tplargs, dims=[self.ninterfpts],
             extrns=self._external_args, ul=self._scal_lhs, 
-            ql=self._pass_lhs, nl=self._pnorm_lhs,
+            ql=self._pasv_lhs, nl=self._pnorm_lhs,
             **self._external_vals
         )
 

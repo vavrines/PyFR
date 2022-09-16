@@ -9,8 +9,8 @@
               f='out fpdtype_t[${str(ndims)}][${str(nvars)}]'
               smats='in fpdtype_t[${str(ndims)}][${str(ndims)}]'>
     // Compute the flux
-    fpdtype_t ftemp[${ndims}][${nvars}];
-    ${pyfr.expand('inviscid_flux', 'u', 'q', 'ftemp')};
+    fpdtype_t ftemp[${ndims}][${nvars}], v[${ndims}], p;
+    ${pyfr.expand('inviscid_flux', 'u', 'q', 'ftemp', 'v', 'p')};
 
     // Transform the fluxes
 % for i, j in pyfr.ndrange(ndims, nvars):

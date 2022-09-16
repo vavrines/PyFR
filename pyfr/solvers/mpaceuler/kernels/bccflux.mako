@@ -13,8 +13,8 @@
     fpdtype_t norm_nl[] = ${pyfr.array('(1 / mag_nl)*nl[{i}]', i=ndims)};
 
     // Compute the RHS
-    fpdtype_t ur[${nvars}];
-    ${pyfr.expand('bc_rsolve_state', 'ul', 'ql', 'norm_nl', 'ur')};
+    fpdtype_t ur[${nvars}], qr[${npass}];
+    ${pyfr.expand('bc_rsolve_state', 'ul', 'ql', 'norm_nl', 'ur', 'qr')};
 
     // Perform the Riemann solve
     fpdtype_t fn[${nvars}];

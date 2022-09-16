@@ -12,5 +12,5 @@
 % for i in range(ndims):
     u[${i + 1}] = u[${i + 1}]*dnrdo;
 % endfor
-    rho[0] = d_new;
+    q[0] = d_new;
 </%pyfr:kernel>

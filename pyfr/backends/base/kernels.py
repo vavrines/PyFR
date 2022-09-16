@@ -134,14 +134,14 @@ class BasePointwiseKernelProvider(BaseKernelProvider):
     def _instantiate_kernel(self, dims, fun, arglst, argmv):
         pass
 
-    def register(self, mod):
+    def register(self, mod, force=False):
         # Derive the name of the kernel from the module
         name = mod[mod.rfind('.') + 1:]
 
         # See if a kernel has already been registered under this name
         if hasattr(self, name):
             # Same name different module
-            if getattr(self, name)._mod != mod:
+            if getattr(self, name)._mod != mod and not force:
                 raise RuntimeError(f'Attempt to re-register "{name}" with a '
                                    'different module')
             # Otherwise (since we're already registered) return

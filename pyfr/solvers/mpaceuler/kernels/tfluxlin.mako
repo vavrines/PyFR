@@ -11,8 +11,8 @@
               verts='in broadcast-col fpdtype_t[${str(nverts)}][${str(ndims)}]'
               upts='in broadcast-row fpdtype_t[${str(ndims)}]'>
     // Compute the flux
-    fpdtype_t ftemp[${ndims}][${nvars}];
-    ${pyfr.expand('inviscid_flux', 'u', 'q', 'ftemp')};
+    fpdtype_t ftemp[${ndims}][${nvars}], v[${ndims}], p;
+    ${pyfr.expand('inviscid_flux', 'u', 'q', 'ftemp', 'v', 'p')};
 
     // Compute the S matrices
     fpdtype_t smats[${ndims}][${ndims}], djac;

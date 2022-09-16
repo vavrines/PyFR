@@ -20,8 +20,8 @@ class BaseAdvectionIntInters(BaseInters):
 
         # Generate the left and right hand side view matrices for passives
         if self.npass != 0:
-            self._pass_lhs = self._scal_view(lhs, 'get_pass_fpts_for_inter')
-            self._pass_rhs = self._scal_view(rhs, 'get_pass_fpts_for_inter')
+            self._pasv_lhs = self._scal_view(lhs, 'get_pasv_fpts_for_inter')
+            self._pasv_rhs = self._scal_view(rhs, 'get_pasv_fpts_for_inter')
 
         # Generate the additional view matrices for entropy filtering
         if cfg.get('solver', 'shock-capturing') == 'entropy-filter':
@@ -62,8 +62,8 @@ class BaseAdvectionMPIInters(BaseInters):
 
         # Generate the left hand view matrix and its dual for passives
         if self.npass != 0:
-            self._pass_lhs = self._scal_xchg_view(lhs, 'get_pass_fpts_for_inter')
-            self._pass_rhs = be.xchg_matrix_for_view(self._scal_lhs)
+            self._pasv_lhs = self._scal_xchg_view(lhs, 'get_pasv_fpts_for_inter')
+            self._pasv_rhs = be.xchg_matrix_for_view(self._pasv_lhs)
 
         self._pnorm_lhs = self._const_mat(lhs, 'get_pnorms_for_inter')
 
@@ -86,20 +86,20 @@ class BaseAdvectionMPIInters(BaseInters):
 
         if self.npass != 0:
             # Kernels
-            self.kernels['pass_fpts_pack'] = lambda: be.kernel(
-                'pack', self._pass_lhs
+            self.kernels['pasv_fpts_pack'] = lambda: be.kernel(
+                'pack', self._pasv_lhs
             )
-            self.kernels['pass_fpts_unpack'] = lambda: be.kernel(
-                'unpack', self._pass_rhs
+            self.kernels['pasv_fpts_unpack'] = lambda: be.kernel(
+                'unpack', self._pasv_rhs
             )
 
             # Associated MPI requests
-            pass_fpts_tag = next(self._mpi_tag_counter)
-            self.mpireqs['pass_fpts_send'] = lambda: self._pass_lhs.sendreq(
-                self._rhsrank, pass_fpts_tag
+            pasv_fpts_tag = next(self._mpi_tag_counter)
+            self.mpireqs['pasv_fpts_send'] = lambda: self._pasv_lhs.sendreq(
+                self._rhsrank, pasv_fpts_tag
             )
-            self.mpireqs['pass_fpts_recv'] = lambda: self._pass_rhs.recvreq(
-                self._rhsrank, pass_fpts_tag
+            self.mpireqs['pasv_fpts_recv'] = lambda: self._pasv_rhs.recvreq(
+                self._rhsrank, pasv_fpts_tag
             )
 
 
@@ -142,6 +142,10 @@ class BaseAdvectionBCInters(BaseInters):
         # LHS view and constant matrices
         self._scal_lhs = self._scal_view(lhs, 'get_scal_fpts_for_inter')
         self._pnorm_lhs = self._const_mat(lhs, 'get_pnorms_for_inter')
+
+        # LHS view matrix for passives
+        if self.npass != 0:
+            self._pasv_lhs = self._scal_view(lhs, 'get_pasv_fpts_for_inter')
 
         # Make the simulation time available inside kernels
         self._set_external('t', 'scalar fpdtype_t')

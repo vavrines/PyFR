@@ -12,7 +12,7 @@ from pyfr.util import memoize
 
 class BaseElements:
     privarmap = None
-    pasvarmap = {}
+    pasvarmap = None
     convarmap = None
 
     def __init__(self, basiscls, eles, cfg):
@@ -36,7 +36,8 @@ class BaseElements:
         self.nvars = len(self.privarmap[ndims])
 
         # Determine the number of passive variables
-        self.npass = len(self.pasvarmap[ndims])
+        pasvarmap = self.pasvarmap
+        self.npass = 0 if pasvarmap is None else len(pasvarmap[ndims])
 
         # Instantiate the basis class
         self.basis = basis = basiscls(nspts, cfg)
@@ -58,10 +59,10 @@ class BaseElements:
     def validate_formulation(form, intg, cfg):
         pass
 
-    def pri_to_con(pris, cfg, passive=None):
+    def pri_to_con(pris, cfg, pasv=None):
         pass
 
-    def con_to_pri(cons, cfg, passive=None):
+    def con_to_pri(cons, cfg, pasv=None):
         pass
 
     def set_ics_from_cfg(self):
@@ -86,14 +87,16 @@ class BaseElements:
             ics_p = [npeval(self.cfg.getexpr('soln-ics', dv), vars)
                 for dv in self.pasvarmap[self.ndims]]
 
-            # Allocate
-            self.pass_upts = np.empty((self.nupts, self.npass, self.neles))
             # Convert from primitive to conservative form
             for i, v in enumerate(self.pri_to_con(ics, self.cfg, ics_p)):
-                    self.scal_upts[:, i, :] = v
-                    self.pass_upts[:, i, :] = ics_p
+                self.scal_upts[:, i, :] = v
+
+            # Allocate
+            self.pasv_upts = np.empty((self.nupts, self.npass, self.neles))
+            for i, v in enumerate(ics_p):
+                self.pasv_upts[:, i, :] = ics_p
         else:
-            self.pass_upts = None
+            self.pasv_upts = None
             # Convert from primitive to conservative form
             for i, v in enumerate(self.pri_to_con(ics, self.cfg)):
                     self.scal_upts[:, i, :] = v
@@ -175,6 +178,9 @@ class BaseElements:
         subs |= dict(x='ploc[0]', y='ploc[1]', z='ploc[2]')
         subs |= dict(abs='fabs', pi=math.pi)
         subs |= {v: f'u[{i}]' for i, v in enumerate(convars)}
+        if self.npass != 0:
+            pasvars = self.pasvarmap[self.ndims]
+            subs |= {v: f'q[{i}]' for i, v in enumerate(pasvars)}
 
         return [self.cfg.getexpr('solver-source-terms', v, '0', subs=subs)
                 for v in convars]
@@ -186,6 +192,10 @@ class BaseElements:
     @cached_property
     def _soln_in_src_exprs(self):
         return any(re.search(r'\bu\b', ex) for ex in self._src_exprs)
+
+    @cached_property
+    def _pasv_in_src_exprs(self):
+        return any(re.search(r'\bq\b', ex) for ex in self._src_exprs)
 
     def set_backend(self, backend, nscalupts, nonce, linoff):
         self._be = backend
@@ -213,14 +223,23 @@ class BaseElements:
             self._scal_fpts = salloc('scal_fpts', nfpts)
         if 'scal_qpts' in sbufs:
             self._scal_qpts = salloc('scal_qpts', nqpts)
-        if 'pass_upts' in sbufs:
-            self._pass_upts = alloc('pass_upts', (nupts, npass, neles))
-        if 'pass_fpts' in sbufs:
-            self._pass_fpts = alloc('pass_fpts', (nfpts, npass, neles))
+        if 'pasv_upts' in sbufs:
+            self.pasv_upts = abufs.append(
+                backend.matrix((nupts, npass, neles), 
+                extent=nonce + 'pasv_upts', 
+                initval=self.pasv_upts, tags={'align'})
+            ) or abufs[-1]
+            #self.pasv_upts = alloc('pasv_upts', (nupts, npass, neles))
+        if 'pasv_fpts' in sbufs:
+            self._pasv_fpts = alloc('pasv_fpts', (nfpts, npass, neles))
+        if 'pasv_qpts' in sbufs:
+            self._pasv_qpts = alloc('pasv_qpts', (nqpts, npass, neles))
 
         # Allocate additional scalar scratch space
         if 'scal_upts_cpy' in sbufs:
             self._scal_upts_cpy = salloc('scal_upts_cpy', nupts)
+        if 'vect_upts_cpy' in sbufs:
+            self._vect_upts_cpy = valloc('vect_upts_cpy', nupts)
 
         # Allocate required vector scratch space
         if 'vect_upts' in sbufs:
@@ -233,7 +252,7 @@ class BaseElements:
         # Allocate the storage required by the time integrator
         self.scal_upts = [backend.matrix(self.scal_upts.shape,
                                          self.scal_upts, tags={'align'})
-                           for i in range(nscalupts)]
+                          for i in range(nscalupts)]
 
         # Find/allocate space for a solution-sized scalar
         tags = self.scal_upts[0].tags
@@ -414,13 +433,13 @@ class BaseElements:
 
         return (self._scal_fpts.mid,)*nfp, rmap, cmap
 
-    def get_pass_fpts_for_inter(self, eidx, fidx):
+    def get_pasv_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]
 
         rmap = self._srtd_face_fpts[fidx][eidx]
         cmap = (eidx,)*nfp
 
-        return (self._pass_fpts.mid,)*nfp, rmap, cmap
+        return (self._pasv_fpts.mid,)*nfp, rmap, cmap
 
     def get_vect_fpts_for_inter(self, eidx, fidx):
         nfp = self.nfacefpts[fidx]

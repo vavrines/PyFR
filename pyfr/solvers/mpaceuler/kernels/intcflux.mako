@@ -7,8 +7,8 @@
 <%pyfr:kernel name='intcflux' ndim='1'
               ul='inout view fpdtype_t[${str(nvars)}]'
               ur='inout view fpdtype_t[${str(nvars)}]'
-              pl='inout view fpdtype_t[${str(npass)}]'
-              pr='inout view fpdtype_t[${str(npass)}]'
+              ql='inout view fpdtype_t[${str(npass)}]'
+              qr='inout view fpdtype_t[${str(npass)}]'
               nl='in fpdtype_t[${str(ndims)}]'>
     fpdtype_t mag_nl = sqrt(${pyfr.dot('nl[{i}]', i=ndims)});
     fpdtype_t norm_nl[] = ${pyfr.array('(1 / mag_nl)*nl[{i}]', i=ndims)};

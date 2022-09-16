@@ -12,8 +12,8 @@ class BaseMPACFluidElements:
     convarmap = {2: ['p', 'rhou', 'rhov', 'phi'],
                  3: ['p', 'rhou', 'rhov', 'rhow', 'phi']}
 
-    dualcoeffs = {2: ['rhou', 'rhov'],
-                  3: ['rhou', 'rhov', 'rhow']}
+    dualcoeffs = {2: ['rhou', 'rhov', 'phi'],
+                  3: ['rhou', 'rhov', 'rhow', 'phi']}
 
     visvarmap = {
         2: [('velocity', ['u', 'v']),
@@ -24,9 +24,23 @@ class BaseMPACFluidElements:
             ('phase', ['phi'])]
     }
 
+    @property
+    def _scratch_bufs(self):
+        if 'flux' in self.antialias:
+            bufs = {'scal_fpts', 'scal_qpts', 'vect_qpts'}
+        else:
+            bufs = {'scal_fpts', 'vect_upts'}
+
+        if self._soln_in_src_exprs:
+            bufs |= {'scal_upts_cpy'}
+
+        bufs |= {'pasv_upts', 'pasv_fpts'}
+
+        return bufs
+
     @staticmethod
-    def pri_to_con(pris, cfg, passive):
-        rho = passive[0]
+    def pri_to_con(pris, cfg, pasv):
+        rho = pasv[0]
         p, phi = pris[0], pris[-1]
 
         # Multiply velocity components by rho
@@ -34,8 +48,8 @@ class BaseMPACFluidElements:
         return [p] + rhovs + [phi]
 
     @staticmethod
-    def con_to_pri(cons, cfg, passive):
-        rho = passive[0]
+    def con_to_pri(cons, cfg, pasv):
+        rho = pasv[0]
         p, phi = cons[0], cons[-1]
 
         # Divide momentum components by rho
@@ -62,6 +76,9 @@ class MPACEulerElements(BaseMPACFluidElements, BaseAdvectionElements):
         self._be.pointwise.register('pyfr.solvers.mpaceuler.kernels.density')
         self._be.pointwise.register('pyfr.solvers.mpaceuler.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.mpaceuler.kernels.tfluxlin')
+        self._be.pointwise.register(
+            'pyfr.solvers.mpaceuler.kernels.negdivconf', force=True
+        )
 
         # Template parameters for the flux kernels
         tplargs = {
@@ -80,7 +97,7 @@ class MPACEulerElements(BaseMPACFluidElements, BaseAdvectionElements):
         if c in r and 'flux' not in self.antialias:
             self.kernels['tdisf_curved'] = lambda uin: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, r[c]],
-                u=s(self.scal_upts[uin], c), q=s(self._pass_upts, c), 
+                u=s(self.scal_upts[uin], c), q=s(self.pasv_upts, c), 
                 f=s(self._vect_upts, c),
                 smats=self.curved_smat_at('upts')
             )
@@ -94,7 +111,7 @@ class MPACEulerElements(BaseMPACFluidElements, BaseAdvectionElements):
         if l in r and 'flux' not in self.antialias:
             self.kernels['tdisf_linear'] = lambda uin: self._be.kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nupts, r[l]],
-                u=s(self.scal_upts[uin], l), q=s(self._pass_upts, l),
+                u=s(self.scal_upts[uin], l), q=s(self.pasv_upts, l),
                 f=s(self._vect_upts, l),
                 verts=self.ploc_at('linspts', l), upts=self.upts
             )
@@ -107,11 +124,36 @@ class MPACEulerElements(BaseMPACFluidElements, BaseAdvectionElements):
 
         self.kernels['density'] = lambda uin: self._be.kernel(
             'density', tplargs=tplargs, dims=[self.nupts, self.neles],
-            u=self.scal_upts[uin], p=self._pass_upts
+            u=self.scal_upts[uin], q=self.pasv_upts
         )
 
         # Interpolation from elemental points
         self.kernels['disq'] = lambda uin: self._be.kernel(
-            'mul', self.opmat('M0'), self._pass_upts[uin],
-            out=self._pass_fpts
+            'mul', self.opmat('M0'), self.pasv_upts,
+            out=self._pasv_fpts
+        )
+
+        # What the source term expressions (if any) are a function of
+        plocsrc = self._ploc_in_src_exprs
+        solnsrc = self._soln_in_src_exprs
+        pasvsrc = self._pasv_in_src_exprs
+
+        # Source term kernel arguments
+        srctplargs = {
+            'ndims': self.ndims,
+            'nvars': self.nvars,
+            'npass': self.npass,
+            'srcex': self._src_exprs
+        }
+
+        # Transformed to physical divergence kernel + source term
+        plocupts = self.ploc_at('upts') if plocsrc else None
+        solnupts = self._scal_upts_cpy if solnsrc else None
+        pasvupts = self.pasv_upts if pasvsrc else None
+        
+        self.kernels['negdivconf'] = lambda fout: self._be.kernel(
+            'negdivconf', tplargs=srctplargs,
+            dims=[self.nupts, self.neles], tdivtconf=self.scal_upts[fout],
+            rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=solnupts, 
+            q=pasvupts,
         )

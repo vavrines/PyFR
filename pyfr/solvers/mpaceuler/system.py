@@ -5,7 +5,7 @@ from pyfr.solvers.mpaceuler.inters import (MPACEulerIntInters,
                                            MPACEulerMPIInters,
                                            MPACEulerBaseBCInters)
 from pyfr.solvers.baseadvec import BaseAdvectionSystem
-
+from pyfr.util import memoize
 
 class MPACEulerSystem(BaseAdvectionSystem):
     name = 'mpac-euler'
@@ -45,9 +45,9 @@ class MPACEulerSystem(BaseAdvectionSystem):
             g1.add_mpi_req(send, deps=[pack])
         
         # Pack and send these interpolated passives to our neighbours
-        g1.add_mpi_reqs(m['pass_fpts_recv'])
-        g1.add_all(k['mpiint/pass_fpts_pack'], deps=k['eles/disq'])
-        for send, pack in zip(m['pass_fpts_send'], k['mpiint/pass_fpts_pack']):
+        g1.add_mpi_reqs(m['pasv_fpts_recv'])
+        g1.add_all(k['mpiint/pasv_fpts_pack'], deps=k['eles/disq'])
+        for send, pack in zip(m['pasv_fpts_send'], k['mpiint/pasv_fpts_pack']):
             g1.add_mpi_req(send, deps=[pack])
 
         # If entropy filtering, pack and send the entropy values to neighbors
@@ -65,7 +65,7 @@ class MPACEulerSystem(BaseAdvectionSystem):
         # Compute the common normal flux at our internal/boundary interfaces
         g1.add_all(k['iint/comm_flux'],
                    deps=k['eles/disu'] + k['mpiint/scal_fpts_pack'] + 
-                        k['eles/disq'] + k['mpiint/pass_fpts_pack'])
+                        k['eles/disq'] + k['mpiint/pasv_fpts_pack'])
         g1.add_all(k['bcint/comm_flux'],
                    deps=k['eles/disu'] + k['bcint/comm_entropy'])
 
@@ -91,10 +91,10 @@ class MPACEulerSystem(BaseAdvectionSystem):
 
         # Compute the common normal flux at our MPI interfaces
         g2.add_all(k['mpiint/scal_fpts_unpack'])
-        g2.add_all(k['mpiint/pass_fpts_unpack'])
+        g2.add_all(k['mpiint/pasv_fpts_unpack'])
         for l in k['mpiint/comm_flux']:
             g2.add(l, deps=deps(l, 'mpiint/scal_fpts_unpack', 
-                                   'mpiint/pass_fpts_unpack'))
+                                   'mpiint/pasv_fpts_unpack'))
 
         # Compute common entropy minima at MPI interfaces
         g2.add_all(k['mpiint/ent_fpts_unpack'])

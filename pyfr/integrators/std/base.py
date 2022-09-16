@@ -46,6 +46,13 @@ class BaseStdIntegrator(BaseCommon, BaseIntegrator):
         return self._curr_soln
 
     @property
+    def pasv(self):
+        if not self._curr_pasv:
+            self._curr_pasv = self.system.get_pasv_upts()
+
+        return self._curr_pasv
+
+    @property
     def grad_soln(self):
         system = self.system
 
