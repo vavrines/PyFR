@@ -380,10 +380,11 @@ class VTKWriter(BaseWriter):
 
         # Solutions need a separate processing pipeline to other data
         if self.dataprefix == 'soln':
+            ndims, cfg = self.ndims, self.cfg
             self._pre_proc_fields = self._pre_proc_fields_soln
             self._post_proc_fields = self._post_proc_fields_soln
-            self._soln_fields = list(self.elementscls.privarmap[self.ndims])
-            self._vtk_vars = list(self.elementscls.visvarmap[self.ndims])
+            self._soln_fields = list(self.elementscls.privarmap(cfg)[ndims])
+            self._vtk_vars = list(self.elementscls.visvarmap(cfg)[ndims])
             self.tcurr = self.stats.getfloat('solver-time-integrator', 'tcurr')
         # Otherwise we're dealing with simple scalar data
         else:
@@ -402,8 +403,8 @@ class VTKWriter(BaseWriter):
 
     def _post_proc_fields_soln(self, vsoln):
         # Primitive and visualisation variable maps
-        privarmap = self.elementscls.privarmap[self.ndims]
-        visvarmap = self.elementscls.visvarmap[self.ndims]
+        privarmap = self.elementscls.privarmap(self.cfg)[self.ndims]
+        visvarmap = self.elementscls.visvarmap(self.cfg)[self.ndims]
 
         # Prepare the fields
         fields = []

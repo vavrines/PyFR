@@ -59,12 +59,13 @@ class BaseDualPseudoIntegrator(BaseCommon):
         self._gndofs = self._get_gndofs()
 
         elementscls = self.system.elementscls
-        self._subdims = [elementscls.convarmap[self.system.ndims].index(v)
-                         for v in elementscls.dualcoeffs[self.system.ndims]]
+        ndims = self.system.ndims
+        self._subdims = [elementscls.convarmap(self.cfg)[ndims].index(v)
+                         for v in elementscls.dualcoeffs(self.cfg)[ndims]]
 
         # Convergence tolerances
         self._pseudo_residtol = residtol = []
-        for v in elementscls.convarmap[self.system.ndims]:
+        for v in elementscls.convarmap(self.cfg)[ndims]:
             try:
                 residtol.append(cfg.getfloat(sect, 'pseudo-resid-tol-' + v))
             except NoOptionError:

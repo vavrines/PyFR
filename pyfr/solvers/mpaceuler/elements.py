@@ -1,28 +1,38 @@
 # -*- coding: utf-8 -*-
 
 from pyfr.solvers.baseadvec import BaseAdvectionElements
+from symbol import classdef
 
 
 class BaseMPACFluidElements:
-    privarmap = {2: ['p', 'u', 'v', 'phi'],
-                 3: ['p', 'u', 'v', 'w', 'phi']}
+    @classmethod
+    def privarmap(cls, cfg=None):
+        return {2: ['p', 'u', 'v', 'phi'],
+                3: ['p', 'u', 'v', 'w', 'phi']}
 
-    pasvarmap = {2: ['rho'], 3: ['rho']}
+    @classmethod
+    def pasvarmap(cls, cfg=None):
+        return {2: ['rho'], 3: ['rho']}
 
-    convarmap = {2: ['p', 'rhou', 'rhov', 'phi'],
-                 3: ['p', 'rhou', 'rhov', 'rhow', 'phi']}
+    @classmethod
+    def convarmap(cls, cfg=None):
+        return {2: ['p', 'rhou', 'rhov', 'phi'],
+                3: ['p', 'rhou', 'rhov', 'rhow', 'phi']}
 
-    dualcoeffs = {2: ['rhou', 'rhov', 'phi'],
-                  3: ['rhou', 'rhov', 'rhow', 'phi']}
+    @classmethod
+    def dualcoeffs(cls, cfg=None):
+        return {2: ['rhou', 'rhov', 'phi'],
+                3: ['rhou', 'rhov', 'rhow', 'phi']}
 
-    visvarmap = {
-        2: [('velocity', ['u', 'v']),
-            ('pressure', ['p']),
-            ('phase', ['phi'])],
-        3: [('velocity', ['u', 'v', 'w']),
-            ('pressure', ['p']),
-            ('phase', ['phi'])]
-    }
+    @classmethod
+    def visvarmap(cls, cfg=None):
+        return {2: [('velocity', ['u', 'v']),
+                    ('pressure', ['p']),
+                    ('phase', ['phi'])],
+                3: [('velocity', ['u', 'v', 'w']),
+                    ('pressure', ['p']),
+                    ('phase', ['phi'])]
+               }
 
     @property
     def _scratch_bufs(self):

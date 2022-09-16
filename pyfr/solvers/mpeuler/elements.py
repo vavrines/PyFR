@@ -5,37 +5,43 @@ import numpy as np
 from pyfr.solvers.baseadvec import BaseAdvectionElements
 
 class BaseMPFluidElements:
-    def __init__(self, basiscls, eles, cfg):
-        self.nspec = ns = cfg.getint('solver', 'species')
 
-        self.privarmap = {2: ([f'rho{i}' for i in range(ns)] + 
-                              ['u', 'v', 'p'] +  
-                              [f'alpha{i}' for i in range(ns - 1)]),
-                          3: ([f'rho{i}' for i in range(ns)] + 
-                              ['u', 'v', 'w', 'p'] +  
-                              [f'alpha{i}' for i in range(ns - 1)]),
-                         }
-        self.convarmap = {2: ([f'a{i}rho{i}' for i in range(ns)] + 
-                              ['rhou', 'rhov', 'E'] +  
-                              [f'alpha{i}' for i in range(ns - 1)]),
-                          3: ([f'a{i}rho{i}' for i in range(ns)] + 
-                              ['rhou', 'rhov', 'rhow', 'E'] +  
-                              [f'alpha{i}' for i in range(ns - 1)]),
-                         }
+    @classmethod
+    def privarmap(cls, cfg):
+        ns = cfg.getint('solver', 'species')
+        return {2: ([f'rho{i}' for i in range(ns)] + ['u', 'v', 'p'] +
+                    [f'alpha{i}' for i in range(ns - 1)]),
+                3: ([f'rho{i}' for i in range(ns)] + ['u', 'v', 'w', 'p'] +
+                    [f'alpha{i}' for i in range(ns - 1)]),
+               }
 
-        self.dualcoeffs = self.convarmap
+    @classmethod
+    def convarmap(cls, cfg):
+        ns = cfg.getint('solver', 'species')
+        return {2: ([f'a{i}rho{i}' for i in range(ns)] + 
+                    ['rhou', 'rhov', 'E'] +
+                    [f'alpha{i}' for i in range(ns - 1)]),
+                3: ([f'a{i}rho{i}' for i in range(ns)] + 
+                    ['rhou', 'rhov', 'rhow', 'E'] +  
+                    [f'alpha{i}' for i in range(ns - 1)]),
+               }
 
-        self.visvarmap = {
-            2: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] + 
-               [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] + 
-               [('velocity', ['u', 'v']),
-                ('pressure', ['p'])],
-            3: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] + 
-               [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] + 
-               [('velocity', ['u', 'v', 'w']),
-                ('pressure', ['p'])],
-        }
-        super().__init__(basiscls, eles, cfg)
+    @classmethod
+    def dualcoeffs(cls, cfg):
+        return cls.convarmap(cfg)
+
+    @classmethod
+    def visvarmap(cls, cfg):
+        ns = cfg.getint('solver', 'species')
+        return {2: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] +
+                   [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] +
+                   [('velocity', ['u', 'v']),
+                    ('pressure', ['p'])],
+                3: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] + 
+                   [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] + 
+                   [('velocity', ['u', 'v', 'w']),
+                    ('pressure', ['p'])],
+               }
 
     @staticmethod
     def pri_to_con(pris, cfg):

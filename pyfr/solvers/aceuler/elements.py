@@ -4,21 +4,28 @@ from pyfr.solvers.baseadvec import BaseAdvectionElements
 
 
 class BaseACFluidElements:
-    privarmap = {2: ['p', 'u', 'v'],
-                 3: ['p', 'u', 'v', 'w']}
+    @classmethod
+    def privarmap(cls, cfg=None):
+        return {2: ['p', 'u', 'v'],
+                3: ['p', 'u', 'v', 'w']}
 
-    convarmap = {2: ['p', 'u', 'v'],
-                 3: ['p', 'u', 'v', 'w']}
+    @classmethod
+    def convarmap(cls, cfg=None):
+        return{2: ['p', 'u', 'v'],
+               3: ['p', 'u', 'v', 'w']}
 
-    dualcoeffs = {2: ['u', 'v'],
-                  3: ['u', 'v', 'w']}
+    @classmethod
+    def dualcoeffs(cls, cfg=None):
+        return {2: ['u', 'v'],
+                3: ['u', 'v', 'w']}
 
-    visvarmap = {
-        2: [('velocity', ['u', 'v']),
-            ('pressure', ['p'])],
-        3: [('velocity', ['u', 'v', 'w']),
-            ('pressure', ['p'])]
-    }
+    @classmethod
+    def visvarmap(cls, cfg=None):
+        return {2: [('velocity', ['u', 'v']),
+                    ('pressure', ['p'])],
+                3: [('velocity', ['u', 'v', 'w']),
+                    ('pressure', ['p'])]
+               }
 
     @staticmethod
     def pri_to_con(pris, cfg):

@@ -5,22 +5,29 @@ import numpy as np
 from pyfr.solvers.baseadvec import BaseAdvectionElements
 
 class BaseFluidElements:
-    privarmap = {2: ['rho', 'u', 'v', 'p'],
-                 3: ['rho', 'u', 'v', 'w', 'p']}
+    @classmethod
+    def privarmap(cls, cfg=None):
+        return {2: ['rho', 'u', 'v', 'p'],
+                3: ['rho', 'u', 'v', 'w', 'p']}
 
-    convarmap = {2: ['rho', 'rhou', 'rhov', 'E'],
-                 3: ['rho', 'rhou', 'rhov', 'rhow', 'E']}
+    @classmethod
+    def convarmap(cls, cfg=None):
+        return {2: ['rho', 'rhou', 'rhov', 'E'],
+                3: ['rho', 'rhou', 'rhov', 'rhow', 'E']}
 
-    dualcoeffs = convarmap
+    @classmethod
+    def dualcoeffs(cls, cfg=None):
+        return cls.convarmap(cfg)
 
-    visvarmap = {
-        2: [('density', ['rho']),
-            ('velocity', ['u', 'v']),
-            ('pressure', ['p'])],
-        3: [('density', ['rho']),
-            ('velocity', ['u', 'v', 'w']),
-            ('pressure', ['p'])]
-    }
+    @classmethod
+    def visvarmap(cls, cfg=None):
+        return {2: [('density', ['rho']),
+                    ('velocity', ['u', 'v']),
+                    ('pressure', ['p'])],
+                3: [('density', ['rho']),
+                    ('velocity', ['u', 'v', 'w']),
+                    ('pressure', ['p'])]
+               }
 
     @staticmethod
     def pri_to_con(pris, cfg):

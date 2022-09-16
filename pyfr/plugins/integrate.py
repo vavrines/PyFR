@@ -126,7 +126,7 @@ class IntegratePlugin(BasePlugin):
         for ex in self.exprs:
             gradpnames.update(re.findall(r'\bgrad_(.+?)_[xyz]\b', ex))
 
-        privarmap = self.elementscls.privarmap[self.ndims]
+        privarmap = self.elementscls.privarmap(self.cfg)[self.ndims]
         self._gradpinfo = [(pname, privarmap.index(pname))
                            for pname in gradpnames]
 
@@ -134,7 +134,7 @@ class IntegratePlugin(BasePlugin):
         intvals = np.zeros(len(self.exprs))
 
         # Get the primitive variable names
-        pnames = self.elementscls.privarmap[self.ndims]
+        pnames = self.elementscls.privarmap(self.cfg)[self.ndims]
 
         # Iterate over each element type in the simulation
         for i, (soln, eleinfo) in enumerate(zip(intg.soln, self.eleinfo)):
