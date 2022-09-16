@@ -85,7 +85,7 @@ class TavgPlugin(PostactionMixin, RegionMixin, BasePlugin):
         for ex in self.aexprs:
             gradpnames.update(re.findall(r'\bgrad_(.+?)_[xyz]\b', ex))
 
-        privarmap = self.elementscls.privarmap(self.cfg)[self.ndims]
+        privarmap = self.elementscls.privarmap(self.cfg, self.ndims)
         self._gradpinfo = [(pname, privarmap.index(pname))
                            for pname in gradpnames]
 
@@ -103,7 +103,7 @@ class TavgPlugin(PostactionMixin, RegionMixin, BasePlugin):
         exprs = []
 
         # Get the primitive variable names
-        pnames = self.elementscls.privarmap(self.cfg)[self.ndims]
+        pnames = self.elementscls.privarmap(self.cfg, self.ndims)
 
         # Iterate over each element type in the simulation
         for idx, etype, rgn in self._ele_regions:

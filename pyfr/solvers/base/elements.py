@@ -12,15 +12,15 @@ from pyfr.util import memoize
 
 class BaseElements:
     @classmethod
-    def privarmap(cls, cfg=None):
+    def privarmap(cls, cfg, ndims):
         return None
 
     @classmethod
-    def pasvarmap(cls, cfg=None):
+    def pasvarmap(cls, cfg, ndims):
         return None
 
     @classmethod
-    def convarmap(cls, cfg=None):
+    def convarmap(cls, cfg, ndims):
         return None
 
     def __init__(self, basiscls, eles, cfg):
@@ -37,15 +37,15 @@ class BaseElements:
         self.kernels = {}
 
         # Check the dimensionality of the problem
-        if ndims != basiscls.ndims or ndims not in self.privarmap(cfg):
+        if ndims != basiscls.ndims or self.privarmap(cfg, ndims) is None:
             raise ValueError('Invalid element matrix dimensions')
 
         # Determine the number of dynamical variables
-        self.nvars = len(self.privarmap(cfg)[ndims])
+        self.nvars = len(self.privarmap(cfg, ndims))
 
         # Determine the number of passive variables
-        pasvarmap = self.pasvarmap(cfg)
-        self.npass = 0 if pasvarmap is None else len(pasvarmap(cfg)[ndims])
+        pasvarmap = self.pasvarmap(cfg, ndims)
+        self.npass = 0 if pasvarmap is None else len(pasvarmap)
 
         # Instantiate the basis class
         self.basis = basis = basiscls(nspts, cfg)
@@ -86,14 +86,14 @@ class BaseElements:
 
         # Evaluate the ICs from the config file
         ics = [npeval(self.cfg.getexpr('soln-ics', dv), vars)
-               for dv in self.privarmap(self.cfg)[self.ndims]]
+               for dv in self.privarmap(self.cfg, self.ndims)]
 
         # Allocate
         self.scal_upts = np.empty((self.nupts, self.nvars, self.neles))
 
         if self.npass != 0:
             ics_p = [npeval(self.cfg.getexpr('soln-ics', dv), vars)
-                for dv in self.pasvarmap(self.cfg)[self.ndims]]
+                for dv in self.pasvarmap(self.cfg, self.ndims)]
 
             # Convert from primitive to conservative form
             for i, v in enumerate(self.pri_to_con(ics, self.cfg, ics_p)):
@@ -180,7 +180,7 @@ class BaseElements:
 
     @cached_property
     def _src_exprs(self):
-        convars = self.convarmap(self.cfg)[self.ndims]
+        convars = self.convarmap(self.cfg, self.ndims)
 
         # Variable and function substitutions
         subs = self.cfg.items('constants')
@@ -188,7 +188,7 @@ class BaseElements:
         subs |= dict(abs='fabs', pi=math.pi)
         subs |= {v: f'u[{i}]' for i, v in enumerate(convars)}
         if self.npass != 0:
-            pasvars = self.pasvarmap(self.cfg)[self.ndims]
+            pasvars = self.pasvarmap(self.cfg, self.ndims)
             subs |= {v: f'q[{i}]' for i, v in enumerate(pasvars)}
 
         return [self.cfg.getexpr('solver-source-terms', v, '0', subs=subs)

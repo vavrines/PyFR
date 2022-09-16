@@ -1,38 +1,49 @@
 # -*- coding: utf-8 -*-
 
+from collections import defaultdict
+
 from pyfr.solvers.baseadvec import BaseAdvectionElements
-from symbol import classdef
 
 
 class BaseMPACFluidElements:
     @classmethod
-    def privarmap(cls, cfg=None):
-        return {2: ['p', 'u', 'v', 'phi'],
+    def privarmap(cls, cfg, ndims):
+        m = defaultdict(lambda: None)
+        m |= {2: ['p', 'u', 'v', 'phi'],
                 3: ['p', 'u', 'v', 'w', 'phi']}
+        return m[ndims]
 
     @classmethod
-    def pasvarmap(cls, cfg=None):
-        return {2: ['rho'], 3: ['rho']}
+    def pasvarmap(cls, cfg, ndims):
+        m = defaultdict(lambda: None)
+        m |= {2: ['rho'], 3: ['rho']}
+        return m[ndims]
 
     @classmethod
-    def convarmap(cls, cfg=None):
-        return {2: ['p', 'rhou', 'rhov', 'phi'],
-                3: ['p', 'rhou', 'rhov', 'rhow', 'phi']}
+    def convarmap(cls, cfg, ndims):
+        m = defaultdict(lambda: None)
+        m |= {2: ['p', 'rhou', 'rhov', 'phi'],
+              3: ['p', 'rhou', 'rhov', 'rhow', 'phi']}
+        return m[ndims]
 
     @classmethod
-    def dualcoeffs(cls, cfg=None):
-        return {2: ['rhou', 'rhov', 'phi'],
-                3: ['rhou', 'rhov', 'rhow', 'phi']}
+    def dualcoeffs(cls, cfg, ndims):
+        m = defaultdict(lambda: None)
+        m |= {2: ['rhou', 'rhov', 'phi'],
+              3: ['rhou', 'rhov', 'rhow', 'phi']}
+        return m[ndims]
 
     @classmethod
-    def visvarmap(cls, cfg=None):
-        return {2: [('velocity', ['u', 'v']),
-                    ('pressure', ['p']),
-                    ('phase', ['phi'])],
-                3: [('velocity', ['u', 'v', 'w']),
-                    ('pressure', ['p']),
-                    ('phase', ['phi'])]
-               }
+    def visvarmap(cls, cfg, ndims):
+        m = defaultdict(lambda: None)
+        m |= {2: [('velocity', ['u', 'v']),
+                  ('pressure', ['p']),
+                  ('phase', ['phi'])],
+              3: [('velocity', ['u', 'v', 'w']),
+                  ('pressure', ['p']),
+                  ('phase', ['phi'])]
+             }
+        return m[ndims]
 
     @property
     def _scratch_bufs(self):

@@ -7,16 +7,16 @@ from pyfr.solvers.baseadvec import BaseAdvectionElements
 class BaseMPFluidElements:
 
     @classmethod
-    def privarmap(cls, cfg):
+    def privarmap(cls, cfg, ndims):
         ns = cfg.getint('solver', 'species')
         return {2: ([f'rho{i}' for i in range(ns)] + ['u', 'v', 'p'] +
                     [f'alpha{i}' for i in range(ns - 1)]),
                 3: ([f'rho{i}' for i in range(ns)] + ['u', 'v', 'w', 'p'] +
                     [f'alpha{i}' for i in range(ns - 1)]),
-               }
+               }[ndims]
 
     @classmethod
-    def convarmap(cls, cfg):
+    def convarmap(cls, cfg, ndims):
         ns = cfg.getint('solver', 'species')
         return {2: ([f'a{i}rho{i}' for i in range(ns)] + 
                     ['rhou', 'rhov', 'E'] +
@@ -24,14 +24,14 @@ class BaseMPFluidElements:
                 3: ([f'a{i}rho{i}' for i in range(ns)] + 
                     ['rhou', 'rhov', 'rhow', 'E'] +  
                     [f'alpha{i}' for i in range(ns - 1)]),
-               }
+               }[ndims]
 
     @classmethod
-    def dualcoeffs(cls, cfg):
-        return cls.convarmap(cfg)
+    def dualcoeffs(cls, cfg, ndims):
+        return cls.convarmap(cfg, ndims)
 
     @classmethod
-    def visvarmap(cls, cfg):
+    def visvarmap(cls, cfg, ndims):
         ns = cfg.getint('solver', 'species')
         return {2: [(f'density_{i}', [f'rho{i}']) for i in range(ns)] +
                    [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] +
@@ -41,7 +41,7 @@ class BaseMPFluidElements:
                    [(f'fraction_{i}', [f'alpha{i}']) for i in range(ns-1)] + 
                    [('velocity', ['u', 'v', 'w']),
                     ('pressure', ['p'])],
-               }
+               }[ndims]
 
     @staticmethod
     def pri_to_con(pris, cfg):

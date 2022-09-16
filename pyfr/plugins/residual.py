@@ -20,9 +20,9 @@ class ResidualPlugin(BasePlugin):
         self.nsteps = self.cfg.getint(cfgsect, 'nsteps')
 
         # The root rank needs to open the output file
-        ndims = self.ndims
         if rank == root:
-            header = ['t'] + intg.system.elementscls.convarmap(self.cfg)[ndims]
+            ndims = self.ndims
+            header = ['t'] + intg.system.elementscls.convarmap(self.cfg, ndims)
 
             # Open
             self.outf = init_csv(self.cfg, cfgsect, ','.join(header))
