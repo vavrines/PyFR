@@ -316,7 +316,7 @@ class BGKElements(BaseAdvectionElements):
 
         self.umat = self._be.const_matrix(self.u)
         self.M = self._be.const_matrix(np.reshape(self.PSint, (1, -1)))
-        lam = 1.0/gamma_func(self.delta/2.0)
+        lam = 1.0/gamma_func(self.delta/2.0) if self.delta else 1.0
         
         # Template parameters for the flux kernels
         tplargs = {
