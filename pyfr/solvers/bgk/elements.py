@@ -287,7 +287,7 @@ class BGKElements(BaseAdvectionElements):
             rhoU = np.dot(PSint, (f.swapaxes(0,2)*u[:,i]).swapaxes(1,2)).T
             Vs.append(rhoU/rho)
 
-        idofs = len(u.T) == ndims
+        idofs = len(u.T) != ndims
 
         if idofs:
             E = np.dot(PSint, 0.5*(f.swapaxes(0,2)*np.linalg.norm(u[:,:-1], axis=1)**2).swapaxes(1,2)).T
