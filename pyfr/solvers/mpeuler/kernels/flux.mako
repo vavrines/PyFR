@@ -3,12 +3,12 @@
 
 <%pyfr:macro name='inviscid_flux' params='s, f, a, d, p, v'>
     d = ${' + '.join('s[{i}]'.format(i=i) for i in range(nspec))};
-    fpdtype_t invrho = 1.0/d, E = s[${nvars - nspec}];
+    fpdtype_t invrho = 1.0/d, E = s[${ndims + nspec}];
 
 % for i in range(nspec - 1):
-    a[${i}] = s[${nspec + ndims + i}];
+    a[${i}] = s[${nspec + ndims + i + 1}];
 % endfor
-    a[${nspec - 1}] = 1 - ${' - '.join('a[{i}]'.format(i=i) for i in range(nspec - 1))};
+    a[${nspec - 1}] = 1 - (${' + '.join('a[{i}]'.format(i=i) for i in range(nspec - 1))});
 
     // Compute the velocities
     fpdtype_t rhov[${ndims}];
@@ -24,7 +24,7 @@
 
     // Mass flux
 % for i, j in pyfr.ndrange(ndims, nspec):
-    f[${i}][${j}] = s[${i}]*v[${i}];
+    f[${i}][${j}] = s[${j}]*v[${i}];
 % endfor
 
     // Momentum fluxes

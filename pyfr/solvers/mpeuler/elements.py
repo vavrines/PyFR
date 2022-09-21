@@ -7,6 +7,11 @@ from pyfr.solvers.baseadvec import BaseAdvectionElements
 
 class BaseMPFluidElements:
 
+    def __init__(self, basiscls, eles, cfg):
+        super().__init__(basiscls, eles, cfg)
+        
+        self.nspec = self.cfg.getint('solver', 'species')
+
     @classmethod
     def privarmap(cls, cfg, ndims):
         ns = cfg.getint('solver', 'species')
@@ -53,7 +58,7 @@ class BaseMPFluidElements:
     @staticmethod
     def pri_to_con(pris, cfg):
         ns = cfg.getint('solver', 'species')
-        alpha = pris[1-ns:] + [1- sum(pris[1-ns:])]
+        alpha = np.vstack((pris[1-ns:], [1 - sum(pris[1-ns:])]))
         p = pris[-ns-1]
         arho = [alpha[i]*pris[i] for i in range(ns)]
         rho = sum(arho)
@@ -67,17 +72,17 @@ class BaseMPFluidElements:
 
         E = rhoe + 0.5*rho*sum(c*c for c in pris[ns-1:-ns])
 
-        print(np.shape(arho), np.shape(rhovs), np.shape(alpha))
-        return arho + rhovs + [E] + alpha[:ns-1]
+        return np.vstack((arho, rhovs, [E], alpha[:ns-1]))
 
     @staticmethod
     def con_to_pri(cons, cfg):
-        ns = cfg.getint('solver', 'species', 2)
+        ns = cfg.getint('solver', 'species')
         E = cons[-ns]
-        alpha = cons[1-ns:] + [sum(1 - cons[1-ns:])]
+        alpha = np.vstack((cons[1-ns:], [1 - sum(cons[1-ns:])]))
         arho = cons[:ns]
         rho = sum(arho)
-        Rho = [arho[i]/alpha[i] for i in range(ns)]
+        with np.errstate(divide='ignore', invalid='ignore'):
+            Rho = np.where(alpha != 0, arho/alpha, 0)
 
         # Divide momentum components by rho
         vs = [rhov/rho for rhov in cons[ns:-ns]]
@@ -85,9 +90,9 @@ class BaseMPFluidElements:
         # Compute the pressure
         gamma = [cfg.getfloat('constants', f'gamma{i}') for i in range(ns)]
         rhoe = (E - 0.5*rho*sum(v*v for v in vs))
-        p = rhoe/sum(alpha[i]/(gamma[i] - 1) for i in range(ns))
+        p = rhoe/sum(alpha [i]/(gamma[i] - 1) for i in range(ns))
 
-        return [Rho] + vs + [p] + alpha[:ns-1]
+        return np.vstack((Rho, vs, [p], alpha[:ns-1]))
 
     @staticmethod
     def validate_formulation(ctrl):

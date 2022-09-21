@@ -51,7 +51,7 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
         # Register our flux kernels
         self._be.pointwise.register('pyfr.solvers.mpnavstokes.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.mpnavstokes.kernels.tfluxlin')
-        self._be.pointwise.register('pyfr.solvers.mpnavstokes.kernels.negdivconf', force=True)
+        self._be.pointwise.register('pyfr.solvers.mpnavstokes.kernels.negdivconf_mp')
 
         # Handle shock capturing and Sutherland's law
         shock_capturing = self.cfg.get('solver', 'shock-capturing')
@@ -106,10 +106,6 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
                 verts=self.ploc_at('linspts', l), upts=self.qpts
             )
 
-        self.kernels['copy_grad'] = lambda: self._be.kernel(
-            'copy', self._vect_upts_cpy, self._vect_upts
-        )
-
         # What the source term expressions (if any) are a function of
         plocsrc = self._ploc_in_src_exprs
 
@@ -124,8 +120,8 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
         # Transformed to physical divergence kernel + source term
         plocupts = self.ploc_at('upts') if plocsrc else None
 
-        self.kernels['negdivconf'] = lambda fout: self._be.kernel(
-            'negdivconf', tplargs=srctplargs,
+        self.kernels['negdivconf_mp'] = lambda fout: self._be.kernel(
+            'negdivconf_mp', tplargs=srctplargs,
             dims=[self.nupts, self.neles], tdivtconf=self.scal_upts[fout],
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, 
             u=self._scal_upts_cpy, grad=self._vect_upts_cpy,
@@ -143,6 +139,7 @@ class MPNavierStokesElements(BaseMPFluidElements, BaseAdvectionDiffusionElements
                 'mul', self.opmat('M4 - M6*M0'), self.scal_upts[uin],
                 out=self._vect_upts_cpy
             )
+
         self.kernels['tgradcoru_upts'] = lambda: kernel(
             'mul', self.opmat('M6'), self._vect_fpts.slice(0, self.nfpts),
             out=self._vect_upts_cpy, beta=float(self.basis.order > 0)

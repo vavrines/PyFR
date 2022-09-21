@@ -10,6 +10,8 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
         m = self._mpireqs
         k, _ = self._get_kernels(uinbank, foutbank)
 
+        print('rhs basead')
+
         def deps(dk, *names): return self._kdeps(k, dk, *names)
 
         g1 = self.backend.graph()
