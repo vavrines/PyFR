@@ -17,7 +17,7 @@ def setup_BGK(cfg, ndims):
     if ndims == 3:
         w0 = cfg.getfloat('solver', 'w0')
 
-    delta = cfg.getint('solver', 'delta')
+    delta = cfg.getint('solver', 'delta', 0)
     if delta != 0:
         zmax = cfg.getfloat('solver', 'zmax')
         Nz = cfg.getint('solver', 'Nz')
@@ -92,7 +92,7 @@ def setup_BGK(cfg, ndims):
         wts_t = np.ones_like(ut)/len(ut)
 
         # Create open up set
-        up = np.linspace(0, np.pi, Np+1, endpoint=False)
+        up = np.linspace(0, np.pi, Np+1, endpoint=True)
         up = 0.5*(up[1:] + up[:-1])
         wts_p = np.ones_like(up)/len(up)
 
