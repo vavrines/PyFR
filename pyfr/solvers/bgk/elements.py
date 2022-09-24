@@ -86,19 +86,21 @@ def setup_BGK(cfg, ndims):
         [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
 
         ur = 0.5*(gauss_pts_x + 1)*rmax
-        wts_r = (gauss_wts_x/2.0)*ur**2
-        
-        ut = np.linspace(-np.pi, np.pi, Nt, endpoint=False)
-        wts_t = np.ones_like(ut)/len(ut)
+        wts_r = (0.5*gauss_wts_x)*ur**2
 
-        # Create open up set
-        up = np.linspace(0, np.pi, Np+1, endpoint=True)
+        ut = np.linspace(0, np.pi, Nt+1, endpoint=True)
+        ut = 0.5*(ut[1:] + ut[:-1])
+        wts_t = np.sin(ut)
+        wts_t /= np.sum(wts_t)
+
+        up = np.linspace(0, 2*np.pi, Np+1, endpoint=True)
         up = 0.5*(up[1:] + up[:-1])
         wts_p = np.ones_like(up)/len(up)
 
-        ux = u0 + np.outer(np.outer(ur, np.sin(up))      , np.cos(ut))
-        uy = v0 + np.outer(np.outer(ur, np.sin(up))      , np.sin(ut))
-        uz = w0 + np.outer(np.outer(ur, np.cos(up)), np.ones_like(ut)) 
+        ux = u0 + np.outer(np.outer(ur, np.sin(ut)),       np.cos(up))
+        uy = v0 + np.outer(np.outer(ur, np.sin(ut)),       np.sin(up))
+        uz = w0 + np.outer(np.outer(ur, np.cos(ut)), np.ones_like(up))
+
         wts = np.outer(np.outer(wts_r, wts_t), wts_p)
 
         u[:,0] = np.reshape(ux, (-1))
@@ -107,7 +109,6 @@ def setup_BGK(cfg, ndims):
         w = np.reshape(wts, (-1))
 
         PSint = w*(4.*np.pi*rmax)
-
 
     psi = np.zeros((nvars, ndims+2))
     for i in range(nvars):
