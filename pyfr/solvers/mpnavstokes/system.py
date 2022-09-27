@@ -21,8 +21,6 @@ class MPNavierStokesSystem(BaseAdvectionDiffusionSystem):
         m = self._mpireqs
         k, _ = self._get_kernels(uinbank, foutbank)
 
-        print('rhs here')
-
         def deps(dk, *names): return self._kdeps(k, dk, *names)
 
         g1 = self.backend.graph()

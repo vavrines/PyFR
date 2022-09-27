@@ -59,7 +59,7 @@ class BaseMPFluidElements:
     def pri_to_con(pris, cfg):
         ns = cfg.getint('solver', 'species')
         alpha = np.vstack((pris[1-ns:], [1 - sum(pris[1-ns:])]))
-        p = pris[-ns-1]
+        p = pris[-ns]
         arho = [alpha[i]*pris[i] for i in range(ns)]
         rho = sum(arho)
 
@@ -70,7 +70,7 @@ class BaseMPFluidElements:
         gamma = [cfg.getfloat('constants', f'gamma{i}') for i in range(ns)]
         rhoe = p*sum(alpha[i]/(gamma[i] - 1) for i in range(ns))
 
-        E = rhoe + 0.5*rho*sum(c*c for c in pris[ns-1:-ns])
+        E = rhoe + 0.5*rho*sum(c*c for c in pris[ns:-ns])
 
         return np.vstack((arho, rhovs, [E], alpha[:ns-1]))
 
@@ -90,7 +90,7 @@ class BaseMPFluidElements:
         # Compute the pressure
         gamma = [cfg.getfloat('constants', f'gamma{i}') for i in range(ns)]
         rhoe = (E - 0.5*rho*sum(v*v for v in vs))
-        p = rhoe/sum(alpha [i]/(gamma[i] - 1) for i in range(ns))
+        p = rhoe/sum(alpha[i]/(gamma[i] - 1) for i in range(ns))
 
         return np.vstack((Rho, vs, [p], alpha[:ns-1]))
 
@@ -205,28 +205,29 @@ class MPEulerElements(BaseMPFluidElements, BaseAdvectionElements):
         # Helpers
         c, l = 'curved', 'linear'
         r, s = self._mesh_regions, self._slice_mat
+        kernel = self._be.kernel
 
         if c in r and 'flux' not in self.antialias:
-            self.kernels['tdisf_curved'] = lambda uin: self._be.kernel(
+            self.kernels['tdisf_curved'] = lambda uin: kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, r[c]],
                 u=s(self.scal_upts[uin], c), f=s(self._vect_upts, c),
                 smats=self.curved_smat_at('upts')
             )
         elif c in r:
-            self.kernels['tdisf_curved'] = lambda: self._be.kernel(
+            self.kernels['tdisf_curved'] = lambda: kernel(
                 'tflux', tplargs=tplargs, dims=[self.nqpts, r[c]],
                 u=s(self._scal_qpts, c), f=s(self._vect_qpts, c),
                 smats=self.curved_smat_at('qpts')
             )
 
         if l in r and 'flux' not in self.antialias:
-            self.kernels['tdisf_linear'] = lambda uin: self._be.kernel(
+            self.kernels['tdisf_linear'] = lambda uin: kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nupts, r[l]],
                 u=s(self.scal_upts[uin], l), f=s(self._vect_upts, l),
                 verts=self.ploc_at('linspts', l), upts=self.upts
             )
         elif l in r:
-            self.kernels['tdisf_linear'] = lambda: self._be.kernel(
+            self.kernels['tdisf_linear'] = lambda: kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nqpts, r[l]],
                 u=s(self._scal_qpts, l), f=s(self._vect_qpts, l),
                 verts=self.ploc_at('linspts', l), upts=self.qpts

@@ -105,7 +105,6 @@ class BaseElements:
                 self.pasv_upts[:, i, :] = ics_p
         else:
             self.pasv_upts = None
-            print(self.nvars)
             # Convert from primitive to conservative form
             for i, v in enumerate(self.pri_to_con(ics, self.cfg)):
                     self.scal_upts[:, i, :] = v
@@ -227,7 +226,6 @@ class BaseElements:
         salloc = lambda ex, n: alloc(ex, (n, nvars, neles))
         valloc = lambda ex, n: alloc(ex, (ndims, n, nvars, neles))
 
-        print(sbufs)
         # Allocate required scalar scratch space
         if 'scal_fpts' in sbufs:
             self._scal_fpts = salloc('scal_fpts', nfpts)

@@ -3,10 +3,10 @@
 
 <%pyfr:macro name='inviscid_flux' params='s, f, a, d, p, v'>
     d = ${' + '.join('s[{i}]'.format(i=i) for i in range(nspec))};
-    fpdtype_t invrho = 1.0/d, E = s[${ndims + nspec}];
+    fpdtype_t invrho = 1/d, E = s[${ndims + nspec}];
 
 % for i in range(nspec - 1):
-    a[${i}] = s[${nspec + ndims + i + 1}];
+    a[${i}] = s[${nspec + ndims + 1 + i}];
 % endfor
     a[${nspec - 1}] = 1 - (${' + '.join('a[{i}]'.format(i=i) for i in range(nspec - 1))});
 
@@ -19,7 +19,7 @@
 
     // Compute the pressure
     fpdtype_t rhoe = E - 0.5*invrho*${pyfr.dot('rhov[{i}]', i=ndims)};
-    fpdtype_t agm = ${' + '.join('a[{i}]*{rgm}'.format(i=i, rgm=1/(c[f'gamma{i}']-1)) for i in range(nspec))};
+    fpdtype_t agm = ${' + '.join('{rgm}*a[{i}]'.format(i=i, rgm=1/(c[f'gamma{i}']-1)) for i in range(nspec))};
     p = rhoe/agm;
 
     // Mass flux

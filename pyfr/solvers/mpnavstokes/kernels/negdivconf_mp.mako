@@ -10,11 +10,12 @@
               grad='in fpdtype_t[${str(ndims)}][${str(nvars)}]'
               rcpdjac='in fpdtype_t'>
     fpdtype_t inv_rho = 1/(${' + '.join('u[{i}]'.format(i=i) for i in range(nspec))});
+    
 % for i, ex in enumerate(srcex):
 % if i <= nspec + ndims:
     tdivtconf[${i}] = -rcpdjac*tdivtconf[${i}] + ${ex};
 % else:
-    tdivtconf[${i}] = -inv_rho*(${' + '.join('u[{k}]*grad[{l}][{j}]'.format(k=nspec+l, j=nspec+ndims+1+i, l=l) for l in range(ndims))}) + ${ex};
+    tdivtconf[${i}] = -inv_rho*(${' + '.join('u[{k}]*grad[{j}][{i}]'.format(k=nspec+j, i=i, j=j) for j in range(ndims))}) + ${ex};
 % endif
 % endfor
 </%pyfr:kernel>
