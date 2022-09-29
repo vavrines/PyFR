@@ -82,6 +82,7 @@ class BaseMPFluidElements:
         arho = cons[:ns]
         rho = sum(arho)
         with np.errstate(divide='ignore', invalid='ignore'):
+            #Rho = arho
             Rho = np.where(alpha != 0, arho/alpha, 0)
 
         # Divide momentum components by rho
@@ -117,10 +118,10 @@ class BaseMPFluidElements:
         # doi:10.1016/j.jcp.2022.111501
         if shock_capturing == 'entropy-filter' and self.basis.order != 0:
             self._be.pointwise.register(
-                'pyfr.solvers.euler.kernels.entropylocal'
+                'pyfr.solvers.mpeuler.kernels.entropylocal'
             )
             self._be.pointwise.register(
-                'pyfr.solvers.euler.kernels.entropyfilter'
+                'pyfr.solvers.mpeuler.kernels.entropyfilter'
             )
 
             # Template arguments
@@ -148,6 +149,12 @@ class BaseMPFluidElements:
                                                    'd-min', 1e-6)
             eftplargs['p_min'] = self.cfg.getfloat('solver-entropy-filter',
                                                    'p-min', 1e-6)
+
+            # Minimuim and maximum fraction constraints
+            eftplargs['a_min'] = self.cfg.getfloat('solver-entropy-filter',
+                                                   'a-min', 1e-6)
+            eftplargs['a_max'] = self.cfg.getfloat('solver-entropy-filter',
+                                                   'a-max', 1-1e-6)
 
             # Entropy tolerance
             eftplargs['e_tol'] = self.cfg.getfloat('solver-entropy-filter',

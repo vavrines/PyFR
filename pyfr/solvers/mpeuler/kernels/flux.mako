@@ -6,6 +6,7 @@
     fpdtype_t invrho = 1/d, E = s[${ndims + nspec}];
 
 % for i in range(nspec - 1):
+    //a[${i}] = max(min(s[${nspec + ndims + 1 + i}], 1), 0);
     a[${i}] = s[${nspec + ndims + 1 + i}];
 % endfor
     a[${nspec - 1}] = 1 - (${' + '.join('a[{i}]'.format(i=i) for i in range(nspec - 1))});
@@ -13,7 +14,7 @@
     // Compute the velocities
     fpdtype_t rhov[${ndims}];
 % for i in range(ndims):
-    rhov[${i}] = s[${i + nspec}];
+    rhov[${i}] = s[${nspec + i}];
     v[${i}] = invrho*rhov[${i}];
 % endfor
 
@@ -24,7 +25,7 @@
 
     // Mass flux
 % for i, j in pyfr.ndrange(ndims, nspec):
-    f[${i}][${j}] = s[${j}]*v[${i}];
+    f[${i}][${j}] = v[${i}]*s[${j}];
 % endfor
 
     // Momentum fluxes
