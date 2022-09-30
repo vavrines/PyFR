@@ -13,7 +13,7 @@
 
     fpdtype_t a[${nspec}];
 % for i in range(nspec - 1):
-    a[${i}] = s[${nspec + ndims + 1 + i}];
+    a[${i}] = uin[${nspec + ndims + 1 + i}];
 % endfor
     a[${nspec - 1}] = 1 - (${' + '.join('a[{i}]'.format(i=i) for i in range(nspec - 1))});
 
@@ -46,7 +46,7 @@
     fout[0][${i_u}] += t_xx; fout[1][${i_u}] += t_xy;
     fout[0][${i_v}] += t_xy; fout[1][${i_v}] += t_yy;
 
-    fpdtype_t kap = ${' + '.join('a[{i}]*{kap}'.format(i=i, kap=(c['mu{i}']*c[f'gamma{i}']/c[f'Pr{i}'])) for i in range(nspec))};
+    fpdtype_t kap = ${' + '.join('a[{i}]*{kap}'.format(i=i, kap=(c[f'mu{i}']*c[f'gamma{i}']/c[f'Pr{i}'])) for i in range(nspec))};
 
     fout[0][${i_E}] += u*t_xx + v*t_xy - kap*T_x;
     fout[1][${i_E}] += u*t_xy + v*t_yy - kap*T_y;
@@ -65,7 +65,7 @@
 
     fpdtype_t a[${nspec}];
 % for i in range(nspec - 1):
-    a[${i}] = s[${nspec + ndims + 1 + i}];
+    a[${i}] = uin[${nspec + ndims + 1 + i}];
 % endfor
     a[${nspec - 1}] = 1 - (${' + '.join('a[{i}]'.format(i=i) for i in range(nspec - 1))});
 
@@ -110,7 +110,7 @@
     fout[0][${i_v}] += t_xy; fout[1][${i_v}] += t_yy; fout[2][${i_v}] += t_yz;
     fout[0][${i_w}] += t_xz; fout[1][${i_w}] += t_yz; fout[2][${i_w}] += t_zz;
 
-    fpdtype_t kap = ${' + '.join('a[{i}]*{kap}'.format(i=i, kap=(c['mu{i}']*c[f'gamma{i}']/c[f'Pr{i}'])) for i in range(nspec))};
+    fpdtype_t kap = ${' + '.join('a[{i}]*{kap}'.format(i=i, kap=(c[f'mu{i}']*c[f'gamma{i}']/c[f'Pr{i}'])) for i in range(nspec))};
 
     fout[0][${i_E}] += u*t_xx + v*t_xy + w*t_xz - kap*T_x;
     fout[1][${i_E}] += u*t_xy + v*t_yy + w*t_yz - kap*T_y;
