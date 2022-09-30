@@ -154,7 +154,7 @@ class BaseMPFluidElements:
             eftplargs['a_min'] = self.cfg.getfloat('solver-entropy-filter',
                                                    'a-min', 1e-6)
             eftplargs['a_max'] = self.cfg.getfloat('solver-entropy-filter',
-                                                   'a-max', 1-1e-6)
+                                                   'a-max', 1 - 1e-6)
 
             # Entropy tolerance
             eftplargs['e_tol'] = self.cfg.getfloat('solver-entropy-filter',
