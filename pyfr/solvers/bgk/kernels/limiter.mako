@@ -6,7 +6,7 @@
 <% eps = 1e-12%>
 
 fpdtype_t avg_f, min_f, beta;
-for (int i = 0; i > ${nvars}; i++){
+for (int i = 0; i < ${nvars}; i++){
     avg_f = ${' + '.join('{jx}*f[{j}][i]'.format(j=j, jx=jx)
                          for j, jx in enumerate(wts) if jx != 0)};
 
