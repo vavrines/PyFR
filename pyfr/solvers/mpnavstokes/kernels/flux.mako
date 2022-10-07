@@ -60,7 +60,7 @@
 
 <%pyfr:macro name='viscous_flux_add' params='uin, grad_uin, fout'>
     fpdtype_t rho = ${' + '.join('uin[{i}]'.format(i=i) for i in range(nspec))};
-    fpdtype_t rhou = uin[${i_u}], rhov = uin[${i_v}], rhow = uin[${i_w}]
+    fpdtype_t rhou = uin[${i_u}], rhov = uin[${i_v}], rhow = uin[${i_w}];
     fpdtype_t E = uin[${i_E}];
 
     fpdtype_t a[${nspec}];
