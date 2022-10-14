@@ -82,7 +82,6 @@ class BaseMPFluidElements:
         arho = cons[:ns]
         rho = sum(arho)
         with np.errstate(divide='ignore', invalid='ignore'):
-            #Rho = arho
             Rho = np.where(alpha != 0, arho/alpha, 0)
 
         # Divide momentum components by rho

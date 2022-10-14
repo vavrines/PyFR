@@ -24,23 +24,42 @@ class MPNavierStokesElements(BaseMPFluidElements,
 
     @staticmethod
     def grad_con_to_pri(cons, grad_cons, cfg):
-        rho, *rhouvw = cons[:-1]
-        grad_rho, *grad_rhouvw, grad_E = grad_cons
+        ns = cfg.getint('solver', 'species')
+
+        arho, grad_arho = cons[:ns], grad_cons[:ns]
+        rhouvw, grad_rhouvw = cons[ns:-ns], grad_cons[ns:-ns]
+        rho, grad_rho = sum(arho), sum(grad_arho)
+
+        E, grad_E = cons[-ns], grad_cons[-ns]
+
+        alpha = np.vstack((cons[1-ns:], [1 - sum(cons[1-ns:])]))
+        grad_a = np.vstack((grad_cons[1-ns:], [-sum(grad_cons[1-ns:])]))
 
         # Divide momentum components by ρ
-        uvw = [rhov / rho for rhov in rhouvw]
+        uvw = [rhov/rho for rhov in rhouvw]
+
+        # Compute the specific energy
+        gamma = [cfg.getfloat('constants', f'gamma{i}') for i in range(ns)]
+        rhoe = (E - 0.5*rho*sum(v*v for v in uvw))
 
         # Velocity gradients: ∇u⃗ = 1/ρ·[∇(ρu⃗) - u⃗ ⊗ ∇ρ]
         grad_uvw = [(grad_rhov - v*grad_rho) / rho
                     for grad_rhov, v in zip(grad_rhouvw, uvw)]
 
-        # Pressure gradient: ∇p = (γ - 1)·[∇E - 1/2*(u⃗·∇(ρu⃗) - ρu⃗·∇u⃗)]
-        gamma = cfg.getfloat('constants', 'gamma')
+        # Phase density gradients: grad_Rho = (grad_arho - rho*grad_a)/a
+        with np.errstate(divide='ignore', invalid='ignore'):
+            grad_Rho = np.where(alpha[:,None,...] != 0, 
+                (grad_arho - rho*grad_a)/alpha[:,None,...], 0)
+
         grad_p = grad_E - 0.5*(np.einsum('ijk,iljk->ljk', uvw, grad_rhouvw) +
                                np.einsum('ijk,iljk->ljk', rhouvw, grad_uvw))
-        grad_p *= (gamma - 1)
+        inv_agm = 1/sum(alpha[i]/(gamma[i] - 1) for i in range(ns))
+        agm_grad = sum(grad_a[i]/(gamma[i] - 1) for i in range(ns))
+        agm_grad *= inv_agm
+        grad_p += rhoe*agm_grad
+        grad_p *= inv_agm
 
-        return [grad_rho] + grad_uvw + [grad_p]
+        return np.vstack((grad_Rho, grad_uvw, [grad_p], grad_a[:ns-1]))
 
     def set_backend(self, *args, **kwargs):
         super().set_backend(*args, **kwargs)
