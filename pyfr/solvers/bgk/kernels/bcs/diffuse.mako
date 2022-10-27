@@ -37,16 +37,14 @@
     % endfor
     pl = ${c['gamma'] - 1}*(wl[${ndims+1}] - 0.5*rhol*${pyfr.dot('Ul[{i}]', i=ndims)});
 
-    // Compute right state (subtract normal velocity)
+    // Compute right state
     fpdtype_t rhor, Ur[${ndims}], pr;
     fpdtype_t wr[${ndims+2}];
     rhor = rhol;
     
     wr[0] = rhor;
-    fpdtype_t nor = ${' + '.join(f'Ul[{i}]*nl[{i}]' for i in range(ndims))};
     % for i in range(ndims):
-    Ur[${i}] = Ul[${i}] - nor*nl[${i}];
-    wr[${i+1}] = rhor*Ur[${i}];
+    Ur[${i}] = wr[${i+1}] = 0.0;
     % endfor
     pr = pl;
     wr[${ndims+1}] = pr/(${c['gamma'] - 1}) + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};
