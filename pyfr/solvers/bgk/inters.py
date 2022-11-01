@@ -114,8 +114,8 @@ class BGKFixedBCInters(BGKBaseBCInters):
             ['rho', 'p', 'u', 'v', 'w'][:self.ndims + 2], lhs
         )
 
-class BGKSlipWallBCInters(BGKBaseBCInters):
-    type = 'slip-wall'
+class BGKDiffuseBCInters(BGKBaseBCInters):
+    type = 'diffuse'
 
 class BGKSpecularBCInters(BGKBaseBCInters):
     type = 'specular'
