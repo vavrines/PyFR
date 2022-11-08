@@ -4,11 +4,11 @@
 
 <% inf = 1e20 %>
 
-<%pyfr:macro name='get_minima' params='u, dmin, aminmin, amaxmin, pmin, emin'>
-    fpdtype_t d, amin, amax, p, e;
+<%pyfr:macro name='get_minima' params='u, admin, aminmin, amaxmin, pmin, emin'>
+    fpdtype_t ad, amin, amax, p, e;
     fpdtype_t ui[${nvars}];
 
-    dmin = ${inf}; aminmin = ${inf}, amaxmin = ${inf}; pmin = ${inf}; emin = ${inf};
+    admin = ${inf}; aminmin = ${inf}, amaxmin = ${inf}; pmin = ${inf}; emin = ${inf};
 
     for (int i = 0; i < ${nupts}; i++)
     {
@@ -16,8 +16,8 @@
         ui[${j}] = u[i][${j}];
         % endfor
 
-        ${pyfr.expand('compute_entropy', 'ui', 'd', 'amin', 'amax', 'p', 'e')};
-        dmin = fmin(dmin, d); pmin = fmin(pmin, p); emin = fmin(emin, e);
+        ${pyfr.expand('compute_entropy', 'ui', 'ad', 'amin', 'amax', 'p', 'e')};
+        admin = fmin(admin, ad); pmin = fmin(pmin, p); emin = fmin(emin, e);
         aminmin = fmin(aminmin, amin); amaxmin = fmin(amaxmin, amax);
     }
 </%pyfr:macro>
@@ -51,7 +51,7 @@
     }
 </%pyfr:macro>
 
-<%pyfr:macro name='apply_filter_single' params='up, f, d, amin, amax, p, e'>
+<%pyfr:macro name='apply_filter_single' params='up, f, ad, amin, amax, p, e'>
     // Start accumulation
     fpdtype_t ui[${nvars}];
     % for vidx in range(nvars):
@@ -60,7 +60,7 @@
 
     // Apply filter to local value
     fpdtype_t v = 1.0;
-    for (int pidx = 1; pidx < ${order+1}; pidx++)
+    for (int pidx = 1; pidx < ${order + 1}; pidx++)
     {
         // Utilize exp(-zeta*p**2) = pow(f, p**2)
         v *= f;
@@ -70,7 +70,7 @@
         % endfor
     }
 
-    ${pyfr.expand('compute_entropy', 'ui', 'd', 'amin', 'amax', 'p', 'e' )};
+    ${pyfr.expand('compute_entropy', 'ui', 'ad', 'amin', 'amax', 'p', 'e' )};
 </%pyfr:macro>
 
 <%pyfr:kernel name='entropyfilter' ndim='1'
@@ -78,17 +78,17 @@
               entmin_int='inout fpdtype_t[${str(nfaces)}]'
               vdm='in broadcast fpdtype_t[${str(nupts)}][${str(nupts)}]'
               invvdm='in broadcast fpdtype_t[${str(nupts)}][${str(nupts)}]'>
-    fpdtype_t dmin, aminmin, amaxmin, pmin, emin;
+    fpdtype_t admin, aminmin, amaxmin, pmin, emin;
 
     // Compute minimum entropy from current and adjacent elements
     fpdtype_t entmin = ${inf};
     for (int fidx = 0; fidx < ${nfaces}; fidx++) entmin = fmin(entmin, entmin_int[fidx]);
 
     // Check if solution is within bounds
-    ${pyfr.expand('get_minima', 'u', 'dmin', 'aminmin', 'amaxmin', 'pmin', 'emin')};
+    ${pyfr.expand('get_minima', 'u', 'admin', 'aminmin', 'amaxmin', 'pmin', 'emin')};
 
     // Filter if out of bounds
-    if (dmin < ${d_min} || pmin < ${p_min} || aminmin < ${a_min} || 1 - amaxmin > ${a_max} || emin < entmin - ${e_tol})
+    if (admin < ${ad_min} || pmin < ${p_min} || aminmin < ${a_min} || amaxmin < ${1 - a_max} || emin < entmin - ${e_tol})
     {
         // Compute modal basis
         fpdtype_t umodes[${nupts}][${nvars}];
@@ -105,9 +105,9 @@
         fpdtype_t f_low, f_high, fnew;
         fpdtype_t f1, f2, f3, f4, f5;
 
-        fpdtype_t d, amin, amax, p, e;
-        fpdtype_t d_low, amin_low, amax_low, p_low, e_low;
-        fpdtype_t d_high, amin_high, amax_high, p_high, e_high;
+        fpdtype_t ad, amin, amax, p, e;
+        fpdtype_t ad_low, amin_low, amax_low, p_low, e_low;
+        fpdtype_t ad_high, amin_high, amax_high, p_high, e_high;
 
         // Compute f on a rolling basis per solution point
         fpdtype_t up[${order+1}][${nvars}];
@@ -120,21 +120,21 @@
             % endfor
 
             // Compute constraints with current minimum f value
-            ${pyfr.expand('apply_filter_single', 'up', 'f', 'd', 'amin', 'amax', 'p', 'e')};
+            ${pyfr.expand('apply_filter_single', 'up', 'f', 'ad', 'amin', 'amax', 'p', 'e')};
 
             // Update f if constraints aren't satisfied
-            if (d < ${d_min} || p < ${p_min} || amin < ${a_min} || 1 - amax > ${a_max} || e < entmin - ${e_tol})
+            if (ad < ${ad_min} || p < ${p_min} || amin < ${a_min} || amax < ${1 - a_max} || e < entmin - ${e_tol})
             {
                 // Set root-finding interval
                 f_high = f;
                 f_low = 0.0;
 
                 // Compute brackets
-                d_high = d; amin_high = amin; amax_high = amax; p_high = p; e_high = e;
-                ${pyfr.expand('apply_filter_single', 'up', 'f_low', 'd_low', 'amin_low', 'amax_low', 'p_low', 'e_low')};
+                ad_high = ad; amin_high = amin; amax_high = amax; p_high = p; e_high = e;
+                ${pyfr.expand('apply_filter_single', 'up', 'f_low', 'ad_low', 'amin_low', 'amax_low', 'p_low', 'e_low')};
 
                 // Regularize constraints to be around zero
-                d_low -= ${d_min}; d_high -= ${d_min};
+                ad_low -= ${ad_min}; ad_high -= ${ad_min};
                 amin_low -= ${a_min}; amin_high -= ${a_min};
                 amax_low -= ${1 - a_max}; amax_high -= ${1 - a_max};
                 p_low -= ${p_min}; p_high -= ${p_min};
@@ -144,7 +144,7 @@
                 for (int iter = 0; iter < ${niters} && f_high - f_low > ${f_tol}; iter++)
                 {
                     // Compute new guess for each constraint (catch if root is not bracketed)
-                    f1 = (d_high > 0.0) ? f_high : (0.5*f_low*d_high - f_high*d_low)/(0.5*d_high - d_low + ${ill_tol});
+                    f1 = (ad_high > 0.0) ? f_high : (0.5*f_low*ad_high - f_high*ad_low)/(0.5*ad_high - ad_low + ${ill_tol});
                     f2 = (amin_high > 0.0) ? f_high : (0.5*f_low*amin_high - f_high*amin_low)/(0.5*amin_high - amin_low + ${ill_tol});
                     f3 = (amax_high > 0.0) ? f_high : (0.5*f_low*amax_high - f_high*amax_low)/(0.5*amax_high - amax_low + ${ill_tol});
                     f4 = (p_high > 0.0) ? f_high : (0.5*f_low*p_high - f_high*p_low)/(0.5*p_high - p_low + ${ill_tol});
@@ -157,13 +157,13 @@
                     fnew = ((fnew > f_high) || (fnew < f_low)) ? 0.5*(f_low + f_high) : fnew;
 
                     // Compute filtered state
-                    ${pyfr.expand('apply_filter_single', 'up', 'fnew', 'd', 'amin', 'amax', 'p', 'e')};
+                    ${pyfr.expand('apply_filter_single', 'up', 'fnew', 'ad', 'amin', 'amax', 'p', 'e')};
 
                     // Update brackets
-                    if (d < ${d_min} || p < ${p_min} || amin < ${a_min} || 1 - amax > ${a_max} || e < entmin - ${e_tol})
+                    if (ad < ${ad_min} || p < ${p_min} || amin < ${a_min} || amax < ${1 - a_max} || e < entmin - ${e_tol})
                     {
                         f_high = fnew;
-                        d_high = d - ${d_min};
+                        ad_high = ad - ${ad_min};
                         amin_high = amin - ${a_min};
                         amax_high = amax - ${1 - a_max};
                         p_high = p - ${p_min};
@@ -172,7 +172,7 @@
                     else
                     {
                         f_low = fnew;
-                        d_low = d - ${d_min};
+                        ad_low = ad - ${ad_min};
                         amin_low = amin - ${a_min};
                         amax_low = amax - ${1 - a_max};
                         p_low = p - ${p_min};
@@ -189,7 +189,7 @@
         ${pyfr.expand('apply_filter_full', 'umodes', 'vdm', 'u', 'f')};
 
         // Calculate minimum entropy from filtered solution
-        ${pyfr.expand('get_minima', 'u', 'dmin', 'aminmin', 'amaxmin', 'pmin', 'emin')};
+        ${pyfr.expand('get_minima', 'u', 'admin', 'aminmin', 'amaxmin', 'pmin', 'emin')};
     }
 
     // Set new minimum entropy within element for next stage

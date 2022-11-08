@@ -3,8 +3,8 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
 <% inf = 1e20 %>
-<%pyfr:macro name='compute_entropy' params='u, d, amin, amax, p, e'>
-    d = ${' + '.join('u[{i}]'.format(i=i) for i in range(nspec))};
+<%pyfr:macro name='compute_entropy' params='u, ad, amin, amax, p, e'>
+    fpdtype_t d = ${' + '.join('u[{i}]'.format(i=i) for i in range(nspec))};
     fpdtype_t rcpd = 1.0/d, E = u[${ndims + nspec}];
 
     fpdtype_t rhov[${ndims}];
@@ -20,9 +20,11 @@
 
     amin = ${inf};
     amax = ${-inf};
+    ad = ${inf};
 % for i in range(nspec):
     amin = min(amin, a[${i}]);
     amax = max(amax, a[${i}]);
+    ad = min(ad, u[${i}]);
 % endfor
     amax = 1 - amax;
 
@@ -36,5 +38,5 @@
     e = ${' + '.join('u[{i}]*log(p*pow(a[{i}]/u[{i}], {gam}))'.format(i=i, gam=c[f'gamma{i}']) for i in range(nspec))};
 
     // Compute specific physical entropy
-    e = ((d > 0) && (p > 0) && (amin > 0) && (amax > 0)) ? exp(e) : ${inf};
+    e = ((p > 0) && (amin > 0) && (amax > 0) && (ad > 0)) ? exp(e) : ${inf};
 </%pyfr:macro>
