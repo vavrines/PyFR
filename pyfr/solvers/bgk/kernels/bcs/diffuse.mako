@@ -15,7 +15,7 @@
             % if delta:
                 wl[3] += fl[i]*M[0][i]*(0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1]) + u[i][2]);
             % else:
-                wl[3] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1])
+                wl[3] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1]);
             % endif
         % elif ndims == 3:
             wl[3] += fl[i]*M[0][i]*u[i][2];            
