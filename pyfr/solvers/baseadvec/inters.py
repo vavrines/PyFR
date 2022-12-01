@@ -30,6 +30,8 @@ class BaseAdvectionIntInters(BaseInters):
         # Generate the constant matrices
         self._pnorm_lhs = self._const_mat(lhs, 'get_pnorms_for_inter')
         self._pnorm_rhs = self._const_mat(rhs, 'get_pnorms_for_inter')
+        self._ploc_lhs = self._const_mat(lhs, 'get_ploc_for_inter')
+        self._ploc_rhs = self._const_mat(rhs, 'get_ploc_for_inter')
 
     def _gen_perm(self, lhs, rhs):
         # Arbitrarily, take the permutation which results in an optimal
@@ -117,6 +119,9 @@ class BaseAdvectionBCInters(BaseInters):
 
         # Make the simulation time available inside kernels
         self._set_external('t', 'scalar fpdtype_t')
+
+        # Make point locations available inside kernels
+        self._ploc_lhs = self._const_mat(lhs, 'get_ploc_for_inter')
 
         if cfg.get('solver', 'shock-capturing') == 'entropy-filter':
             self._entmin_lhs = self._view(lhs, 'get_entmin_bc_fpts_for_inter')

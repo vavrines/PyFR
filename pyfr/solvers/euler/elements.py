@@ -161,24 +161,26 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             self.kernels['tdisf_curved'] = lambda uin: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, r[c]],
                 u=s(self.scal_upts[uin], c), f=s(self._vect_upts, c),
-                smats=self.curved_smat_at('upts')
+                smats=self.curved_smat_at('upts'), ploc=self.ploc_at('upts', l)
             )
         elif c in r:
             self.kernels['tdisf_curved'] = lambda: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nqpts, r[c]],
                 u=s(self._scal_qpts, c), f=s(self._vect_qpts, c),
-                smats=self.curved_smat_at('qpts')
+                smats=self.curved_smat_at('qpts'), ploc=self.ploc_at('upts', l)
             )
 
         if l in r and 'flux' not in self.antialias:
             self.kernels['tdisf_linear'] = lambda uin: self._be.kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nupts, r[l]],
                 u=s(self.scal_upts[uin], l), f=s(self._vect_upts, l),
-                verts=self.ploc_at('linspts', l), upts=self.upts
+                verts=self.ploc_at('linspts', l), upts=self.upts,
+                ploc=self.ploc_at('upts', l)
             )
         elif l in r:
             self.kernels['tdisf_linear'] = lambda: self._be.kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nqpts, r[l]],
                 u=s(self._scal_qpts, l), f=s(self._vect_qpts, l),
-                verts=self.ploc_at('linspts', l), upts=self.qpts
+                verts=self.ploc_at('linspts', l), upts=self.qpts,
+                ploc=self.ploc_at('upts', l)
             )

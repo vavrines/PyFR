@@ -42,7 +42,7 @@ class EulerIntInters(FluidIntIntersMixin, BaseAdvectionIntInters):
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'intcflux', tplargs=tplargs, dims=[self.ninterfpts],
             ul=self._scal_lhs, ur=self._scal_rhs, nl=self._pnorm_lhs,
-            nr=self._pnorm_rhs
+            nr=self._pnorm_rhs, plocl=self._ploc_lhs, plocr=self._ploc_rhs
         )
 
 
@@ -75,7 +75,7 @@ class EulerBaseBCInters(BaseAdvectionBCInters):
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'bccflux', tplargs=tplargs, dims=[self.ninterfpts],
             extrns=self._external_args, ul=self._scal_lhs, nl=self._pnorm_lhs,
-            **self._external_vals
+            plocl=self._ploc_lhs, **self._external_vals
         )
 
         if self.cfg.get('solver', 'shock-capturing') == 'entropy-filter':
