@@ -47,7 +47,7 @@
     plocn[1] = -r;
 
     // Perform the Riemann solve
-    ${pyfr.expand('rsolve', 'ul_t', 'ur_t', 'nn', 'fn', 'plocn', 'plocn')};
+    ${pyfr.expand('rsolve', 'ul_t', 'ur_t', 'nn', 'fn', 'plocn')};
     
     // Scale, transform, and write out the common normal fluxes
 % for i in range(nvars):
