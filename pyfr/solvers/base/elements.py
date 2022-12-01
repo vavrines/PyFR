@@ -106,6 +106,19 @@ class BaseElements:
         return plocfpts
 
     @cached_property
+    def vbfpts(self):
+        ploc = self.plocfpts
+        x = ploc[..., 0]
+        y = ploc[..., 1]
+        omg = self.cfg.getfloat('constants', 'omg')
+
+        vb = np.zeros_like(ploc[..., :2])
+        vb[..., 0] = -y*omg
+        vb[..., 1] =  x*omg
+
+        return vb
+
+    @cached_property
     def _srtd_face_fpts(self):
         plocfpts = self.plocfpts.transpose(1, 2, 0)
 
@@ -289,6 +302,24 @@ class BaseElements:
     def ploc_at(self, name):
         return self._be.const_matrix(self.ploc_at_np(name), tags={'align'})
 
+    @memoize
+    def vb_at_np(self, name):
+        ploc = self.ploc_at_np(name)
+        x = ploc[:, 0, :]
+        y = ploc[:, 1, :]
+        omg = self.cfg.getfloat('constants', 'omg')
+
+        vb = np.zeros_like(ploc[:, :2, :])
+        vb[:, 0, :] = -y*omg
+        vb[:, 1, :] =  x*omg
+
+        return vb
+
+    @sliceat
+    @memoize
+    def vb_at(self, name):
+        return self._be.const_matrix(self.vb_at_np(name), tags={'align'})
+
     @cached_property
     def upts(self):
         return self._be.const_matrix(self.basis.upts)
@@ -403,3 +434,7 @@ class BaseElements:
     def get_ploc_for_inter(self, eidx, fidx):
         fpts_idx = self._srtd_face_fpts[fidx][eidx]
         return self.plocfpts[fpts_idx, eidx]
+
+    def get_vb_for_inter(self, eidx, fidx):
+        fpts_idx = self._srtd_face_fpts[fidx][eidx]
+        return self.vbfpts[fpts_idx, eidx]

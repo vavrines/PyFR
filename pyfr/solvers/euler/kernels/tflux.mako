@@ -6,11 +6,11 @@
               u='in fpdtype_t[${str(nvars)}]'
               f='out fpdtype_t[${str(ndims)}][${str(nvars)}]'
               smats='in fpdtype_t[${str(ndims)}][${str(ndims)}]'
-              ploc='in fpdtype_t[${str(ndims)}]'>
+              vb='in fpdtype_t[2]'>
     // Compute the flux
     fpdtype_t ftemp[${ndims}][${nvars}];
     fpdtype_t p, v[${ndims}];
-    ${pyfr.expand('inviscid_flux', 'u', 'ftemp', 'p', 'v', 'ploc')};
+    ${pyfr.expand('inviscid_flux', 'u', 'ftemp', 'p', 'v', 'vb')};
 
     // Transform the fluxes
 % for i, j in pyfr.ndrange(ndims, nvars):

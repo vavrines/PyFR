@@ -7,8 +7,7 @@
               ur='inout view fpdtype_t[${str(nvars)}]'
               nl='in fpdtype_t[${str(ndims)}]'
               nr='in fpdtype_t[${str(ndims)}]'
-              plocl='in fpdtype_t[${str(ndims)}]'
-              plocr='in fpdtype_t[${str(ndims)}]'>
+              vb='in fpdtype_t[2]'>
     fpdtype_t mag_nl = sqrt(${pyfr.dot('nl[{i}]', i=ndims)});
     fpdtype_t norm_nl[] = ${pyfr.array('(1 / mag_nl)*nl[{i}]', i=ndims)};
 
@@ -41,13 +40,19 @@
     fpdtype_t nn[${ndims}] = {0};
     nn[0] = 1.0;
 
-    // Create pseudo point location plocn = [r, 0, 0]
-    fpdtype_t plocn[${ndims}] = {0};
-    fpdtype_t r = sqrt(plocl[0]*plocl[0] + plocl[1]*plocl[1]);
-    plocn[1] = -r;
+    // Create pseudo velocity
+    fpdtype_t vbn[2] = {0};
+    fpdtype_t vr = sqrt(vb[0]*vb[0] + vb[1]*vb[1]);
+    % if c['omg'] > 0:
+    vbn[0] = -vr*norm_nl[0];
+    vbn[1] = -vr*norm_nl[1];
+    % else:
+    vbn[0] = vr*norm_nl[0];
+    vbn[1] = vr*norm_nl[1];
+    % endif
 
     // Perform the Riemann solve
-    ${pyfr.expand('rsolve', 'ul_t', 'ur_t', 'nn', 'fn', 'plocn')};
+    ${pyfr.expand('rsolve', 'ul_t', 'ur_t', 'nn', 'fn', 'vbn')};
     
     // Scale, transform, and write out the common normal fluxes
 % for i in range(nvars):
