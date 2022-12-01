@@ -167,7 +167,7 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
             self.kernels['tdisf_curved'] = lambda: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nqpts, r[c]],
                 u=s(self._scal_qpts, c), f=s(self._vect_qpts, c),
-                smats=self.curved_smat_at('qpts'), ploc=self.ploc_at('upts', l)
+                smats=self.curved_smat_at('qpts'), ploc=self.ploc_at('qpts', l)
             )
 
         if l in r and 'flux' not in self.antialias:
@@ -182,5 +182,5 @@ class EulerElements(BaseFluidElements, BaseAdvectionElements):
                 'tfluxlin', tplargs=tplargs, dims=[self.nqpts, r[l]],
                 u=s(self._scal_qpts, l), f=s(self._vect_qpts, l),
                 verts=self.ploc_at('linspts', l), upts=self.qpts,
-                ploc=self.ploc_at('upts', l)
+                ploc=self.ploc_at('qpts', l)
             )
