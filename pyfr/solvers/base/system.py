@@ -126,7 +126,10 @@ class BaseSystem:
         lhs, rhs = mesh[key].astype('U4,i4,i1,i2').tolist()
 
         # Strip periodic BC indices
-        pidxs = list(mesh[key, 'periodic_0'])
+        pidxs = []
+        for k, v in mesh.attrs(key).items():
+            if 'periodic' in k:
+                pidxs += list(v)
         new_lhs = [v for i, v in enumerate(lhs) if i not in pidxs]
         new_rhs = [v for i, v in enumerate(rhs) if i not in pidxs]
 
@@ -175,16 +178,22 @@ class BaseSystem:
         key = f'con_p{rallocs.prank}'
 
         lhs, rhs = mesh[key].astype('U4,i4,i1,i2').tolist()
+  
+        # Get periodic BC indices
+        pidxs = []
+        for k, v in mesh.attrs(key).items():
+            if 'periodic' in k:
+                pidxs += list(v)
+        if pidxs:
+            new_lhs = [v for i, v in enumerate(lhs) if i in pidxs]
+            new_rhs = [v for i, v in enumerate(rhs) if i in pidxs]
 
-        # Strip periodic BC indices
-        pidxs = list(mesh[key, 'periodic_0'])
-        new_lhs = [v for i, v in enumerate(lhs) if i in pidxs]
-        new_rhs = [v for i, v in enumerate(rhs) if i in pidxs]
+            pint_inters = self.pintinterscls(self.backend, new_lhs, new_rhs, elemap,
+                                        self.cfg)
 
-        pint_inters = self.pintinterscls(self.backend, new_lhs, new_rhs, elemap,
-                                       self.cfg)
-
-        return [pint_inters]
+            return [pint_inters]
+        else:
+            return []
 
     def _gen_kernels(self, nregs, eles, iint, mpiint, bcint, pint):
         self._kernels = kernels = defaultdict(list)
