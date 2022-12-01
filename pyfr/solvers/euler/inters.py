@@ -75,7 +75,8 @@ class EulerMPIInters(FluidMPIIntersMixin, BaseAdvectionMPIInters):
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'mpicflux', tplargs, dims=[self.ninterfpts],
-            ul=self._scal_lhs, ur=self._scal_rhs, nl=self._pnorm_lhs
+            ul=self._scal_lhs, ur=self._scal_rhs, nl=self._pnorm_lhs,
+            plocl=self._ploc_lhs
         )
 
 
