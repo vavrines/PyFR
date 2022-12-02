@@ -14,13 +14,14 @@
               gradur='in mpi fpdtype_t[${str(ndims)}][${str(nvars)}]'
               artviscl='in view fpdtype_t'
               artviscr='in mpi fpdtype_t'
-              nl='in fpdtype_t[${str(ndims)}]'>
+              nl='in fpdtype_t[${str(ndims)}]'
+              vb='in fpdtype_t[2]'>
     fpdtype_t mag_nl = sqrt(${pyfr.dot('nl[{i}]', i=ndims)});
     fpdtype_t norm_nl[] = ${pyfr.array('(1 / mag_nl)*nl[{i}]', i=ndims)};
 
     // Perform the Riemann solve
     fpdtype_t ficomm[${nvars}], fvcomm;
-    ${pyfr.expand('rsolve', 'ul', 'ur', 'norm_nl', 'ficomm')};
+    ${pyfr.expand('rsolve', 'ul', 'ur', 'norm_nl', 'ficomm', 'vb')};
 
 % if beta != -0.5:
     fpdtype_t fvl[${ndims}][${nvars}] = {{0}};

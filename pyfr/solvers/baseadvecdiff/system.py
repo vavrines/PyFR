@@ -44,6 +44,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
             g1.add(l, deps=deps(l, 'eles/disu'))
         kdeps = k['eles/copy_fpts'] or k['eles/disu']
         g1.add_all(k['iint/con_u'], deps=kdeps + k['mpiint/scal_fpts_pack'])
+        g1.add_all(k['pint/con_u'], deps=kdeps + k['mpiint/scal_fpts_pack'])
         g1.add_all(k['bcint/con_u'], deps=kdeps)
 
         # Run the shock sensor (if enabled)
@@ -91,6 +92,8 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
 
         # Compute the common normal flux at our internal/boundary interfaces
         g2.add_all(k['iint/comm_flux'],
+                   deps=k['eles/gradcoru_fpts'] + k['mpiint/vect_fpts_pack'])
+        g2.add_all(k['pint/comm_flux'],
                    deps=k['eles/gradcoru_fpts'] + k['mpiint/vect_fpts_pack'])
         g2.add_all(k['bcint/comm_flux'], deps=k['eles/gradcoru_fpts'])
 

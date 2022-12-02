@@ -65,13 +65,15 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
             self.kernels['tdisf_curved'] = lambda uin: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nupts, r[c]],
                 u=s(self.scal_upts[uin], c), f=s(self._vect_upts, c),
-                artvisc=s(av, c), smats=self.curved_smat_at('upts')
+                artvisc=s(av, c), smats=self.curved_smat_at('upts'),
+                vb=self.vb_at('upts', c)
             )
         elif c in r:
             self.kernels['tdisf_curved'] = lambda: self._be.kernel(
                 'tflux', tplargs=tplargs, dims=[self.nqpts, r[c]],
                 u=s(self._scal_qpts, c), f=s(self._vect_qpts, c),
-                artvisc=s(av, c), smats=self.curved_smat_at('qpts')
+                artvisc=s(av, c), smats=self.curved_smat_at('qpts'),
+                vb=self.vb_at('qpts', c)
             )
 
         if l in r and 'flux' not in self.antialias:
@@ -79,12 +81,12 @@ class NavierStokesElements(BaseFluidElements, BaseAdvectionDiffusionElements):
                 'tfluxlin', tplargs=tplargs, dims=[self.nupts, r[l]],
                 u=s(self.scal_upts[uin], l), f=s(self._vect_upts, l),
                 artvisc=s(av, l), verts=self.ploc_at('linspts', l),
-                upts=self.upts
+                upts=self.upts, vb=self.vb_at('upts', l)
             )
         elif l in r:
             self.kernels['tdisf_linear'] = lambda: self._be.kernel(
                 'tfluxlin', tplargs=tplargs, dims=[self.nqpts, r[l]],
                 u=s(self._scal_qpts, l), f=s(self._vect_qpts, l),
                 artvisc=s(av, l), verts=self.ploc_at('linspts', l),
-                upts=self.qpts
+                upts=self.qpts, vb=self.vb_at('qpts', l)
             )

@@ -6,7 +6,7 @@
 
 <% tau = c['ldg-tau'] %>
 
-<%pyfr:macro name='bc_common_flux_state' params='ul, gradul, artviscl, nl, magnl'>
+<%pyfr:macro name='bc_common_flux_state' params='ul, gradul, artviscl, nl, magnl, vb'>
     // Viscous states
     fpdtype_t ur[${nvars}], gradur[${ndims}][${nvars}];
     ${pyfr.expand('bc_ldg_state', 'ul', 'nl', 'ur')};
@@ -21,7 +21,7 @@
 
     // Perform the Riemann solve
     fpdtype_t ficomm[${nvars}], fvcomm;
-    ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'ficomm')};
+    ${pyfr.expand('rsolve', 'ul', 'ur', 'nl', 'ficomm', 'vb')};
 
 % for i in range(nvars):
     fvcomm = ${' + '.join(f'nl[{j}]*fvr[{j}][{i}]' for j in range(ndims))};

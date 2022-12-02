@@ -6,7 +6,8 @@
 <%pyfr:kernel name='bcconu' ndim='1'
               ulin='in view fpdtype_t[${str(nvars)}]'
               ulout='out view fpdtype_t[${str(nvars)}]'
-              nlin='in fpdtype_t[${str(ndims)}]'>
+              nlin='in fpdtype_t[${str(ndims)}]'
+              vb='in fpdtype_t[2]'>
     fpdtype_t mag_nl = sqrt(${pyfr.dot('nlin[{i}]', i=ndims)});
     fpdtype_t norm_nl[] = ${pyfr.array('(1 / mag_nl)*nlin[{i}]', i=ndims)};
 
