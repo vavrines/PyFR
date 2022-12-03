@@ -3,15 +3,15 @@
 
 <% eps = 0.001 %>
 
-<%pyfr:macro name='rsolve' params='ul, ur, n, nf'>
+<%pyfr:macro name='rsolve' params='ul, ur, n, nf, vb'>
     // Compute the left and right fluxes + velocities and pressures
     fpdtype_t fl[${ndims}][${nvars}], fr[${ndims}][${nvars}];
     fpdtype_t vl[${ndims}], vr[${ndims}], va[${ndims}], dv[${ndims}];
     fpdtype_t v1[${nvars}], v2[${nvars}], v3[${nvars}];
     fpdtype_t pl, pr, r2a2;
 
-    ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'pl', 'vl')};
-    ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr')};
+    ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'pl', 'vl', 'vb')};
+    ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr', 'vb')};
 
     // Get the normal velocity jump
     fpdtype_t dvs = ${pyfr.dot('n[{i}]', 'vr[{i}] - vl[{i}]', i=ndims)};

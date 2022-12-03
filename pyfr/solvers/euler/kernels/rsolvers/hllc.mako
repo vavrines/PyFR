@@ -1,7 +1,7 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 <%include file='pyfr.solvers.euler.kernels.flux'/>
 
-<%pyfr:macro name='rsolve' params='ul, ur, n, nf'>
+<%pyfr:macro name='rsolve' params='ul, ur, n, nf, vb'>
     // Compute the left and right fluxes + velocities and pressures
     fpdtype_t fl[${ndims}][${nvars}], fr[${ndims}][${nvars}];
     fpdtype_t vl[${ndims}], vr[${ndims}];
@@ -9,8 +9,8 @@
     fpdtype_t nf_fl, nf_fr, nf_flstar, nf_frstar, d_star;
     fpdtype_t rcp_lstar, rcp_rstar;
 
-    ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'pl', 'vl')};
-    ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr')};
+    ${pyfr.expand('inviscid_flux', 'ul', 'fl', 'pl', 'vl', 'vb')};
+    ${pyfr.expand('inviscid_flux', 'ur', 'fr', 'pr', 'vr', 'vb')};
 
     // Get the normal left and right velocities
     fpdtype_t nvl = ${pyfr.dot('n[{i}]', 'vl[{i}]', i=ndims)};
