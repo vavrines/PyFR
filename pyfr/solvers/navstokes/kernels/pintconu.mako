@@ -11,15 +11,13 @@
               nl='in fpdtype_t[${str(ndims)}]'
               nr='in fpdtype_t[${str(ndims)}]'>
 
-    fpdtype_t mag_nl = sqrt(${pyfr.dot('nl[{i}]', i=ndims)});
-    fpdtype_t norm_nl[] = ${pyfr.array('(1 / mag_nl)*nl[{i}]', i=ndims)};
+    fpdtype_t mag_n = sqrt(${pyfr.dot('nl[{i}]', i=ndims)});
+    fpdtype_t norm_nl[] = ${pyfr.array('(1 / mag_n)*nl[{i}]', i=ndims)};
+    fpdtype_t negnorm_nr[] = ${pyfr.array('-(1 / mag_n)*nr[{i}]', i=ndims)};
 
-    fpdtype_t mag_nr = sqrt(${pyfr.dot('nr[{i}]', i=ndims)});
-    fpdtype_t negnorm_nr[] = ${pyfr.array('-(1 / mag_nr)*nr[{i}]', i=ndims)};
-
-    fpdtype_t tmpu[${nvars}];
 
     // ----- Assumes c['ldg-beta'] == 0.5 -----
+    fpdtype_t tmpu[${nvars}];
     % for i in range(nvars):
     tmpu[${i}] = urin[${i}];
     % endfor
