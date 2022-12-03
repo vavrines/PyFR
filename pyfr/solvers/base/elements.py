@@ -180,7 +180,9 @@ class BaseElements:
 
     @cached_property
     def _soln_in_src_exprs(self):
-        return any(re.search(r'\bu\b', ex) for ex in self._src_exprs)
+        c1 = self.cfg.getfloat('constants', 'omg') != 0
+        c2 = any(re.search(r'\bu\b', ex) for ex in self._src_exprs)
+        return c1 or c2
 
     def set_backend(self, backend, nscalupts, nonce, linoff):
         self._be = backend
