@@ -162,6 +162,7 @@ class BaseAdvectionDiffusionSystem(BaseAdvectionSystem):
             g1.add(l, deps=deps(l, 'eles/disu'))
         kdeps = k['eles/copy_fpts'] or k['eles/disu']
         g1.add_all(k['iint/con_u'], deps=kdeps)
+        g1.add_all(k['pint/con_u'], deps=kdeps)
         g1.add_all(k['bcint/con_u'], deps=kdeps)
 
         # Compute the transformed gradient of the partially corrected solution
