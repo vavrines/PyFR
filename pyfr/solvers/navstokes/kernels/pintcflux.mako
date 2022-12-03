@@ -4,7 +4,7 @@
 <%include file='pyfr.solvers.baseadvecdiff.kernels.artvisc'/>
 <%include file='pyfr.solvers.euler.kernels.rsolvers.${rsolver}'/>
 <%include file='pyfr.solvers.navstokes.kernels.flux'/>
-<%include file='pyfr.solvers.navstokes.kernels.pintconu'/>
+<%include file='pyfr.solvers.euler.kernels.rotate'/>
 
 <% beta, tau = c['ldg-beta'], c['ldg-tau'] %>
 
@@ -45,9 +45,10 @@ fpdtype_t fvcomm;
     fvcomm += ${tau}*(ul[${i}] - ur[${i}]);
     % endif
     ul[${i}] =  mag_nl*(ficomm[${i}] + fvcomm);
-    ur[${i}] = -mag_nl*(ficomm[${i}] + fvcomm); // Transform after
+    ur[${i}] = -mag_nl*(ficomm[${i}] + fvcomm); // Set as -LHS flux
 % endfor
 
+    // Transform RHS flux
     ${pyfr.expand('rotate', 'ur', 'norm_nl', 'negnorm_nr')};
 
 </%pyfr:kernel>

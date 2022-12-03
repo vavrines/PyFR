@@ -2,6 +2,7 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
 <%include file='pyfr.solvers.euler.kernels.rsolvers.${rsolver}'/>
+<%include file='pyfr.solvers.euler.kernels.rotate'/>
 <%pyfr:kernel name='pintcflux' ndim='1'
               ul='inout view fpdtype_t[${str(nvars)}]'
               ur='inout view fpdtype_t[${str(nvars)}]'
@@ -12,60 +13,20 @@
     fpdtype_t norm_nl[] = ${pyfr.array('(1 / mag_nl)*nl[{i}]', i=ndims)};
 
     fpdtype_t mag_nr = sqrt(${pyfr.dot('nr[{i}]', i=ndims)});
-    fpdtype_t norm_nr[] = ${pyfr.array('(1 / mag_nr)*nr[{i}]', i=ndims)};
+    fpdtype_t negnorm_nr[] = ${pyfr.array('-(1 / mag_nr)*nr[{i}]', i=ndims)};
 
-    fpdtype_t ul_t[${nvars}];
-    fpdtype_t ur_t[${nvars}];
-
-    // Density, energy, and w-velocity (if 3D) are not modified
-    ul_t[0] = ul[0];
-    ur_t[0] = ur[0];
-    % if ndims == 3:
-    ul_t[3] = ul[3];
-    ur_t[3] = ur[3];
-    % endif
-    ul_t[${nvars-1}] = ul[${nvars-1}];
-    ur_t[${nvars-1}] = ur[${nvars-1}];
-
-    // Compute normal velocity with respect to outward facing normal
-    ul_t[1] =  norm_nl[0]*ul[1] +  norm_nl[1]*ul[2];
-    ur_t[1] = -norm_nr[0]*ur[1] + -norm_nr[1]*ur[2];
-
-    // Compute tangential velocity with respect to outward facing normal
-    ul_t[2] = -norm_nl[1]*ul[1] +  norm_nl[0]*ul[2];
-    ur_t[2] =  norm_nr[1]*ur[1] + -norm_nr[0]*ur[2];
-
-    // Create pseudo normal vector n = [1, 0, 0]
-    fpdtype_t fn[${nvars}];
-    fpdtype_t nn[${ndims}] = {0};
-    nn[0] = 1.0;
-
-    // Create pseudo velocity
-    fpdtype_t vbn[2] = {0};
-    fpdtype_t vr = sqrt(vb[0]*vb[0] + vb[1]*vb[1]);
-    % if c['omg'] > 0:
-    vbn[0] = -vr*norm_nl[0];
-    vbn[1] = -vr*norm_nl[1];
-    % else:
-    vbn[0] = vr*norm_nl[0];
-    vbn[1] = vr*norm_nl[1];
-    % endif
+    ${pyfr.expand('rotate', 'ur', 'negnorm_nr', 'norm_nl')};
 
     // Perform the Riemann solve
-    ${pyfr.expand('rsolve', 'ul_t', 'ur_t', 'nn', 'fn', 'vbn')};
-    
-    // Scale, transform, and write out the common normal fluxes
+    fpdtype_t ficomm[${nvars}];
+    ${pyfr.expand('rsolve', 'ul', 'ur', 'norm_nl', 'ficomm', 'vb')};
+
 % for i in range(nvars):
-    % if i == 1:
-    ul[${i}] = mag_nl*(norm_nl[0]*fn[1] - norm_nl[1]*fn[2]);
-    ur[${i}] = mag_nr*(norm_nr[0]*fn[1] - norm_nr[1]*fn[2]);
-    % elif i == 2:
-    ul[${i}] = mag_nl*(norm_nl[1]*fn[1] + norm_nl[0]*fn[2]);
-    ur[${i}] = mag_nr*(norm_nr[1]*fn[1] + norm_nr[0]*fn[2]);
-    % else:
-    ul[${i}] =  mag_nl*fn[${i}];
-    ur[${i}] = -mag_nr*fn[${i}];
-    % endif
+    ul[${i}] =  mag_nl*(ficomm[${i}]);
+    ur[${i}] = -mag_nl*(ficomm[${i}]);
 % endfor
+
+    // Transform RHS flux
+    ${pyfr.expand('rotate', 'ur', 'norm_nl', 'negnorm_nr')};
 
 </%pyfr:kernel>
