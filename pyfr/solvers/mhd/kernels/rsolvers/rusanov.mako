@@ -29,8 +29,14 @@
     
     // Output
 % for i in range(nvars):
+    % if i == 2*ndims + 1:
+    // Centered approximation for computing divB
+    nf[${i}] = 0.5*(${' + '.join('n[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
+                                 .format(i=i, j=j) for j in range(ndims))}); 
+    % else:
     nf[${i}] = 0.5*(${' + '.join('n[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
                                  .format(i=i, j=j) for j in range(ndims))})
              + 0.5*lambda*(ul[${i}] - ur[${i}]);
+    % endif
 % endfor
 </%pyfr:macro>
