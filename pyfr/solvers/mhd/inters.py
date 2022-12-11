@@ -76,8 +76,9 @@ class MHDBaseBCInters(BaseAdvectionBCInters):
             )
 
 
-class MHDSupInflowBCInters(MHDBaseBCInters):
-    type = 'sup-in-fa'
+class MHDFreeBCInters(MHDBaseBCInters):
+    type = 'free'
+    cflux_state = 'ghost'
 
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
@@ -87,10 +88,19 @@ class MHDSupInflowBCInters(MHDBaseBCInters):
         )
 
 
-class MHDSupOutflowBCInters(MHDBaseBCInters):
-    type = 'sup-out-fn'
-    cflux_state = 'ghost'
+class MHDFixedBCInters(MHDBaseBCInters):
+    type = 'fixed'
+    cflux_state = None
 
+    def __init__(self, be, lhs, elemap, cfgsect, cfg):
+        super().__init__(be, lhs, elemap, cfgsect, cfg)
 
-class MHDSlpAdiaWallBCInters(MHDBaseBCInters):
-    type = 'slp-adia-wall'
+        if self.ndims == 2:
+            tplc = self._exp_opts(
+                ['rho', 'p', 'u', 'v', 'Bx', 'By'], lhs
+            )
+        else:
+            tplc = self._exp_opts(
+                ['rho', 'p', 'u', 'v', 'Bx', 'By', 'w', 'Bz'], lhs
+            )
+        self.c.update(tplc)
