@@ -111,10 +111,12 @@ class MHDElements(BaseAdvectionElements):
         solnupts = self._scal_upts_cpy if solnsrc else None
 
         # Source term kernel arguments
+        alpha = self.cfg.getfloat('constants', 'alpha', 0.0)
         srctplargs = {
             'ndims': self.ndims,
             'nvars': self.nvars,
-            'srcex': self._src_exprs
+            'srcex': self._src_exprs,
+            'alpha': alpha
         }
 
         self.kernels['negdivconf'] = lambda fout: self._be.kernel(
