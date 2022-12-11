@@ -272,6 +272,16 @@ class BaseSystem:
     def postproc(self, uinbank):
         pass
 
+    def _powell_graphs(self, uinbank, foutbank):
+        pass
+
+    def powell_source(self, uinbank, foutbank):
+        self._rhs_uin_fout.add((uinbank, foutbank))
+        self._prepare_kernels(0.0, uinbank, foutbank)
+
+        for graph in self._powell_graphs(uinbank, foutbank):
+            self.backend.run_graph(graph)
+
     def rhs_wait_times(self):
         # Group together timings for graphs which are semantically equivalent
         times = defaultdict(list)

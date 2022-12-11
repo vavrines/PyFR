@@ -100,6 +100,7 @@ class MHDElements(BaseAdvectionElements):
         super().set_backend(*args, **kwargs)
 
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.negdivconfmhd')
+        self._be.pointwise.register('pyfr.solvers.mhd.kernels.powellsource')
 
         # What the source term expressions (if any) are a function of
         plocsrc = self._ploc_in_src_exprs
@@ -118,6 +119,12 @@ class MHDElements(BaseAdvectionElements):
 
         self.kernels['negdivconf'] = lambda fout: self._be.kernel(
             'negdivconfmhd', tplargs=srctplargs,
+            dims=[self.nupts, self.neles], tdivtconf=self.scal_upts[fout],
+            rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=solnupts
+        )
+
+        self.kernels['powellsource'] = lambda fout: self._be.kernel(
+            'powellsource', tplargs=srctplargs,
             dims=[self.nupts, self.neles], tdivtconf=self.scal_upts[fout],
             rcpdjac=self.rcpdjac_at('upts'), ploc=plocupts, u=solnupts
         )
