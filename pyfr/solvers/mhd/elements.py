@@ -214,19 +214,19 @@ class MHDElements(BaseAdvectionElements):
 
             # Minimum density/pressure constraints
             eftplargs['d_min'] = self.cfg.getfloat('solver-entropy-filter',
-                                                   'd-min', 1e-6)
+                                                   'd-min', 1e-8)
             eftplargs['p_min'] = self.cfg.getfloat('solver-entropy-filter',
-                                                   'p-min', 1e-6)
+                                                   'p-min', 1e-8)
 
             # Entropy tolerance
             eftplargs['e_tol'] = self.cfg.getfloat('solver-entropy-filter',
-                                                   'e-tol', 1e-6)
+                                                   'e-tol', 1e-8)
 
             # Hidden kernel parameters
             eftplargs['f_tol'] = self.cfg.getfloat('solver-entropy-filter',
-                                                   'f-tol', 1e-4)
+                                                   'f-tol', 1e-8)
             eftplargs['ill_tol'] = self.cfg.getfloat('solver-entropy-filter',
-                                                     'ill-tol', 1e-6)
+                                                     'ill-tol', 1e-8)
             eftplargs['niters'] = self.cfg.getfloat('solver-entropy-filter',
                                                     'niters', 20)
 
