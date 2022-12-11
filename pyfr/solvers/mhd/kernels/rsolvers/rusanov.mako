@@ -29,10 +29,13 @@
     
     // Output
 % for i in range(nvars):
-    % if i == 2*ndims + 1:
+    % if i == 2*ndims + 1 and divmethod == 'global':
     // Centered approximation for computing divB
     nf[${i}] = 0.5*(${' + '.join('n[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
                                  .format(i=i, j=j) for j in range(ndims))}); 
+    % elif i == 2*ndims + 1 and divmethod == 'local':
+    // Interior approximation for computing divB (no correction term)
+    nf[${i}] = ${' + '.join('n[{j}]*(fl[{j}][{i}])'.format(i=i, j=j) for j in range(ndims))}; 
     % else:
     nf[${i}] = 0.5*(${' + '.join('n[{j}]*(fl[{j}][{i}] + fr[{j}][{i}])'
                                  .format(i=i, j=j) for j in range(ndims))})
