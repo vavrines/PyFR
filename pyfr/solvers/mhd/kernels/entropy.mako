@@ -8,7 +8,7 @@
     fpdtype_t rcpd = 1.0/d;
     fpdtype_t E = u[${nvars - 1}];
 
-    fpdtype_t rhovdotv = ${pyfr.dot('u[{i}+1]', i=ndims)};
+    fpdtype_t rhov2 = ${pyfr.dot('u[{i}+1]', i=ndims)};
 
     % if ndims == 2:
     fpdtype_t BdotB2 = 0.5*(u[3]*u[3] + u[4]*u[4]);
@@ -17,7 +17,7 @@
     % endif
 
     // Compute the pressure
-    p = ${c['gamma'] - 1}*(E - 0.5*rcpd*(rhovdotv) - BdotB2);
+    p = ${c['gamma'] - 1}*(E - 0.5*rcpd*(rhov2) - BdotB2);
 
     // Compute specific physical entropy
     e = ((d > 0) && (p > 0)) ? p*pow(rcpd, ${c['gamma']}) : ${inf};
