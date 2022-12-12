@@ -37,7 +37,7 @@ class StdEulerStepper(BaseStdStepper):
 class StdTVDRK3Stepper(BaseStdStepper):
     stepper_name = 'tvd-rk3'
     stepper_has_errest = False
-    stepper_nregs = 3
+    stepper_nregs = 4
     stepper_order = 3
 
     @property
@@ -49,7 +49,7 @@ class StdTVDRK3Stepper(BaseStdStepper):
         postproc, powell_source = self.system.postproc, self.system.powell_source
 
         # Get the bank indices for each register (n, n+1, rhs)
-        r0, r1, r2 = self._regidx
+        r0, r1, r2, r3 = self._regidx
 
         # Ensure r0 references the bank containing u(t)
         if r0 != self._idxcurr:
@@ -57,25 +57,25 @@ class StdTVDRK3Stepper(BaseStdStepper):
 
         # First stage; r2 = -∇·f(r0); r1 = r0 + dt*r2
         rhs(t, r0, r2)
+        powell_source(r0, r3)
         add(0.0, r1, 1.0, r0, dt, r2)
         postproc(r1)
-        powell_source(r1, r2)
-        add(1.0, r1, dt, r2)
+        add(1.0, r1, dt, r3)
 
         # Second stage; r2 = -∇·f(r1); r1 = 0.75*r0 + 0.25*r1 + 0.25*dt*r2
         rhs(t + dt, r1, r2)
+        powell_source(r1, r3)
         add(0.25, r1, 0.75, r0, 0.25*dt, r2)
         postproc(r1)
-        powell_source(r1, r2)
-        add(1.0, r1, 0.25*dt, r2)
+        add(1.0, r1, 0.25*dt, r3)
 
         # Third stage; r2 = -∇·f(r1);
         #              r1 = 1.0/3.0*r0 + 2.0/3.0*r1 + 2.0/3.0*dt*r2
         rhs(t + 0.5*dt, r1, r2)
+        powell_source(r1, r3)
         add(2.0/3.0, r1, 1.0/3.0, r0, 2.0/3.0*dt, r2)
         postproc(r1)
-        powell_source(r1, r2)
-        add(1.0, r1, 2.0/3.0*dt, r2)
+        add(1.0, r1, 2.0/3.0*dt, r3)
 
         # Return the index of the bank containing u(t + dt)
         return r1
