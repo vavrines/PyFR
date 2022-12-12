@@ -104,11 +104,10 @@ class MHDElements(BaseAdvectionElements):
 
         # What the source term expressions (if any) are a function of
         plocsrc = self._ploc_in_src_exprs
-        solnsrc = True
 
         # Transformed to physical divergence kernel + source term
         plocupts = self.ploc_at('upts') if plocsrc else None
-        solnupts = self._scal_upts_cpy if solnsrc else None
+        solnupts = self._scal_upts_cpy
 
         # Source term kernel arguments
         alpha = self.cfg.getfloat('constants', 'alpha', 0.0)
