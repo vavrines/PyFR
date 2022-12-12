@@ -42,7 +42,7 @@ fpdtype_t rcprho = 1.0/u[0];
 
     // Compute B·v
     fpdtype_t Bdotv = ${pyfr.dot('v[{i}]', 'B[{i}]', i=3)};
-    fpdtype_t divB = ${c['alpha']}*tdivtconf[7];
+    fpdtype_t divB = ${alpha}*tdivtconf[7];
 
     // Untransform the divergences and apply the source terms
     // Density
