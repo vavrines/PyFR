@@ -103,3 +103,6 @@ class MHDFixedBCInters(MHDBaseBCInters):
                 ['rho', 'p', 'u', 'v', 'Bx', 'By', 'w', 'Bz'], lhs
             )
         self.c.update(tplc)
+
+class MHDSymBCInters(MHDBaseBCInters):
+    type = 'sym'
