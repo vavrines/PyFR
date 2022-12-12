@@ -204,14 +204,6 @@ class MHDElements(BaseAdvectionElements):
                 'order': self.basis.order
             }
 
-            # Check to see if running collocated solution/flux points
-            m0 = self.basis.m0
-            mrowsum = np.max(np.abs(np.sum(m0, axis=1) - 1.0))
-            if np.min(m0) < -1e-8 or mrowsum > 1e-8:
-                raise ValueError('Entropy filter requires flux points to be a '
-                                 'subset of solution points or a convex '
-                                 'combination thereof.')
-
             # Minimum density/pressure constraints
             eftplargs['d_min'] = self.cfg.getfloat('solver-entropy-filter',
                                                    'd-min', 1e-8)
