@@ -14,11 +14,11 @@ class BaseReader:
     def __init__(self):
         pass
 
-    def _to_raw_pyfrm(self, lintol):
+    def _to_raw_pyfrm(self, lintol, rotper):
         pass
 
-    def to_pyfrm(self, lintol):
-        mesh = self._to_raw_pyfrm(lintol)
+    def to_pyfrm(self, lintol, rotper):
+        mesh = self._to_raw_pyfrm(lintol, rotper)
 
         # Add metadata
         mesh['mesh_uuid'] = np.array(str(uuid.uuid4()), dtype='S')
@@ -45,11 +45,12 @@ class NodalMeshAssembler:
     _petype_focount = {'line': 2, 'tri': 3, 'quad': 4,
                        'tet': 4, 'pyr': 5, 'pri': 6, 'hex': 8}
 
-    def __init__(self, nodepts, elenodes, pents, maps):
+    def __init__(self, nodepts, elenodes, pents, maps, rotper):
         self._nodepts = nodepts
         self._elenodes = elenodes
         self._felespent, self._bfacespents, self._pfacespents = pents
         self._etype_map, self._petype_fnmap, self._nodemaps = maps
+        self.rotper = rotper
 
     def _check_pyr_parallelogram(self, foeles):
         # Find PyFR node map for the quad face
@@ -141,6 +142,16 @@ class NodalMeshAssembler:
 
                 lfpts = self._nodepts[lfnodes]
                 rfpts = self._nodepts[rfnodes]
+
+                # If rotationally periodic
+                if self.rotper:
+                    # Convert to polar/cylindrical coordinates for pairing               
+                    lfpts[..., 0] = np.sqrt(lfpts[..., 0]**2 + lfpts[..., 1]**2)
+                    rfpts[..., 0] = np.sqrt(rfpts[..., 0]**2 + rfpts[..., 1]**2)
+
+                    # Assign arbitrary 0/1 to theta value
+                    rfpts[..., 1] = np.ones_like(rfpts[..., 1])
+                    lfpts[..., 1] = np.zeros_like(lfpts[..., 1])
 
                 lfidx = fuzzysort(lfpts.mean(axis=1).T, range(len(lfnodes)))
                 rfidx = fuzzysort(rfpts.mean(axis=1).T, range(len(rfnodes)))
