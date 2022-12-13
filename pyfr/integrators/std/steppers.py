@@ -46,7 +46,8 @@ class StdTVDRK3Stepper(BaseStdStepper):
 
     def step(self, t, dt):
         add, rhs = self._add, self.system.rhs
-        postproc, powell_source = self.system.postproc, self.system.powell_source
+        postproc, postproc_pp = self.system.postproc, self.system.postproc_pp
+        powell_source = self.system.powell_source
 
         # Get the bank indices for each register (n, n+1, rhs)
         r0, r1, r2, r3 = self._regidx
@@ -61,6 +62,7 @@ class StdTVDRK3Stepper(BaseStdStepper):
         add(0.0, r1, 1.0, r0, dt, r2)
         postproc(r1)
         add(1.0, r1, dt, r3)
+        postproc_pp(r1)
 
         # Second stage; r2 = -∇·f(r1); r1 = 0.75*r0 + 0.25*r1 + 0.25*dt*r2
         rhs(t + dt, r1, r2)
@@ -68,6 +70,7 @@ class StdTVDRK3Stepper(BaseStdStepper):
         add(0.25, r1, 0.75, r0, 0.25*dt, r2)
         postproc(r1)
         add(1.0, r1, 0.25*dt, r3)
+        postproc_pp(r1)
 
         # Third stage; r2 = -∇·f(r1);
         #              r1 = 1.0/3.0*r0 + 2.0/3.0*r1 + 2.0/3.0*dt*r2
@@ -76,6 +79,7 @@ class StdTVDRK3Stepper(BaseStdStepper):
         add(2.0/3.0, r1, 1.0/3.0, r0, 2.0/3.0*dt, r2)
         postproc(r1)
         add(1.0, r1, 2.0/3.0*dt, r3)
+        postproc_pp(r1)
 
         # Return the index of the bank containing u(t + dt)
         return r1

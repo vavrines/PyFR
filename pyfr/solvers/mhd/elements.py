@@ -200,8 +200,10 @@ class MHDElements(BaseAdvectionElements):
                 'nvars': self.nvars,
                 'nfaces': self.nfaces,
                 'c': self.cfg.items_as('constants', float),
-                'order': self.basis.order
+                'order': self.basis.order,
+                'enforce_entropy': True
             }
+
 
             # Minimum density/pressure constraints
             eftplargs['d_min'] = self.cfg.getfloat('solver-entropy-filter',
@@ -235,6 +237,15 @@ class MHDElements(BaseAdvectionElements):
             # Apply entropy filter
             self.kernels['entropy_filter'] = lambda uin: self._be.kernel(
                 'entropyfilter', tplargs=eftplargs, dims=[self.neles],
+                u=self.scal_upts[uin], entmin_int=self.entmin_int,
+                vdm=self.vdm, invvdm=self.invvdm
+            )
+
+            eftplargs_pp = eftplargs.copy()
+            eftplargs_pp['enforce_entropy'] = False
+
+            self.kernels['pp_filter'] = lambda uin: self._be.kernel(
+                'entropyfilter', tplargs=eftplargs_pp, dims=[self.neles],
                 u=self.scal_upts[uin], entmin_int=self.entmin_int,
                 vdm=self.vdm, invvdm=self.invvdm
             )

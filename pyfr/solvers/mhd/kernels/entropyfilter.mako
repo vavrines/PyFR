@@ -83,6 +83,10 @@
     fpdtype_t entmin = ${inf};
     for (int fidx = 0; fidx < ${nfaces}; fidx++) entmin = fmin(entmin, entmin_int[fidx]);
 
+    % if not enforce_entropy:
+    entmin = 0.0;
+    % endif
+
     // Check if solution is within bounds
     ${pyfr.expand('get_minima', 'u', 'dmin', 'pmin', 'emin')};
 
@@ -184,7 +188,9 @@
     }
 
     // Set new minimum entropy within element for next stage
+    % if enforce_entropy:
     % for fidx in range(nfaces):
     entmin_int[${fidx}] = emin;
     % endfor
+    % endif
 </%pyfr:kernel>

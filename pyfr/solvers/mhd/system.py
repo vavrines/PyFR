@@ -134,6 +134,11 @@ class MHDSystem(BaseAdvectionSystem):
 
         self.backend.run_kernels(k['eles/entropy_filter'])
 
+    def postproc_pp(self, uinbank):
+        k, _ = self._get_kernels(uinbank, None)
+
+        self.backend.run_kernels(k['eles/pp_filter'])
+
     @memoize
     def _powell_graphs(self, uinbank, foutbank):
         m = self._mpireqs
