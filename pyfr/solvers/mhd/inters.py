@@ -107,3 +107,8 @@ class MHDFixedBCInters(MHDBaseBCInters):
 
 class MHDSymBCInters(MHDBaseBCInters):
     type = 'sym'
+    cflux_state = 'ghost'
+
+class MHDDiodeBCInters(MHDBaseBCInters):
+    type = 'diode'
+    cflux_state = 'ghost'
