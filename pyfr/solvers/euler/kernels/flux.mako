@@ -21,10 +21,10 @@
 
     // Momentum fluxes
 % for i, j in pyfr.ndrange(ndims, ndims):
-    % if j == 2:
-    f[${i}][${j + 1}] = rhov[${i}]*v[${j}]${' + p' if i == j else ''};
+    % if i == 2:
+    f[${i}][${j + 1}] = rhov[${j}]*v[${i}]${' + p' if i == j else ''};
     % else:
-    f[${i}][${j + 1}] = rhov[${i}]*(v[${j}] - vb[${j}])${' + p' if i == j else ''};
+    f[${i}][${j + 1}] = rhov[${j}]*(v[${i}] - vb[${i}])${' + p' if i == j else ''};
     % endif
 % endfor
 </%pyfr:macro>
