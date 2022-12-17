@@ -11,6 +11,8 @@ class MHDElements(BaseAdvectionElements):
     formulations = ['std', 'dual']
     privarmap = {2: ['rho', 'u', 'v', 'Bx', 'By', 'divB', 'p'],
                  3: ['rho', 'u', 'v', 'w', 'Bx', 'By', 'Bz', 'divB', 'p']}
+    privarmap2 = {2: ['rho', 'u', 'v', 'Ax', 'Ay', 'divB', 'p'],
+                 3: ['rho', 'u', 'v', 'w', 'Ax', 'Ay', 'Az', 'divB', 'p']}
 
     convarmap = {2: ['rho', 'rhou', 'rhov', 'Bx', 'By', 'divB', 'E'],
                  3: ['rho', 'rhou', 'rhov', 'rhow', 'Bx', 'By', 'Bz', 'divB', 'E']}

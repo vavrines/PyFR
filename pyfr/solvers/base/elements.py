@@ -69,9 +69,60 @@ class BaseElements:
         coords = self.ploc_at_np('upts').swapaxes(0, 1)
         vars |= dict(zip('xyz', coords))
 
-        # Evaluate the ICs from the config file
-        ics = [npeval(self.cfg.getexpr('soln-ics', dv), vars)
-               for dv in self.privarmap[self.ndims]]
+        if self.ndims == 3:
+            try:
+                self.cfg.getexpr('soln-ics', 'Ax')
+
+                tol = 1e-6
+                x = vars['x']
+                xp = x + tol
+                y = vars['y']
+                yp = y + tol
+                z = vars['z']
+                zp = z + tol
+
+                ics = []
+                
+
+                Ax_0 = npeval(self.cfg.getexpr('soln-ics', 'Ax'), vars)
+                Ay_0 = npeval(self.cfg.getexpr('soln-ics', 'Ay'), vars)
+                Az_0 = npeval(self.cfg.getexpr('soln-ics', 'Az'), vars)
+
+                varsp = vars.copy()
+                varsp['x'] = xp
+                Ay_dx = (npeval(self.cfg.getexpr('soln-ics', 'Ay'), varsp) - Ay_0)/tol
+                Az_dx = (npeval(self.cfg.getexpr('soln-ics', 'Az'), varsp) - Az_0)/tol
+
+                varsp = vars.copy()
+                varsp['y'] = yp
+                Ax_dy = (npeval(self.cfg.getexpr('soln-ics', 'Ax'), varsp) - Ax_0)/tol
+                Az_dy = (npeval(self.cfg.getexpr('soln-ics', 'Az'), varsp) - Az_0)/tol
+                
+                varsp = vars.copy()
+                varsp['z'] = zp
+                Ax_dz = (npeval(self.cfg.getexpr('soln-ics', 'Ax'), varsp) - Ax_0)/tol
+                Ay_dz = (npeval(self.cfg.getexpr('soln-ics', 'Ay'), varsp) - Ay_0)/tol
+
+                Bx = Az_dy - Ay_dz
+                By = Ax_dz - Az_dx
+                Bz = Ay_dx - Ax_dy
+
+                for dv in self.privarmap[self.ndims]:
+                    if dv == 'Bx':
+                        ics.append(Bx)
+                    elif dv == 'By':
+                        ics.append(By)
+                    elif dv == 'Bz':
+                        ics.append(Bz)
+                    else:
+                        ics.append(npeval(self.cfg.getexpr('soln-ics', dv), vars))
+            except:
+                # Evaluate the ICs from the config file
+                ics = [npeval(self.cfg.getexpr('soln-ics', dv), vars)
+                    for dv in self.privarmap[self.ndims]]
+        else:
+            ics = [npeval(self.cfg.getexpr('soln-ics', dv), vars)
+                for dv in self.privarmap[self.ndims]]
 
         # Allocate
         self.scal_upts = np.empty((self.nupts, self.nvars, self.neles))
