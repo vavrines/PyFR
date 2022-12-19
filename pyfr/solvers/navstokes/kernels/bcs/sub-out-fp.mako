@@ -6,7 +6,8 @@
     ur[${i}] = ul[${i}];
 % endfor
     ur[${nvars - 1}] = ${c['p']}/${c['gamma'] - 1}
-                     + 0.5*(1.0/ul[0])*${pyfr.dot('ul[{i}]', i=(1, ndims + 1))};
+                     + 0.5*(1.0/ul[0])*${pyfr.dot('ul[{i}]', i=(1, ndims + 1))}
+                     - ${0.5*c['omg']**2}*ul[0]*(ploc[0]*ploc[0] + ploc[1]*ploc[1]);
 </%pyfr:macro>
 
 <%pyfr:alias name='bc_ldg_state' func='bc_rsolve_state'/>
