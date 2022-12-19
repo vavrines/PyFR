@@ -11,7 +11,8 @@
 % endfor
 
     // Compute the pressure
-    p = ${c['gamma'] - 1}*(E - 0.5*invrho*${pyfr.dot('rhov[{i}]', i=ndims)});
+    fpdtype_t rote = 0.5*s[0]*(vb[0]*vb[0] + vb[1]*vb[1]);
+    p = ${c['gamma'] - 1}*(E - 0.5*invrho*${pyfr.dot('rhov[{i}]', i=ndims)} + rote);
 
     // Density and energy fluxes
 % for i in range(ndims):
@@ -21,10 +22,6 @@
 
     // Momentum fluxes
 % for i, j in pyfr.ndrange(ndims, ndims):
-    % if i == 2:
     f[${i}][${j + 1}] = rhov[${j}]*v[${i}]${' + p' if i == j else ''};
-    % else:
-    f[${i}][${j + 1}] = rhov[${j}]*(v[${i}] - vb[${i}])${' + p' if i == j else ''};
-    % endif
 % endfor
 </%pyfr:macro>

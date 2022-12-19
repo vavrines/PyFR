@@ -22,7 +22,7 @@ class BaseFluidElements:
     }
 
     @staticmethod
-    def pri_to_con(pris, cfg):
+    def pri_to_con(pris, cfg, coords):
         rho, p = pris[0], pris[-1]
 
         # Multiply velocity components by rho
@@ -31,6 +31,10 @@ class BaseFluidElements:
         # Compute the energy
         gamma = cfg.getfloat('constants', 'gamma')
         E = p/(gamma - 1) + 0.5*rho*sum(c*c for c in pris[1:-1])
+
+        omg = cfg.getfloat('constants', 'omg')
+        rote = 0.5*rho*omg*omg*(coords[0,...]**2 + coords[1,...]**2)
+        E -= rote
 
         return [rho] + rhovs + [E]
 

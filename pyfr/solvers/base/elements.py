@@ -77,7 +77,7 @@ class BaseElements:
         self.scal_upts = np.empty((self.nupts, self.nvars, self.neles))
 
         # Convert from primitive to conservative form
-        for i, v in enumerate(self.pri_to_con(ics, self.cfg)):
+        for i, v in enumerate(self.pri_to_con(ics, self.cfg, coords=coords)):
             self.scal_upts[:, i, :] = v
 
     def set_ics_from_soln(self, solnmat, solncfg):
