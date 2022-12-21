@@ -17,7 +17,11 @@
     % endif
 
     // Compute the pressure
+    % if eos == 'ideal':
     p = ${c['gamma'] - 1}*(E - 0.5*rcpd*(rhov2) - BdotB2);
+    % elif eos == 'adiabatic':
+    p = ${c['kappa']}*pow(d, ${c['gamma']});
+    % endif
 
     // Compute specific physical entropy
     e = ((d > 0) && (p > 0)) ? p*pow(rcpd, ${c['gamma']}) : ${inf};

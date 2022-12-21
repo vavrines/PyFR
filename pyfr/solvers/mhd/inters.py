@@ -12,8 +12,16 @@ class MHDIntInters(BaseAdvectionIntInters):
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
         divmethod = self.cfg.get('solver', 'div-method')
         assert divmethod in ['local', 'global']
+
+        eos = self.cfg.get('solver', 'eos', 'ideal')
+        assert eos in ['ideal', 'adiabatic']
+        if eos == 'adiabatic':
+            kappa = self.cfg.getfloat('constants', 'kappa')
+        else:
+            kappa = 0.0
+
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self.c, divmethod=divmethod)
+                       c=self.c, divmethod=divmethod, eos=eos, kappa=kappa)
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'intcflux', tplargs=tplargs, dims=[self.ninterfpts],
@@ -37,9 +45,18 @@ class MHDMPIInters(BaseAdvectionMPIInters):
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.mpicflux')
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
-        divmethod = self.cfg.get('solver', 'div-method')
+        divmethod = self.cfg.get('solver', 'div-method')     
+        assert divmethod in ['local', 'global']
+
+        eos = self.cfg.get('solver', 'eos', 'ideal')
+        assert eos in ['ideal', 'adiabatic']
+        if eos == 'adiabatic':
+            kappa = self.cfg.getfloat('constants', 'kappa')
+        else:
+            kappa = 0.0
+
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
-                       c=self.c, divmethod=divmethod)
+                       c=self.c, divmethod=divmethod, eos=eos, kappa=kappa)
 
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(
@@ -62,10 +79,19 @@ class MHDBaseBCInters(BaseAdvectionBCInters):
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.bccflux')
 
         rsolver = self.cfg.get('solver-interfaces', 'riemann-solver')
-        divmethod = self.cfg.get('solver', 'div-method')
+        divmethod = self.cfg.get('solver', 'div-method')        
+        assert divmethod in ['local', 'global']
+
+        eos = self.cfg.get('solver', 'eos', 'ideal')
+        assert eos in ['ideal', 'adiabatic']
+        if eos == 'adiabatic':
+            kappa = self.cfg.getfloat('constants', 'kappa')
+        else:
+            kappa = 0.0
+
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
                        c=self.c, bctype=self.type, ninters=self.ninters, 
-                       divmethod=divmethod)
+                       divmethod=divmethod, eos=eos, kappa=kappa)
 
 
         self.kernels['comm_flux'] = lambda: self._be.kernel(

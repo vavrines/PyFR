@@ -139,14 +139,21 @@ class MHDElements(BaseAdvectionElements):
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.mhd.kernels.tfluxlin')
 
-
+        eos = self.cfg.get('solver', 'eos', 'ideal')        
+        assert eos in ['ideal', 'adiabatic']
+        if eos == 'adiabatic':
+            kappa = self.cfg.getfloat('constants', 'kappa')
+        else:
+            kappa = 0.0
         # Template parameters for the flux kernels
         tplargs = {
             'ndims': self.ndims,
             'nvars': self.nvars,
             'nverts': len(self.basis.linspts),
             'c': self.cfg.items_as('constants', float),
-            'jac_exprs': self.basis.jac_exprs
+            'jac_exprs': self.basis.jac_exprs,
+            'eos': eos,
+            'kappa': kappa
         }
 
         # Helpers
@@ -203,7 +210,9 @@ class MHDElements(BaseAdvectionElements):
                 'nfaces': self.nfaces,
                 'c': self.cfg.items_as('constants', float),
                 'order': self.basis.order,
-                'enforce_entropy': True
+                'enforce_entropy': True,
+                'eos': eos,
+                'kappa': kappa
             }
 
 

@@ -22,8 +22,12 @@
         fpdtype_t BdotB2 = 0.5*(Bx*Bx + By*By );
 
         // Compute the pressure
+        % if eos == 'ideal':
         p = ${c['gamma'] - 1}*(E - 0.5*invrho*(rhou*rhou + rhov*rhov)
                                  - BdotB2);
+        % elif eos == 'adiabatic':
+        p = ${c['kappa']}*pow(rho, ${c['gamma']});
+        % endif
         // F_x
         f[0][0] = rhou;
         f[0][1] = rhou*v[0] + p + BdotB2 - Bx*Bx;
@@ -63,8 +67,13 @@
         fpdtype_t BdotB2 = 0.5*(Bx*Bx + By*By + Bz*Bz);
 
         // Compute the pressure
+        % if eos == 'ideal':
         p = ${c['gamma'] - 1}*(E - 0.5*invrho*(rhou*rhou + rhov*rhov + rhow*rhow)
                                  - BdotB2);
+        % elif eos == 'adiabatic':
+        p = ${c['kappa']}*pow(rho, ${c['gamma']});
+        % endif
+
         // F_x
         f[0][0] = rhou;
         f[0][1] = rhou*v[0] + p + BdotB2 - Bx*Bx;
