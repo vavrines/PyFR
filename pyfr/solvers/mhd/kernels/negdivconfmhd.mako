@@ -23,17 +23,17 @@ fpdtype_t rcprho = 1.0/u[0];
 
     // Untransform the divergences and apply the source terms
     // Density
-    tdivtconf[0] = -rcpdjac*tdivtconf[0] + ${srcex[0]};
+    tdivtconf[0] = -rcpdjac*tdivtconf[0];
     // Momentum
-    tdivtconf[1] = -rcpdjac*(divB*B[0] + tdivtconf[1]) + ${srcex[1]};
-    tdivtconf[2] = -rcpdjac*(divB*B[1] + tdivtconf[2]) + ${srcex[2]};
+    tdivtconf[1] = -rcpdjac*(divB*B[0] + tdivtconf[1]);
+    tdivtconf[2] = -rcpdjac*(divB*B[1] + tdivtconf[2]);
     // Magnetic field
-    tdivtconf[3] = -rcpdjac*(divB*v[0] + tdivtconf[3]) + ${srcex[3]};
-    tdivtconf[4] = -rcpdjac*(divB*v[1] + tdivtconf[4]) + ${srcex[4]};
+    tdivtconf[3] = -rcpdjac*(divB*v[0] + tdivtconf[3]);
+    tdivtconf[4] = -rcpdjac*(divB*v[1] + tdivtconf[4]);
     // DivB
     tdivtconf[5] = 0.0; 
     // Energy
-    tdivtconf[6] = -rcpdjac*(divB*Bdotv + tdivtconf[6]) + ${srcex[6]}; 
+    tdivtconf[6] = -rcpdjac*(divB*Bdotv + tdivtconf[6]); 
 
 % elif ndims == 3:
     // Velocity and magnetic fields
@@ -48,17 +48,17 @@ fpdtype_t rcprho = 1.0/u[0];
     // Density
     tdivtconf[0] = -rcpdjac*tdivtconf[0] + ${srcex[0]};
     // Momentum
-    tdivtconf[1] = -rcpdjac*(divB*B[0] + tdivtconf[1]) + ${srcex[1]};
-    tdivtconf[2] = -rcpdjac*(divB*B[1] + tdivtconf[2]) + ${srcex[2]};
-    tdivtconf[3] = -rcpdjac*(divB*B[2] + tdivtconf[3]) + ${srcex[3]};
+    tdivtconf[1] = -rcpdjac*(divB*B[0] + tdivtconf[1]);
+    tdivtconf[2] = -rcpdjac*(divB*B[1] + tdivtconf[2]);
+    tdivtconf[3] = -rcpdjac*(divB*B[2] + tdivtconf[3]);
     // Magnetic field
-    tdivtconf[4] = -rcpdjac*(divB*v[0] + tdivtconf[4]) + ${srcex[4]};
-    tdivtconf[5] = -rcpdjac*(divB*v[1] + tdivtconf[5]) + ${srcex[5]};
-    tdivtconf[6] = -rcpdjac*(divB*v[2] + tdivtconf[6]) + ${srcex[6]};
+    tdivtconf[4] = -rcpdjac*(divB*v[0] + tdivtconf[4]);
+    tdivtconf[5] = -rcpdjac*(divB*v[1] + tdivtconf[5]);
+    tdivtconf[6] = -rcpdjac*(divB*v[2] + tdivtconf[6]);
     // DivB
     tdivtconf[7] = 0.0; 
     // Energy
-    tdivtconf[8] = -rcpdjac*(divB*Bdotv + tdivtconf[8]) + ${srcex[8]}; 
+    tdivtconf[8] = -rcpdjac*(divB*Bdotv + tdivtconf[8]); 
 % endif
 
 

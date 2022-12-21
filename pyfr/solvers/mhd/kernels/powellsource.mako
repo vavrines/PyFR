@@ -22,17 +22,17 @@ fpdtype_t rcprho = 1.0/u[0];
 
     // Untransform the divergences and apply the source terms
     // Density
-    tdivtconf[0] = 0.0;
+    tdivtconf[0] = 0.0 + ${srcex[0]};
     // Momentum
-    tdivtconf[1] = -rcpdjac*(divB*B[0]);
-    tdivtconf[2] = -rcpdjac*(divB*B[1]);
+    tdivtconf[1] = -rcpdjac*(divB*B[0]) + ${srcex[1]};
+    tdivtconf[2] = -rcpdjac*(divB*B[1]) + ${srcex[2]};
     // Magnetic field
-    tdivtconf[3] = -rcpdjac*(divB*v[0]);
-    tdivtconf[4] = -rcpdjac*(divB*v[1]);
+    tdivtconf[3] = -rcpdjac*(divB*v[0]) + ${srcex[3]};
+    tdivtconf[4] = -rcpdjac*(divB*v[1]) + ${srcex[4]};
     // DivB
     tdivtconf[5] = 0.0; 
     // Energy
-    tdivtconf[6] = -rcpdjac*(divB*Bdotv); 
+    tdivtconf[6] = -rcpdjac*(divB*Bdotv) + ${srcex[6]};
 
 % elif ndims == 3:
     // Velocity and magnetic fields
@@ -45,19 +45,19 @@ fpdtype_t rcprho = 1.0/u[0];
 
     // Untransform the divergences and apply the source terms
     // Density
-    tdivtconf[0] = 0.0;
+    tdivtconf[0] = 0.0 + ${srcex[0]};
     // Momentum
-    tdivtconf[1] = -rcpdjac*(divB*B[0]);
-    tdivtconf[2] = -rcpdjac*(divB*B[1]);
-    tdivtconf[3] = -rcpdjac*(divB*B[2]);
+    tdivtconf[1] = -rcpdjac*(divB*B[0]) + ${srcex[1]};
+    tdivtconf[2] = -rcpdjac*(divB*B[1]) + ${srcex[2]};
+    tdivtconf[3] = -rcpdjac*(divB*B[2]) + ${srcex[3]};
     // Magnetic field
-    tdivtconf[4] = -rcpdjac*(divB*v[0]);
-    tdivtconf[5] = -rcpdjac*(divB*v[1]);
-    tdivtconf[6] = -rcpdjac*(divB*v[2]);
+    tdivtconf[4] = -rcpdjac*(divB*v[0]) + ${srcex[4]};
+    tdivtconf[5] = -rcpdjac*(divB*v[1]) + ${srcex[5]};
+    tdivtconf[6] = -rcpdjac*(divB*v[2]) + ${srcex[6]};
     // DivB
     tdivtconf[7] = 0.0; 
     // Energy
-    tdivtconf[8] = -rcpdjac*(divB*Bdotv);
+    tdivtconf[8] = -rcpdjac*(divB*Bdotv) + ${srcex[8]};
 % endif
 
 
