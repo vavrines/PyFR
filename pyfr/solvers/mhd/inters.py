@@ -131,8 +131,12 @@ class MHDFixedBCInters(MHDBaseBCInters):
             )
         self.c.update(tplc)
 
-class MHDSymBCInters(MHDBaseBCInters):
-    type = 'sym'
+class MHDSlipWallBCInters(MHDBaseBCInters):
+    type = 'slp-wall'
+    cflux_state = 'ghost'
+
+class MHDReflectingBCInters(MHDBaseBCInters):
+    type = 'reflecting'
     cflux_state = 'ghost'
 
 class MHDDiodeBCInters(MHDBaseBCInters):
