@@ -106,6 +106,7 @@ class MHDSystem(BaseAdvectionSystem):
         g1.add_all(k['eles/local_entropy'])
 
         # Pack and send the entropy values to neighbors
+        g1.add_mpi_reqs(m['ent_fpts_recv'])
         g1.add_all(k['mpiint/ent_fpts_pack'], deps=k['eles/local_entropy'])
         for send, pack in zip(m['ent_fpts_send'], k['mpiint/ent_fpts_pack']):
             g1.add_mpi_req(send, deps=[pack])
