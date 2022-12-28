@@ -128,26 +128,6 @@
     // Estimate the left and right wave speed, sl and sr
     fpdtype_t sl = nvl - c;
     fpdtype_t sr = nvr + c;
-
-    pl = pgl + 0.5*BdotBl;
-    pr = pgr + 0.5*BdotBr;
-    fpdtype_t s_star = (rr*nvr*(sr - nvr) - rl*nvl*(sl - nvl) + pl - pr - Bl[0]*Bl[0] + Br[0]*Br[0]) / 
-                       (rr*(sr - nvr) - rl*(sl - nvl));
-
-    fpdtype_t B_hll[${ndims}];
-    B_hll[0] = (sr*ur[${ndims+1}] - sl*ul[${ndims+1}])/(sr - sl);
-    % for i in range(1, ndims):
-    B_hll[${i}] = (sr*ur[${i+ndims+1}] - sl*ul[${i+ndims+1}] - (fr[0][${i+ndims+1}] - fl[0][${i+ndims+1}]))/(sr - sl);
-    % endfor
-
-    fpdtype_t r_hll = (sr*rr - sl*rl - (fr[0][0] - fl[0][0]))/(sr - sl);
-    fpdtype_t v_hll[${ndims}];
-    % for i in range(ndims):
-    v_hll[${i}] = (sr*ur[${i+1}] - sl*ul[${i+1}] - (fr[0][${i+1}] - fl[0][${i+1}]))/(sr - sl);
-    v_hll[${i}] /= r_hll;
-    % endfor
-
-    fpdtype_t Bdotv_hll = ${pyfr.dot('B_hll[{i}]', 'v_hll[{i}]', i=ndims)};
     
     if (sl >= 0) {
         % for i in range(nvars):
