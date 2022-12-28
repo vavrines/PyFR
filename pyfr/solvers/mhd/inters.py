@@ -132,7 +132,7 @@ class MHDFixedBCInters(MHDBaseBCInters):
         self.c.update(tplc)
 
 class MHDSlipWallBCInters(MHDBaseBCInters):
-    type = 'slp-wall'
+    type = 'slip-wall'
     cflux_state = 'ghost'
 
 class MHDReflectingBCInters(MHDBaseBCInters):
