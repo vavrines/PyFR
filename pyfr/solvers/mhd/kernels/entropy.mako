@@ -6,7 +6,7 @@
 <%pyfr:macro name='compute_entropy' params='u, d, p, e'>
     d = u[0];
     fpdtype_t rcpd = 1.0/d;
-    fpdtype_t E = u[${nvars - 1}];
+    fpdtype_t E = u[${nvars - 2}];
 
     fpdtype_t rhov2 = ${pyfr.dot('u[{i}+1]', i=ndims)};
 

@@ -34,6 +34,8 @@ fpdtype_t rcprho = 1.0/u[0];
     tdivtconf[5] = 0.0; 
     // Energy
     tdivtconf[6] = -rcpdjac*(divB*Bdotv + tdivtconf[6]); 
+    // f
+    tdivtconf[7] = 0.0; 
 
 % elif ndims == 3:
     // Velocity and magnetic fields
@@ -59,6 +61,8 @@ fpdtype_t rcprho = 1.0/u[0];
     tdivtconf[7] = 0.0; 
     // Energy
     tdivtconf[8] = -rcpdjac*(divB*Bdotv + tdivtconf[8]); 
+    // f
+    tdivtconf[9] = 0.0; 
 % endif
 
 

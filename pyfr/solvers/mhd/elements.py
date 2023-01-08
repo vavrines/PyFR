@@ -9,39 +9,40 @@ class MHDElements(BaseAdvectionElements):
     shockvar = 'rho'
 
     formulations = ['std', 'dual']
-    privarmap = {2: ['rho', 'u', 'v', 'Bx', 'By', 'divB', 'p'],
-                 3: ['rho', 'u', 'v', 'w', 'Bx', 'By', 'Bz', 'divB', 'p']}
-    privarmap2 = {2: ['rho', 'u', 'v', 'Ax', 'Ay', 'divB', 'p'],
-                 3: ['rho', 'u', 'v', 'w', 'Ax', 'Ay', 'Az', 'divB', 'p']}
+    privarmap = {2: ['rho', 'u', 'v', 'Bx', 'By', 'divB', 'p', 'f'],
+                 3: ['rho', 'u', 'v', 'w', 'Bx', 'By', 'Bz', 'divB', 'p', 'f']}
 
-    convarmap = {2: ['rho', 'rhou', 'rhov', 'Bx', 'By', 'divB', 'E'],
-                 3: ['rho', 'rhou', 'rhov', 'rhow', 'Bx', 'By', 'Bz', 'divB', 'E']}
+    convarmap = {2: ['rho', 'rhou', 'rhov', 'Bx', 'By', 'divB', 'E', 'f'],
+                 3: ['rho', 'rhou', 'rhov', 'rhow', 'Bx', 'By', 'Bz', 'divB', 'E', 'f']}
 
     visvarmap = {
         2: [('density', ['rho']),
             ('velocity', ['u', 'v']),
             ('B', ['Bx', 'By']),
             ('pressure', ['p']),
-            ('divB', ['divB'])],
+            ('divB', ['divB']),
+            ('f', ['f'])],
         3: [('density', ['rho']),
             ('velocity', ['u', 'v', 'w']),
             ('B', ['Bx', 'By', 'Bz']),
             ('pressure', ['p']),
-            ('divB', ['divB'])]
+            ('divB', ['divB']),
+            ('f', ['f'])]
     }
 
     @staticmethod
     def pri_to_con(pris, cfg):
-        if len(pris) == 7:
+        if len(pris) == 8:
             ndims = 2
-        elif len(pris) == 9:
+        elif len(pris) == 10:
             ndims = 3
         else:
             raise ValueError('Unknown length of vars.', pris)
 
         # Density, pressure, velocity field, and magnetic field
-        rho, divb, p = pris[0], pris[-2], pris[-1]
+        rho, divb, p = pris[0], pris[-3], pris[-2]
         vf, Bf = list(pris[1:ndims+1]), list(pris[ndims+1:2*ndims+1])
+        f = pris[-1]
 
         # Multiply velocity components by rho
         rhovf = [rho*v for v in vf]
@@ -54,20 +55,21 @@ class MHDElements(BaseAdvectionElements):
         gamma = cfg.getfloat('constants', 'gamma')
         E = p/(gamma - 1) + 0.5*rho*vf2 + 0.5*bf2
 
-        return [rho] + rhovf + Bf + [divb] + [E]
+        return [rho] + rhovf + Bf + [divb] + [E] + [f]
 
     @staticmethod
     def con_to_pri(cons, cfg):
-        if len(cons) == 7:
+        if len(cons) == 8:
             ndims = 2
-        elif len(cons) == 9:
+        elif len(cons) == 10:
             ndims = 3
         else:
             raise ValueError('Unknown length of vars.', cons)
 
         # Density, energy, momentum field, and magnetic field
-        rho, divb, E = cons[0], cons[-2], cons[-1]
+        rho, divb, E = cons[0], cons[-3], cons[-2]
         rhovf, Bf = list(cons[1:ndims+1]), list(cons[ndims+1:2*ndims+1])
+        f = cons[-1]
 
         # Divide momentum components by rho
         vf = [rhov/rho for rhov in rhovf]
@@ -80,7 +82,7 @@ class MHDElements(BaseAdvectionElements):
         gamma = cfg.getfloat('constants', 'gamma')
         p = (gamma - 1)*(E - 0.5*rho*vf2 - 0.5*bf2)
 
-        return [rho] + vf + Bf + [divb] + [p]
+        return [rho] + vf + Bf + [divb] + [p] + [f]
 
     @staticmethod
     def validate_formulation(ctrl):

@@ -90,6 +90,8 @@
     // Check if solution is within bounds
     ${pyfr.expand('get_minima', 'u', 'dmin', 'pmin', 'emin')};
 
+    fpdtype_t f = 1.0;
+
     // Filter if out of bounds
     if (dmin < ${d_min} || pmin < ${p_min} || emin < entmin - ${e_tol})
     {
@@ -104,7 +106,6 @@
         }
 
         // Setup filter (solve for f = exp(-zeta))
-        fpdtype_t f = 1.0;
         fpdtype_t f_low, f_high, fnew;
         fpdtype_t f1, f2, f3;
 
@@ -191,6 +192,10 @@
     % if enforce_entropy:
     % for fidx in range(nfaces):
     entmin_int[${fidx}] = emin;
+    % endfor
+    
+    % for uidx in range(nupts):
+    u[${uidx}][${nvars-1}] = f;
     % endfor
     % endif
 </%pyfr:kernel>
