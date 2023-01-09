@@ -39,5 +39,5 @@
 % endfor
     ur[${nvars - 1}] = p_b*${1.0/gmo}
                      + 0.5*(1.0/ur[0])*${pyfr.dot('ur[{i}]', i=(1, ndims + 1))} 
-                     - ${0.5*gmo*c['omg']**2}*ur[0]*r2;
+                     - ${0.5*c['omg']**2}*ur[0]*r2;
 </%pyfr:macro>
