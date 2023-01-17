@@ -7,6 +7,7 @@ from pyfr.plugins.pseudostats import PseudoStatsPlugin
 from pyfr.plugins.residual import ResidualPlugin
 from pyfr.plugins.sampler import SamplerPlugin
 from pyfr.plugins.tavg import TavgPlugin
+from pyfr.plugins.yplus import YPlusPlugin
 from pyfr.plugins.writer import WriterPlugin
 from pyfr.util import subclass_where
 
