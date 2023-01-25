@@ -43,8 +43,9 @@
     rhor = rhol;
     
     wr[0] = rhor;
-    % for i in range(ndims):
-    Ur[${i}] = wr[${i+1}] = 0.0;
+    % for i, v in enumerate('uvw'[:ndims]):
+    Ur[${i}] = ${c[v]};
+    wr[${i+1}] = rhor*Ur[${i}];
     % endfor
     pr = pl;
     wr[${ndims+1}] = pr/(${c['gamma'] - 1}) + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};

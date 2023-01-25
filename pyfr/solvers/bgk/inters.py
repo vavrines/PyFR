@@ -79,19 +79,19 @@ class BGKBaseBCInters(BaseAdvectionBCInters):
         delta = self.cfg.getint('solver', 'delta')
         lam = 1.0/gamma_func(delta/2.0) if delta else 0.0
 
-                # Get reflections for wall BCs
-        Nr = self.cfg.getint('solver', 'Nr')
-        Nt = self.cfg.getint('solver', 'Nt')
-        Nz = self.cfg.getint('solver', 'Nz') if delta else 1
+        # Get reflections for wall BCs
+        # Nr = self.cfg.getint('solver', 'Nr')
+        # Nt = self.cfg.getint('solver', 'Nt')
+        # Nz = self.cfg.getint('solver', 'Nz') if delta else 1
 
-        self.LRidxs = reflect2D('lr', Nr, Nt, Nz)
-        self.UDidxs = reflect2D('ud', Nr, Nt, Nz)
-        self.DRidxs = reflect2D('diagr', Nr, Nt, Nz)
+        # self.LRidxs = reflect2D('lr', Nr, Nt, Nz)
+        # self.UDidxs = reflect2D('ud', Nr, Nt, Nz)
+        # self.DRidxs = reflect2D('diagr', Nr, Nt, Nz)
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
                        c=self.c, u=self.u, bctype=self.type, niters=self.niters,
-                       pi=np.pi, delta=delta, lam=lam, LRidxs=self.LRidxs, 
-                       UDidxs=self.UDidxs, DRidxs=self.DRidxs)
+                       pi=np.pi, delta=delta,lam=lam)
+                    #    LRidxs=self.LRidxs,  UDidxs=self.UDidxs, DRidxs=self.DRidxs)
         
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'bccflux', tplargs=tplargs, dims=[self.ninterfpts],
@@ -115,7 +115,12 @@ class BGKFixedBCInters(BGKBaseBCInters):
         )
 
 class BGKDiffuseBCInters(BGKBaseBCInters):
-    type = 'diffuse'
+    type = 'diffuse'    
+    def __init__(self, be, lhs, elemap, cfgsect, cfg):
+        super().__init__(be, lhs, elemap, cfgsect, cfg)
+
+        self.c |= self._exp_opts('uvw'[:self.ndims], lhs,
+                                 default={'u': 0, 'v': 0, 'w': 0})
 
 class BGKSpecularBCInters(BGKBaseBCInters):
     type = 'specular'
