@@ -119,6 +119,7 @@ class BGKDiffuseBCInters(BGKBaseBCInters):
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
+        self.c['theta'], = self._eval_opts(['theta'])
         self.c |= self._exp_opts('uvw'[:self.ndims], lhs,
                                  default={'u': 0, 'v': 0, 'w': 0})
 

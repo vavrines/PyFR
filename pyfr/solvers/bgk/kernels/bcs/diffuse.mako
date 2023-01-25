@@ -48,7 +48,7 @@
     wr[${i+1}] = rhor*Ur[${i}];
     % endfor
     pr = pl;
-    wr[${ndims+1}] = pr/(${c['gamma'] - 1}) + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};
+    wr[${ndims+1}] = ${c['theta']}*rhor + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};
     
     // Compute discrete wall Maxwellian
     fpdtype_t Mw[${nvars}];
