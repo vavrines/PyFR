@@ -67,9 +67,12 @@
     alpha[3] = V;
 % if ndims == 3:
     alpha[4] = W;
-% endif 
+% endif
 
     ${pyfr.expand('iterate_DVM', 'alpha', 'w', 'u', 'M')};
+
+    // Compute collision time
+    fpdtype_t tau = ${tau_ref*rho_ref*theta_ref**(1 - omega)}/(rho*pow(theta, 1 - ${omega}));
 
 for (int i = 0; i < ${nvars}; i++)
 {
@@ -87,7 +90,7 @@ for (int i = 0; i < ${nvars}; i++)
         % endif
     % endif
 
-    tdivtconf[i] = -rcpdjac*tdivtconf[i] + (g - f[i])/${tau};
+    tdivtconf[i] = -rcpdjac*tdivtconf[i] + (g - f[i])/tau;
 }
 
 

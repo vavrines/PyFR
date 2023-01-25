@@ -322,6 +322,12 @@ class BGKElements(BaseAdvectionElements):
         self.umat = self._be.const_matrix(self.u)
         self.M = self._be.const_matrix(np.reshape(self.PSint, (1, -1)))
         lam = 1.0/gamma_func(self.delta/2.0) if self.delta else 1.0
+
+        tau_ref = self.cfg.getfloat('constants', 'tau_ref')
+        rho_ref = self.cfg.getfloat('constants', 'rho_ref')
+        P_ref = self.cfg.getfloat('constants', 'P_ref')
+        omega = self.cfg.getfloat('constants', 'omega')
+        theta_ref = P_ref/rho_ref
         
         # Template parameters for the flux kernels
         tplargs = {
@@ -331,8 +337,10 @@ class BGKElements(BaseAdvectionElements):
             'jac_exprs': self.basis.jac_exprs, 
             'u': self.u, 'moments': self.moments, 'PSint': self.PSint,
             'srcex': self._src_exprs, 'pi': np.pi,
-            'tau': self.cfg.getfloat('constants', 'tau'), 'niters': self.niters,
-            'wts': meanweights, 'delta': self.delta, 'lam': lam
+            'niters': self.niters, 'wts': meanweights, 
+            'delta': self.delta, 'lam': lam,
+            'tau_ref': tau_ref, 'rho_ref': rho_ref, 
+            'theta_ref' : theta_ref, 'omega' : omega
         }
 
         # Helpers
