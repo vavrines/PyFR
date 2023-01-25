@@ -6,12 +6,12 @@ import numpy as np
 from math import gamma as gamma_func
 
 def setup_BGK(cfg, ndims):
-    Nr = cfg.getint('solver', 'Nr')
-    Nt = cfg.getint('solver', 'Nt')
+    Nx = cfg.getint('solver', 'Nx')
+    Ny = cfg.getint('solver', 'Ny')
     if ndims == 3:
-        Np = cfg.getint('solver', 'Np')
+        Nz = cfg.getint('solver', 'Nz')
 
-    rmax = cfg.getfloat('solver', 'rmax')
+    vmax = cfg.getfloat('solver', 'vmax')
     u0 = cfg.getfloat('solver', 'u0')
     v0 = cfg.getfloat('solver', 'v0')
     if ndims == 3:
@@ -19,96 +19,100 @@ def setup_BGK(cfg, ndims):
 
     delta = cfg.getint('solver', 'delta', 0)
     if delta != 0:
-        zmax = cfg.getfloat('solver', 'zmax')
-        Nz = cfg.getint('solver', 'Nz')
+        emax = cfg.getfloat('solver', 'emax')
+        Ne = cfg.getint('solver', 'Ne')
 
     if ndims == 2:
         if delta:
-            nvars = Nr*Nt*Nz
+            nvars = Nx*Ny*Ne
             u = np.zeros((nvars, ndims + 1))
             w = np.zeros((nvars))
 
-            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
+            ux = np.linspace(-1, 1, Nx)*vmax + u0
+            uy = np.linspace(-1, 1, Ny)*vmax + v0
+            ue = np.linspace(0, 1, Ne)*emax
 
-            ur = 0.5*(gauss_pts_x + 1)*rmax
-            wts_r = (gauss_wts_x/2.0)*ur
-
-            ut = np.linspace(-np.pi, np.pi, Nt, endpoint=False)
-            wts_t = np.ones_like(ut)/len(ut)
-
-            
-            [gauss_pts_z, gauss_wts_z] = np.polynomial.legendre.leggauss(Nz)
-            uz = 0.5*(gauss_pts_z + 1)*zmax
-            wts_z = (gauss_wts_z/2.0)*zmax
-
-            ux = u0 + np.outer(ur, np.cos(ut))
-            uy = v0 + np.outer(ur, np.sin(ut))
-            wts = np.outer(wts_z, np.outer(wts_r, wts_t))
-
-            [uxx, uzz] = np.meshgrid(ux, uz)
-            [uyy, uzz] = np.meshgrid(uy, uz)
-
+            [uxx, uyy, uee] = np.meshgrid(ux, uy, ue)
             u[:,0] = np.reshape(uxx, (-1))
             u[:,1] = np.reshape(uyy, (-1))
-            u[:,2] = np.reshape(uzz, (-1))
+            u[:,2] = np.reshape(uee, (-1))
 
+            wts_x = np.ones_like(ux)
+            wts_x[0] = 0.5
+            wts_x[-1] = 0.5
+            wts_x = wts_x/np.sum(wts_x)*2*vmax
+
+            wts_y = np.ones_like(uy)
+            wts_y[0] = 0.5
+            wts_y[-1] = 0.5
+            wts_y = wts_y/np.sum(wts_y)*2*vmax
+
+            wts_e = np.ones_like(ue)
+            wts_e[0] = 0.5
+            wts_e[-1] = 0.5
+            wts_e = wts_e/np.sum(wts_e)*emax
+
+            wts = np.outer(wts_e, np.outer(wts_x, wts_y))
             w = np.reshape(wts, (-1))
-
-            PSint = w*(2*np.pi*rmax)
+            PSint = w
         else:
-            nvars = Nr*Nt
+            nvars = Nx*Ny
             u = np.zeros((nvars, ndims))
             w = np.zeros((nvars))
 
-            [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
+            ux = np.linspace(-1, 1, Nx)*vmax + u0
+            uy = np.linspace(-1, 1, Ny)*vmax + v0
 
-            ur = 0.5*(gauss_pts_x + 1)*rmax
-            wts_r = (gauss_wts_x/2.0)*ur
+            [uxx, uyy] = np.meshgrid(ux, uy)
+            u[:,0] = np.reshape(uxx, (-1))
+            u[:,1] = np.reshape(uyy, (-1))
 
-            ut = np.linspace(-np.pi, np.pi, Nt, endpoint=False)
-            wts_t = np.ones_like(ut)/len(ut)
+            wts_x = np.ones_like(ux)
+            wts_x[0] = 0.5
+            wts_x[-1] = 0.5
+            wts_x = wts_x/np.sum(wts_x)*2*vmax
 
-            ux = u0 + np.outer(ur, np.cos(ut))
-            uy = v0 + np.outer(ur, np.sin(ut))
-            wts = np.outer(wts_r, wts_t)            
+            wts_y = np.ones_like(uy)
+            wts_y[0] = 0.5
+            wts_y[-1] = 0.5
+            wts_y = wts_y/np.sum(wts_y)*2*vmax
 
-            u[:,0] = np.reshape(ux, (-1))
-            u[:,1] = np.reshape(uy, (-1))
+            wts = np.outer(wts_x, wts_y)
             w = np.reshape(wts, (-1))
-
-            PSint = w*(2*np.pi*rmax)
+            PSint = w
 
     elif ndims == 3:
-        nvars = Nr*Nt*Np
-        u = np.zeros((nvars, ndims))
+        nvars = Nx*Ny*Nz
+        u = np.zeros((nvars, ndims + 1))
         w = np.zeros((nvars))
 
-        [gauss_pts_x, gauss_wts_x] = np.polynomial.legendre.leggauss(Nr)
+        ux = np.linspace(-1, 1, Nx)*vmax + u0
+        uy = np.linspace(-1, 1, Ny)*vmax + v0
+        uz = np.linspace(-1, 1, Ne)*vmax + w0
 
-        ur = 0.5*(gauss_pts_x + 1)*rmax
-        wts_r = (0.5*gauss_wts_x)*ur**2
+        [uxx, uyy, uzz] = np.meshgrid(ux, uy, uz)
+        u[:,0] = np.reshape(uxx, (-1))
+        u[:,1] = np.reshape(uyy, (-1))
+        u[:,2] = np.reshape(uzz, (-1))
 
-        ut = np.linspace(0, np.pi, Nt+1, endpoint=True)
-        ut = 0.5*(ut[1:] + ut[:-1])
-        wts_t = np.sin(ut)
-        wts_t /= np.sum(wts_t)
+        wts_x = np.ones_like(ux)
+        wts_x[0] = 0.5
+        wts_x[-1] = 0.5
+        wts_x = wts_x/np.sum(wts_x)*2*vmax
 
-        up = np.linspace(0, 2*np.pi, Np+1, endpoint=True)
-        up = 0.5*(up[1:] + up[:-1])
-        wts_p = np.ones_like(up)/len(up)
+        wts_y = np.ones_like(uy)
+        wts_y[0] = 0.5
+        wts_y[-1] = 0.5
+        wts_y = wts_y/np.sum(wts_y)*2*vmax
 
-        ux = u0 + np.outer(np.outer(ur, np.sin(ut)),       np.cos(up))
-        uy = v0 + np.outer(np.outer(ur, np.sin(ut)),       np.sin(up))
-        uz = w0 + np.outer(np.outer(ur, np.cos(ut)), np.ones_like(up))
+        wts_z = np.ones_like(uz)
+        wts_z[0] = 0.5
+        wts_z[-1] = 0.5
+        wts_z = wts_z/np.sum(wts_z)*2*vmax
 
-        wts = np.outer(np.outer(wts_r, wts_t), wts_p)
-
-        u[:,0] = np.reshape(ux, (-1))
-        u[:,1] = np.reshape(uy, (-1))
-        u[:,2] = np.reshape(uz, (-1))
+        wts = np.outer(wts_z, np.outer(wts_x, wts_y))
         w = np.reshape(wts, (-1))
-
-        PSint = w*(4.*np.pi*rmax)
+        PSint = w
 
     psi = np.zeros((nvars, ndims+2))
     for i in range(nvars):
