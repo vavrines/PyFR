@@ -47,16 +47,15 @@
     Ur[${i}] = ${c[v]};
     wr[${i+1}] = rhor*Ur[${i}];
     % endfor
-    pr = pl;
-    wr[${ndims+1}] = ${c['theta']}*rhor + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};
+    pr = ${c['theta']}*rhor;
+    wr[${ndims+1}] = pr + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};
     
     // Compute discrete wall Maxwellian
     fpdtype_t Mw[${nvars}];
-    fpdtype_t theta = pr/rhor;
     
     fpdtype_t alpha[${ndims + 2}];
-    alpha[0] = rhor*pow(${2*pi}*theta, ${-ndims/2.0});
-    alpha[1] = 1.0/(2.0*theta);
+    alpha[0] = rhor*${(2*pi*c['theta'])**(-ndims/2.0)};
+    alpha[1] = ${1.0/(2*c['theta'])};
     alpha[2] = Ur[0];
     alpha[3] = Ur[1];
     % if ndims == 3:
