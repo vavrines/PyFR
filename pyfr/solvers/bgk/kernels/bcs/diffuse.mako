@@ -35,7 +35,7 @@
     % for i in range(ndims):
     Ul[${i}] = invrhol*wl[${i + 1}];
     % endfor
-    pl = ${c['gamma'] - 1}*(wl[${ndims+1}] - 0.5*rhol*${pyfr.dot('Ul[{i}]', i=ndims)});
+    pl = ${c['gamma'] - 1.0}*(wl[${ndims+1}] - 0.5*rhol*${pyfr.dot('Ul[{i}]', i=ndims)});
 
     // Compute right state
     fpdtype_t rhor, Ur[${ndims}], pr;
@@ -48,7 +48,7 @@
     wr[${i+1}] = rhor*Ur[${i}];
     % endfor
     pr = ${c['theta']}*rhor;
-    wr[${ndims+1}] = pr + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};
+    wr[${ndims+1}] = ${1.0/(c['gamma'] - 1.0)}*pr  + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};
     
     // Compute discrete wall Maxwellian
     fpdtype_t Mw[${nvars}];
