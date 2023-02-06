@@ -13,9 +13,18 @@
 
 <%pyfr:macro name='bc_ldg_state' params='ul, nl, ur' externs='ploc, t'>
     ur[0] = ul[0];
-% for i, v in enumerate('uvw'[:ndims]):
+% if viscous:
+    % for i, v in enumerate('uvw'[:ndims]):
     ur[${i + 1}] = ${c[v]}*ul[0];
-% endfor
+    % endfor
+% else:
+    fpdtype_t nor = ${' + '.join('ul[{0}]*nl[{1}]'.format(i + 1, i)
+                                 for i in range(ndims))};
+    % for i in range(ndims):
+    ur[${i + 1}] = ul[${i + 1}] - 2*nor*nl[${i}];
+    % endfor
+% endif
+
     ur[${nvars - 1}] = ${c['cpTw']/c['gamma']}*ur[0]
                      + 0.5*(1.0/ur[0])*${pyfr.dot('ur[{i}]', i=(1, ndims + 1))};
 </%pyfr:macro>
