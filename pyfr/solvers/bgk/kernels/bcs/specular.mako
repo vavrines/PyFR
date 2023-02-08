@@ -15,11 +15,5 @@ else if (abs(abs(nl[1]) - 1.0) < ${ntol} && abs(nl[0]) < ${ntol}) {
 		fr[${i}] = fl[${UDidxs[i]}];
 	% endfor
 }
-// If diag normal:
-else if (abs(-nl[0] - nl[1]) < ${ntol}) {
-	% for i in range(nvars):
-		fr[${i}] = fl[${DRidxs[i]}];
-	% endfor
-}
 
 </%pyfr:macro>

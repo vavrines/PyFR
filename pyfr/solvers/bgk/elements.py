@@ -113,7 +113,7 @@ def setup_BGK(cfg, ndims):
         wts = np.outer(wts_z, np.outer(wts_x, wts_y))
         w = np.reshape(wts, (-1))
         PSint = w
-
+    
     psi = np.zeros((nvars, ndims+2))
     for i in range(nvars):
         psi[i, 0] = 1
