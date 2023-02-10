@@ -102,7 +102,8 @@ class EulerBaseBCInters(BaseAdvectionBCInters):
             self.kernels['comm_entropy'] = lambda: self._be.kernel(
                 'bccent', tplargs=tplargs, dims=[self.ninterfpts],
                 extrns=self._external_args, entmin_lhs=self._entmin_lhs,
-                nl=self._pnorm_lhs, ul=self._scal_lhs, **self._external_vals
+                nl=self._pnorm_lhs, ul=self._scal_lhs, vb=self._vb_lhs,
+                **self._external_vals
             )
 
 
