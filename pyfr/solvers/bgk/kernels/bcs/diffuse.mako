@@ -28,7 +28,7 @@
     }
 
     // Compute primitives
-    fpdtype_t rhol, Ul[${ndims}], pl, laml;
+    fpdtype_t rhol, Ul[${ndims}], pl;
 
     rhol = wl[0];
     fpdtype_t invrhol = 1.0/rhol;
@@ -36,20 +36,18 @@
     Ul[${i}] = invrhol*wl[${i + 1}];
     % endfor
     pl = ${c['gamma'] - 1.0}*(wl[${ndims+1}] - 0.5*rhol*${pyfr.dot('Ul[{i}]', i=ndims)});
-    laml = 1.0/(2*pl/rhol); // 1/2RT
 
     // Compute right state
-    fpdtype_t rhor, Ur[${ndims}], pr, lamr;
+    fpdtype_t rhor, Ur[${ndims}], pr;
     fpdtype_t wr[${ndims+2}];
     rhor = rhol;
     
     wr[0] = rhor;
     % for i, v in enumerate('uvw'[:ndims]):
-    Ur[${i}] = 2*${c[v]} - Ul[${i}];
+    Ur[${i}] = ${c[v]};
     wr[${i+1}] = rhor*Ur[${i}];
     % endfor
-    lamr = ${1.0/c['theta']} - laml;
-    pr = rhor/(2*lamr);
+    pr = ${c['theta']}*rhor;
     wr[${ndims+1}] = ${1.0/(c['gamma'] - 1.0)}*pr  + 0.5*rhor*${pyfr.dot('Ur[{i}]', i=ndims)};
     
     // Compute discrete wall Maxwellian
