@@ -72,7 +72,7 @@
     ${pyfr.expand('iterate_DVM', 'alpha', 'w', 'u', 'M')};
 
     // Compute collision time
-    fpdtype_t tau = ${tau_ref*rho_ref*theta_ref**(1 - omega)}/(rho*pow(theta, 1 - ${omega}));
+    fpdtype_t tau = ${tau_ref}*pow(theta/${theta_ref}, ${omega})/(p/${P_ref});
 
 for (int i = 0; i < ${nvars}; i++)
 {

@@ -340,7 +340,8 @@ class BGKElements(BaseAdvectionElements):
             'niters': self.niters, 'wts': meanweights, 
             'delta': self.delta, 'lam': lam,
             'tau_ref': tau_ref, 'rho_ref': rho_ref, 
-            'theta_ref' : theta_ref, 'omega' : omega
+            'P_ref': P_ref, 'theta_ref' : theta_ref,
+            'omega' : omega
         }
 
         # Helpers
