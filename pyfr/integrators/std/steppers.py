@@ -82,7 +82,7 @@ class StdTVDRK3Stepper(BaseStdStepper):
             add(1.0, r3, -1.0, r2) # Subtract out inviscid component from full viscous component
             add(0.25, r1, 0.75, r0, 0.25*dt, r2)
             postproc_inv(r1) # Entropy filter with inviscid component
-            add(1.0, r1, dt, r3) # Add viscous component
+            add(1.0, r1, 0.25*dt, r3) # Add viscous component
             postproc_vis(r1) # Entropy filter with viscous component
 
             # Third stage; r2 = -∇·f(r1);
@@ -93,7 +93,7 @@ class StdTVDRK3Stepper(BaseStdStepper):
             add(1.0, r3, -1.0, r2) # Subtract out inviscid component from full viscous component
             add(2.0/3.0, r1, 1.0/3.0, r0, 2.0/3.0*dt, r2)
             postproc_inv(r1) # Entropy filter with inviscid component
-            add(1.0, r1, dt, r3) # Add viscous component
+            add(1.0, r1, 2.0/3.0*dt, r3) # Add viscous component
             postproc_vis(r1) # Entropy filter with viscous component
 
             # Return the index of the bank containing u(t + dt)
