@@ -109,7 +109,8 @@ class BGKFixedBCInters(BGKBaseBCInters):
         )
 
 class BGKDiffuseBCInters(BGKBaseBCInters):
-    type = 'diffuse'    
+    type = 'diffuse'
+  
     def __init__(self, be, lhs, elemap, cfgsect, cfg):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
@@ -120,4 +121,20 @@ class BGKDiffuseBCInters(BGKBaseBCInters):
 class BGKSpecularBCInters(BGKBaseBCInters):
     type = 'specular'
 
+class BGKInletBCInters(BGKBaseBCInters):
+    type = 'inlet'
 
+    def __init__(self, be, lhs, elemap, cfgsect, cfg):
+        super().__init__(be, lhs, elemap, cfgsect, cfg)
+
+        self.c |= self._exp_opts(
+            ['rho', 'u', 'v', 'w'][:self.ndims + 1], lhs
+        )
+
+class BGKOutletBCInters(BGKBaseBCInters):
+    type = 'outlet'
+
+    def __init__(self, be, lhs, elemap, cfgsect, cfg):
+        super().__init__(be, lhs, elemap, cfgsect, cfg)
+
+        self.c |= self._exp_opts(['p'], lhs)
