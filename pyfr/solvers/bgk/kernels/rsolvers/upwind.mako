@@ -2,24 +2,9 @@
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
 
 <%pyfr:macro name='rsolve' params='fl, fr, n, nF, u'>
-    fpdtype_t nv;
-
-for (int j = 0; j < ${nvars}; j++)
-{
-    nF[j] = nv = 0.0;
-    % for i in range(ndims):
-    nv += n[${i}]*u[j][${i}];
-    % endfor
-
-    if (nv > 0.0) {
-        % for i in range(ndims):
-        nF[j] += n[${i}]*(u[j][${i}]*fl[j]);
-        % endfor
+    fpdtype_t un;
+    for (int i = 0; i < ${nvars}; i++) {        
+        un = ${pyfr.dot('u[i][{j}]', 'n[{j}]', j=ndims)};
+        nF[i] = un > 0.0 ? un*fl[i] : un*fr[i];
     }
-    else {
-        % for i in range(ndims):
-        nF[j] += n[${i}]*(u[j][${i}]*fr[j]);
-        % endfor
-    }
-}
 </%pyfr:macro>

@@ -1,81 +1,39 @@
 # -*- coding: utf-8 -*-
 <%namespace module='pyfr.backends.base.makoutil' name='pyfr'/>
-<%include file='pyfr.solvers.bgk.kernels.dvm'/>
+
+<%include file='pyfr.solvers.bgk.kernels.util'/>
 
 <%pyfr:macro name='bc_rsolve_state' params='fl, nl, fr, u, M' externs='ploc, t'>
-    // Compute left conservative state
+    // Get LHS conserved state
     fpdtype_t wl[${ndims+2}] = {0};
-    for (int i = 0; i < ${nvars}; i++)
-    {
-        wl[0] += fl[i]*M[0][i];
-        wl[1] += fl[i]*M[0][i]*u[i][0];
-        wl[2] += fl[i]*M[0][i]*u[i][1];
+    ${pyfr.expand('compute_moments', 'fl', 'u', 'M', 'wl')};
 
-        % if ndims == 2:
-            % if delta:
-                wl[3] += fl[i]*M[0][i]*(0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1]) + u[i][2]);
-            % else:
-                wl[3] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1]);
-            % endif
-        % elif ndims == 3:
-            wl[3] += fl[i]*M[0][i]*u[i][2];            
-            % if delta:
-                wl[4] += fl[i]*M[0][i]*(0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1] + u[i][2]*u[i][2]) + u[i][3]);
-            % else:
-                wl[4] += fl[i]*M[0][i]*0.5*(u[i][0]*u[i][0] + u[i][1]*u[i][1] + u[i][2]*u[i][2]);
-            % endif
-        % endif
-    }
-
-    // Compute primitives
-    fpdtype_t rhol, Ul[${ndims}], pl;
-
-    rhol = wl[0];
-    fpdtype_t invrhol = 1.0/rhol;
-    % for i in range(ndims):
-    Ul[${i}] = invrhol*wl[${i + 1}];
-    % endfor
-    pl = ${c['gamma'] - 1.0}*(wl[${ndims+1}] - 0.5*rhol*${pyfr.dot('Ul[{i}]', i=ndims)});
+    // Convert to primitives
+    fpdtype_t ql[${ndims+2}] = {0};
+    ${pyfr.expand('con_to_pri', 'wl', 'ql')};
 
     // Compute RHS state
-    fpdtype_t w[${ndims + 2}];
+    fpdtype_t w[${ndims+2}];
     w[0] = ${c['rho']};
 % for i, v in enumerate('uvw'[:ndims]):
-    w[${i + 1}] = (${c['rho']})*(${c[v]});
+    w[${i+1}] = (${c['rho']})*(${c[v]});
 % endfor
-    w[${ndims+1}] = pl/${c['gamma'] - 1}
-                    + 0.5*(1.0/w[0])*${pyfr.dot('w[{i}]', i=(1, ndims + 1))};
-    
-    fpdtype_t rho = ${c['rho']};
-    fpdtype_t p = pl;
-    fpdtype_t theta = p/rho;
-    
-    fpdtype_t alpha[${ndims + 2}];
-    alpha[0] = rho*pow(${2*pi}*theta, ${-ndims/2.0});
-    alpha[1] = 1.0/(2.0*theta);
-    alpha[2] = ${c['u']};
-    alpha[3] = ${c['v']};
-    % if ndims == 3:
-    alpha[4] = ${c['w']};
-    % endif
+    w[${ndims+1}] = ql[${ndims+1}]/${c['gamma']-1}
+                    + (0.5/w[0])*${pyfr.dot('w[{i}]', i=(1, ndims + 1))};
 
+    // Convert to primitives
+    fpdtype_t q[${ndims+2}] = {0};
+    ${pyfr.expand('con_to_pri', 'w', 'q')};
+
+    // Get alpha vector
+    fpdtype_t alpha[${ndims+2}];
+    ${pyfr.expand('compute_alpha', 'q', 'alpha')};
+    
+    // Compute discretely conservative equilibrium state
     ${pyfr.expand('iterate_DVM', 'alpha', 'w', 'u', 'M')};
 
-    for (int i = 0; i < ${nvars}; i++)
-    {
-        % if ndims == 2:
-            fr[i] = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0)));
-            % if delta:
-            fpdtype_t theta = 1.0/(2.0*alpha[1]);
-            fr[i] *= ${lam}*pow(u[i][2]/theta, ${0.5*delta - 1.})*(1./theta)*exp(-u[i][2]/theta);
-            % endif
-        % elif ndims == 3:
-            fr[i] = alpha[0]*exp(-alpha[1]*(pow(u[i][0] - alpha[2], 2.0) + pow(u[i][1] - alpha[3], 2.0) + pow(u[i][2] - alpha[4], 2.0)));
-            % if delta:
-            fpdtype_t theta = 1.0/(2.0*alpha[1]);
-            fr[i] *= ${lam}*pow(u[i][3]/theta, ${0.5*delta - 1.})*(1./theta)*exp(-u[i][3]/theta);
-            % endif
-        % endif
+    // Set RHS state
+    for (int i = 0; i < ${nvars}; i++) {
+        ${pyfr.expand('compute_equilibrium_distribution', 'alpha', 'u', 'i', 'fr[i]')};
     }
-    
 </%pyfr:macro>
