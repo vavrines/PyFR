@@ -28,16 +28,28 @@
     // Compute discretely conservative equilibrium state
     ${pyfr.expand('iterate_DVM', 'alpha', 'w', 'u', 'M')};
 
-    // Compute collision time
+    // Compute collision time based on viscosity model
     fpdtype_t p = q[${ndims+1}];
     fpdtype_t theta = p/q[0];
     fpdtype_t tau = ${tau_ref}*pow(theta/${theta_ref}, ${omega})/(p/${P_ref});
+
+    // Precompute necessary data for Shakov model (for Prandtl number effects)
+    % if Pr != 1.0:
+    fpdtype_t S[${ndims}] = {0};
+    fpdtype_t Pr = ${Pr};
+    ${pyfr.expand('compute_Shakov_heatflux', 'alpha', 'f', 'M', 'u', 'S')};
+    % endif
 
     // Set source term
     fpdtype_t g;
     for (int i = 0; i < ${nvars}; i++) {
         // Compute equilibrium distribution at i-th velocity point
         ${pyfr.expand('compute_equilibrium_distribution', 'alpha', 'u', 'i', 'g')};
+
+        // Apply Shakov model
+        % if Pr != 1.0:
+        ${pyfr.expand('apply_Shakov_model', 'alpha', 'u', 'S', 'p', 'theta', 'Pr', 'i', 'g')};
+        % endif
 
         // Set source
         tdivtconf[i] = -rcpdjac*tdivtconf[i] + (g - f[i])/tau;

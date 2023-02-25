@@ -327,6 +327,7 @@ class BGKElements(BaseAdvectionElements):
         rho_ref = self.cfg.getfloat('constants', 'rho_ref')
         P_ref = self.cfg.getfloat('constants', 'P_ref')
         omega = self.cfg.getfloat('constants', 'omega')
+        Pr = self.cfg.getfloat('constants', 'Pr', 1.0)
         theta_ref = P_ref/rho_ref
         
         # Template parameters for the flux kernels
@@ -341,7 +342,7 @@ class BGKElements(BaseAdvectionElements):
             'delta': self.delta, 'lam': lam,
             'tau_ref': tau_ref, 'rho_ref': rho_ref, 
             'P_ref': P_ref, 'theta_ref' : theta_ref,
-            'omega' : omega
+            'omega' : omega, 'Pr' : Pr
         }
 
         # Helpers
