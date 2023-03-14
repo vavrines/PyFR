@@ -220,6 +220,9 @@ class BGKElements(BaseAdvectionElements):
     privarmap = {2: ['rho', 'u', 'v', 'p'],
                  3: ['rho', 'u', 'v', 'w', 'p']}
 
+    privarmap2 = {2: ['rho', 'u', 'v', 'p', 'sxy'],
+                  3: ['rho', 'u', 'v', 'w', 'p', 'sxy', 'sxz', 'syz']}
+
     convarmap = {2: ['1'],
                  3: ['1']}
 
@@ -228,10 +231,12 @@ class BGKElements(BaseAdvectionElements):
     visvarmap = {
         2: [('density', ['rho']),
             ('velocity', ['u', 'v']),
-            ('pressure', ['p'])],
+            ('pressure', ['p']),
+            ('strain', ['sxy'])],
         3: [('density', ['rho']),
             ('velocity', ['u', 'v', 'w']),
-            ('pressure', ['p'])]
+            ('pressure', ['p']),
+            ('strain', ['sxy', 'sxz', 'syz'])]
     }
 
 
@@ -287,13 +292,13 @@ class BGKElements(BaseAdvectionElements):
 
         rho = np.dot(PSint, f.swapaxes(0,1))
 
+        # Compute velocities
         Vs = []
         for i in range(ndims):
             rhoU = np.dot(PSint, (f.swapaxes(0,2)*u[:,i]).swapaxes(1,2)).T
             Vs.append(rhoU/rho)
 
         idofs = len(u.T) != ndims
-
         if idofs:
             E = np.dot(PSint, 0.5*(f.swapaxes(0,2)*np.linalg.norm(u[:,:-1], axis=1)**2).swapaxes(1,2)).T
             E += np.dot(PSint, (f.swapaxes(0,2)*u[:,-1]).swapaxes(1,2)).T
@@ -305,6 +310,41 @@ class BGKElements(BaseAdvectionElements):
         p = (gamma - 1)*(E - 0.5*rho*sum(v*v for v in Vs))
 
         return [rho] + Vs + [p]
+    
+    @staticmethod
+    def con_to_vis(cons, cfg, PSint, u, ndims):
+        f = cons
+
+        rho = np.dot(PSint, f.swapaxes(0,1))
+
+        # Compute velocities
+        Vs = []
+        for i in range(ndims):
+            rhoU = np.dot(PSint, (f.swapaxes(0,2)*u[:,i]).swapaxes(1,2)).T
+            Vs.append(rhoU/rho)
+        
+        # Compute strains
+        if ndims == 2:
+            sxy = np.dot(PSint, (f.swapaxes(0,2)*u[:,0]*u[:,1]).swapaxes(1,2)).T
+            Ss = [sxy]
+        elif ndims == 3:
+            sxy = np.dot(PSint, (f.swapaxes(0,2)*u[:,0]*u[:,1]).swapaxes(1,2)).T
+            sxz = np.dot(PSint, (f.swapaxes(0,2)*u[:,0]*u[:,2]).swapaxes(1,2)).T
+            syz = np.dot(PSint, (f.swapaxes(0,2)*u[:,1]*u[:,2]).swapaxes(1,2)).T
+            Ss = [sxy, sxz, syz]
+
+        idofs = len(u.T) != ndims
+        if idofs:
+            E = np.dot(PSint, 0.5*(f.swapaxes(0,2)*np.linalg.norm(u[:,:-1], axis=1)**2).swapaxes(1,2)).T
+            E += np.dot(PSint, (f.swapaxes(0,2)*u[:,-1]).swapaxes(1,2)).T
+        else:
+            E = np.dot(PSint, 0.5*(f.swapaxes(0,2)*np.linalg.norm(u, axis=1)**2).swapaxes(1,2)).T
+
+        # Compute the pressure
+        gamma = cfg.getfloat('constants', 'gamma')
+        p = (gamma - 1)*(E - 0.5*rho*sum(v*v for v in Vs))
+
+        return [rho] + Vs + [p] + Ss
 
     def set_backend(self, *args, **kwargs):
         super().set_backend(*args, **kwargs)
