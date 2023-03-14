@@ -297,6 +297,16 @@ class BGKElements(BaseAdvectionElements):
         for i in range(ndims):
             rhoU = np.dot(PSint, (f.swapaxes(0,2)*u[:,i]).swapaxes(1,2)).T
             Vs.append(rhoU/rho)
+        
+        # Compute strains
+        if ndims == 2:
+            sxy = np.dot(PSint, (f.swapaxes(0,2)*u[:,0]*u[:,1]).swapaxes(1,2)).T
+            Ss = [sxy]
+        elif ndims == 3:
+            sxy = np.dot(PSint, (f.swapaxes(0,2)*u[:,0]*u[:,1]).swapaxes(1,2)).T
+            sxz = np.dot(PSint, (f.swapaxes(0,2)*u[:,0]*u[:,2]).swapaxes(1,2)).T
+            syz = np.dot(PSint, (f.swapaxes(0,2)*u[:,1]*u[:,2]).swapaxes(1,2)).T
+            Ss = [sxy, sxz, syz]
 
         idofs = len(u.T) != ndims
         if idofs:
