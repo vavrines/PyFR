@@ -10,7 +10,7 @@
 
     // Compute the pressure
     fpdtype_t rote = 0.5*d*(vb[0]*vb[0] + vb[1]*vb[1]);
-    p = ${c['gamma'] - 1}*(E - 0.5*rcpd*(${pyfr.dot('u[{i}+1]', i=ndims)}) + rote);
+    p = ${c['gamma'] - 1}*(E - 0.5*rcpd*(${pyfr.dot('u[{i}+1]', i=ndims)}));
 
     // Compute specific physical entropy
     e = ((d > 0) && (p > 0)) ? p*pow(rcpd, ${c['gamma']}) : ${inf};
