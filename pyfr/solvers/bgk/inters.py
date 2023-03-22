@@ -139,3 +139,12 @@ class BGKOutletBCInters(BGKBaseBCInters):
         super().__init__(be, lhs, elemap, cfgsect, cfg)
 
         self.c |= self._exp_opts(['p'], lhs)
+
+class BGKPressureThetaBCInters(BGKBaseBCInters):
+    type = 'prth'
+
+    def __init__(self, be, lhs, elemap, cfgsect, cfg):
+        super().__init__(be, lhs, elemap, cfgsect, cfg)
+
+        self.c |= self._exp_opts(['p'], lhs)
+        self.c |= self._exp_opts(['theta'], lhs)
