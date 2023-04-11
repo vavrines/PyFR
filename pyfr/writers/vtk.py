@@ -375,6 +375,11 @@ class VTKWriter(BaseWriter):
             self.divisor = args.divisor
             self.vtkfile_version = '0.1'
             self._get_npts_ncells_nnodes = self._get_npts_ncells_nnodes_lin
+        
+        if args.proj:
+            self.proj = args.proj
+        else:
+            self.proj = None
 
         # Solutions need a separate processing pipeline to other data
         if self.dataprefix == 'soln':
@@ -497,6 +502,15 @@ class VTKWriter(BaseWriter):
     def _get_soln_op(self, name, nspts, svpts):
         shape = self._get_shape(name, nspts)
         return shape.ubasis.nodal_basis_at(svpts).astype(self.dtype)
+    
+    @memoize
+    def _get_proj_op(self, name, nspts, p):
+        shape = self._get_shape(name, nspts)
+        ub = shape.ubasis
+        A = np.ones(len(ub.vdm))
+        for i, d in enumerate(max(dd) for dd in ub.degrees):
+            A[i] = d <= p
+        return np.linalg.solve(ub.vdm, A[:, None]*ub.vdm).T
 
     def write_out(self):
         name, extn = os.path.splitext(self.outf)
@@ -659,7 +673,11 @@ class VTKWriter(BaseWriter):
         vpts = vpts.reshape(nsvpts, -1, self.ndims)
 
         # Pre-process the solution
-        soln = self._pre_proc_fields(soln).swapaxes(0, 1)
+        soln = self._pre_proc_fields(soln)
+        if self.proj:
+            m = self._get_proj_op(name, nspts, self.proj)
+            soln = m @ soln
+        soln = soln.swapaxes(0, 1)
 
         # Interpolate the solution to the vis points
         vsoln = soln_vtu_op @ soln.reshape(len(soln), -1)

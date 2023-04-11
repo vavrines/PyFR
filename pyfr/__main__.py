@@ -85,6 +85,8 @@ def main():
                                 'may be required')
     output_options.add_argument('-k', '--order', type=int, dest='order',
                                 help='sets the order of high order elements')
+    output_options.add_argument('-l', '--proj', type=int, dest='proj',
+                                help='sets the projection order of high order elements')
     ap_export.add_argument('-p', '--precision', choices=['single', 'double'],
                            default='single', help='output number precision; '
                            'defaults to single')
