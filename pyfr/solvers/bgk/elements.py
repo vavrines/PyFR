@@ -88,7 +88,7 @@ def setup_BGK(cfg, ndims):
 
         ux = np.linspace(-1, 1, Nx)*vmax + u0
         uy = np.linspace(-1, 1, Ny)*vmax + v0
-        uz = np.linspace(-1, 1, Ne)*vmax + w0
+        uz = np.linspace(-1, 1, Nz)*vmax + w0
 
         [uxx, uyy, uzz] = np.meshgrid(ux, uy, uz)
         u[:,0] = np.reshape(uxx, (-1))
