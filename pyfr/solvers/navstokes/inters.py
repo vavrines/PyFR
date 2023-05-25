@@ -214,3 +214,14 @@ class NavierStokesSubInflowFtvBCInters(NavierStokesBaseBCInters):
             ['theta', 'u', 'v', 'w'][:self.ndims + 1], lhs,
             default={'u': 0, 'v': 0, 'w': 0}
         )
+
+
+class NavierStokesSubInflowFtvBCInters(NavierStokesBaseBCInters):
+    type = 'sub-in-ftp'
+    cflux_state = 'ghost'
+
+    def __init__(self, be, lhs, elemap, cfgsect, cfg):
+        super().__init__(be, lhs, elemap, cfgsect, cfg)
+
+        self.c |= self._exp_opts(
+            ['rho', 'p'], lhs)
