@@ -356,14 +356,15 @@ class BGKElements(BaseAdvectionElements):
 
         return [rho] + Vs + [p] + Ss
 
-    def set_backend(self, *args, **kwargs):
-        super().set_backend(*args, **kwargs)
+    def set_backend(self, backend, nscalupts, nonce, linoff):
+        super().set_backend(backend, nscalupts, nonce, linoff)
 
         # Register our flux kernels
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.tflux')
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.tfluxlin')
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.negdivconfbgk')
         self._be.pointwise.register('pyfr.solvers.bgk.kernels.limiter')
+        self._be.pointwise.register('pyfr.solvers.bgk.kernels.macrostate')
 
         ub = self.basis.ubasis
         meanweights = ub.invvdm[:,0]/np.sum(ub.invvdm[:,0])
@@ -379,6 +380,8 @@ class BGKElements(BaseAdvectionElements):
         omega = self.cfg.getfloat('constants', 'omega')
         Pr = self.cfg.getfloat('constants', 'Pr', 1.0)
         theta_ref = P_ref/rho_ref
+
+        self.nmvars = self.ndims + 2
         
         # Template parameters for the flux kernels
         tplargs = {
@@ -392,7 +395,8 @@ class BGKElements(BaseAdvectionElements):
             'delta': self.delta, 'lam': lam,
             'tau_ref': tau_ref, 'rho_ref': rho_ref, 
             'P_ref': P_ref, 'theta_ref' : theta_ref,
-            'omega' : omega, 'Pr' : Pr
+            'omega' : omega, 'Pr' : Pr,
+            'nmvars' : self.nmvars
         }
 
         # Helpers
@@ -443,3 +447,13 @@ class BGKElements(BaseAdvectionElements):
                 'limiter', tplargs=tplargs,
                 dims=[self.neles], f=self.scal_upts[uin]
             )
+        
+        # Compute and store macroscopic variables        
+        self.mvars = self._be.matrix((self.nupts, self.nmvars, self.neles),
+                                        extent=nonce + 'mvars', tags={'align'})
+
+        self.kernels['macrostate'] = lambda uin: self._be.kernel(
+            'macrostate', tplargs=tplargs,
+            dims=[self.nupts, self.neles], f=self.scal_upts[uin],
+            mvars=self.mvars, u=self.umat, M=self.M
+        )
