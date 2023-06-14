@@ -15,11 +15,11 @@ class BaseAdvectionSystem(BaseSystem):
         g1 = self.backend.graph()
         g1.add_mpi_reqs(m['scal_fpts_recv'])
 
-        # Compute and store macroscopic state
-        g1.add_all(k['eles/macrovars'])
-
         # Apply positivity-preserving limiter
         g1.add_all(k['eles/limiter'])
+
+        # Compute and store macroscopic state
+        g1.add_all(k['eles/macrostate'], deps=k['eles/limiter'])
 
         # Interpolate the solution to the flux points
         g1.add_all(k['eles/disu'], deps=k['eles/limiter'])

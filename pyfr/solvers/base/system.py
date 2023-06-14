@@ -50,6 +50,9 @@ class BaseSystem:
         if hasattr(eles[0], '_vect_upts'):
             self.eles_vect_upts = [e._vect_upts for e in eles]
 
+        if hasattr(eles[0], 'mvars'):
+            self.eles_mvars = [e.mvars for e in eles]
+
         # Save the number of dimensions and field variables
         self.ndims = eles[0].ndims
         self.nvars = eles[0].nvars
@@ -300,3 +303,6 @@ class BaseSystem:
 
     def ele_scal_upts(self, idx):
         return [eb[idx].get() for eb in self.ele_banks]
+
+    def ele_macro_upts(self):
+        return [e.get() for e in self.eles_mvars]

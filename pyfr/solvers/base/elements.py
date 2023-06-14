@@ -74,6 +74,11 @@ class BaseElements:
         # Convert from primitive to conservative form
         self.scal_upts = self.pri_to_con(ics, self.cfg)
 
+        self.mvars = np.empty((self.nupts, self.ndims + 2, self.neles))
+        mvars = self.macropri_to_macrocon(ics, self.cfg)
+        for i in range(self.ndims+2):
+            self.mvars[:,i,:] = mvars[i]
+
     def set_ics_from_soln(self, solnmat, solncfg):
         # Recreate the existing solution basis
         solnb = self.basis.__class__(None, solncfg)

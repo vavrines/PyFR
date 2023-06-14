@@ -356,6 +356,32 @@ class BGKElements(BaseAdvectionElements):
 
         return [rho] + Vs + [p] + Ss
 
+    @staticmethod
+    def macrocon_to_macropri(cons, cfg):
+        rho, E = cons[0], cons[-1]
+
+        # Divide momentum components by rho
+        vs = [rhov/rho for rhov in cons[1:-1]]
+
+        # Compute the pressure
+        gamma = cfg.getfloat('constants', 'gamma')
+        p = (gamma - 1)*(E - 0.5*rho*sum(v*v for v in vs))
+
+        return [rho] + vs + [p]
+
+    @staticmethod
+    def macropri_to_macrocon(pris, cfg):
+        rho, p = pris[0], pris[-1]
+
+        # Multiply velocity components by rho
+        rhovs = [rho*c for c in pris[1:-1]]
+
+        # Compute the energy
+        gamma = cfg.getfloat('constants', 'gamma')
+        E = p/(gamma - 1) + 0.5*rho*sum(c*c for c in pris[1:-1])
+
+        return [rho] + rhovs + [E]
+
     def set_backend(self, backend, nscalupts, nonce, linoff):
         super().set_backend(backend, nscalupts, nonce, linoff)
 
@@ -448,9 +474,9 @@ class BGKElements(BaseAdvectionElements):
                 dims=[self.neles], f=self.scal_upts[uin]
             )
         
-        # Compute and store macroscopic variables        
-        self.mvars = self._be.matrix((self.nupts, self.nmvars, self.neles),
-                                        extent=nonce + 'mvars', tags={'align'})
+        # Compute and store macroscopic variables
+        self.mvars = self._be.matrix(self.mvars.shape, self.mvars,
+                                     extent=nonce + 'mvars', tags={'align'})
 
         self.kernels['macrostate'] = lambda uin: self._be.kernel(
             'macrostate', tplargs=tplargs,
