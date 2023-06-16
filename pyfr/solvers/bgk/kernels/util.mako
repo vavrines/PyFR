@@ -5,6 +5,10 @@
 <%include file='pyfr.solvers.bgk.kernels.matrices'/>
 
 <%pyfr:macro name='compute_moments' params='f, u, M, w'>
+    % for i in range(ndims + 2):
+    w[${i}] = 0.0;
+    % endfor
+
     fpdtype_t fm;
     for (int i = 0; i < ${nvars}; i++) {
         fm = f[i]*M[0][i];

@@ -47,6 +47,10 @@ class BaseStdIntegrator(BaseCommon, BaseIntegrator):
         return self._curr_soln
 
     @property
+    def macro_soln(self):
+        return self.system.ele_macro_upts()
+
+    @property
     def grad_soln(self):
         system = self.system
 

@@ -11,19 +11,41 @@ def reflect2D(side, Nx, Ny):
     N = Nx*Ny
     pairs = np.zeros(N, dtype=int)
 
-    n = 0
     for j in range(Ny):
         for i in range(Nx):
             idx = j*Nx + i
             
-            if side == 'lr':
+            if side == 'x':
                 ii = Nx - 1 - i
                 pidx = j*Nx + ii
-            elif side == 'ud':
+            elif side == 'y':
                 jj = Ny - 1 - j
                 pidx = jj*Nx + i
             
             pairs[idx] = pidx
+
+    return pairs
+
+def reflect3D(side, Nx, Ny, Nz):
+    N = Nx*Ny*Nz
+    pairs = np.zeros(N, dtype=int)
+
+    for k in range(Nz):
+        for j in range(Ny):
+            for i in range(Nx):
+                idx = k*Nx*Ny + j*Nx + i
+                
+                if side == 'x':
+                    ii = Nx - 1 - i
+                    pidx = k*Nx*Ny + j*Nx + ii
+                elif side == 'y':
+                    jj = Ny - 1 - j
+                    pidx = k*Nx*Ny + jj*Nx + i
+                elif side == 'z':
+                    kk = Nz - 1 - k
+                    pidx = kk*Nx*Ny + j*Nx + i
+                
+                pairs[idx] = pidx
 
     return pairs
 
@@ -80,13 +102,21 @@ class BGKBaseBCInters(BaseAdvectionBCInters):
         Nx = self.cfg.getint('solver', 'Nx')
         Ny = self.cfg.getint('solver', 'Ny')
 
-        self.LRidxs = reflect2D('lr', Nx, Ny)
-        self.UDidxs = reflect2D('ud', Nx, Ny)
+        if self.ndims == 2:
+            self.Xidxs = reflect2D('x', Nx, Ny)
+            self.Yidxs = reflect2D('y', Nx, Ny)
+            self.Zidxs = None
+        elif self.ndims == 3:
+            Nz = self.cfg.getint('solver', 'Nz')
+            self.Xidxs = reflect3D('x', Nx, Ny, Nz)
+            self.Yidxs = reflect3D('y', Nx, Ny, Nz)
+            self.Zidxs = reflect3D('z', Nx, Ny, Nz)
+
 
         tplargs = dict(ndims=self.ndims, nvars=self.nvars, rsolver=rsolver,
                        c=self.c, u=self.u, bctype=self.type, niters=self.niters,
                        pi=np.pi, delta=delta,lam=lam, Pr=Pr,
-                       LRidxs=self.LRidxs, UDidxs=self.UDidxs)
+                       Xidxs=self.Xidxs, Yidxs=self.Xidxs, Zidxs=self.Xidxs)
         
         self.kernels['comm_flux'] = lambda: self._be.kernel(
             'bccflux', tplargs=tplargs, dims=[self.ninterfpts],

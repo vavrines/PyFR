@@ -107,27 +107,13 @@ class TavgPlugin(PostactionMixin, RegionMixin, BasePlugin):
 
         # Iterate over each element type in the simulation
         for idx, etype, rgn in self._ele_regions:
-            soln = intg.soln[idx][..., rgn].swapaxes(0, 1)
+            soln = intg.macro_soln[idx][..., rgn].swapaxes(0, 1)
 
             # Convert from conservative to primitive variables
-            psolns = self.elementscls.con_to_pri(soln, self.cfg)
+            psolns = self.elementscls.macrocon_to_macropri(soln, self.cfg)
 
             # Prepare the substitutions dictionary
             subs = dict(zip(pnames, psolns))
-
-            # Prepare any required gradients
-            if self._gradpinfo:
-                # Compute the gradients
-                grad_soln = np.rollaxis(intg.grad_soln[idx], 2)[..., rgn]
-
-                # Transform from conservative to primitive gradients
-                pgrads = self.elementscls.grad_con_to_pri(soln, grad_soln,
-                                                          self.cfg)
-
-                # Add them to the substitutions dictionary
-                for pname, idx in self._gradpinfo:
-                    for dim, grad in zip('xyz', pgrads[idx]):
-                        subs[f'grad_{pname}_{dim}'] = grad
 
             # Evaluate the expressions
             exprs.append([npeval(v, subs) for v in self.aexprs])
