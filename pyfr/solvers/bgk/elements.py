@@ -475,7 +475,7 @@ class BGKElements(BaseAdvectionElements):
             )
         
         # Compute and store macroscopic variables
-        self.mvars = self._be.matrix(self.mvars.shape, self.mvars,
+        self.mvars = self._be.matrix((self.nupts, self.nmvars, self.neles),
                                      extent=nonce + 'mvars', tags={'align'})
 
         self.kernels['macrostate'] = lambda uin: self._be.kernel(

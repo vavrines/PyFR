@@ -146,7 +146,7 @@ class TavgPlugin(PostactionMixin, RegionMixin, BasePlugin):
 
         # See if we are due to write and/or accumulate this step
         dowrite = intg.tcurr - self.tout_last >= self.dtout - self.tol
-        doaccum = intg.nacptsteps % self.nsteps == 0
+        doaccum = intg.nacptsteps % self.nsteps == 0 and intg.nacptsteps != 0
 
         if dowrite or doaccum:
             # Evaluate the time averaging expressions
