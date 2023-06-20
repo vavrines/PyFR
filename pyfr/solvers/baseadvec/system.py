@@ -15,8 +15,11 @@ class BaseAdvectionSystem(BaseSystem):
         g1 = self.backend.graph()
         g1.add_mpi_reqs(m['scal_fpts_recv'])
 
+        # Apply positivity-preserving limiter
+        g1.add_all(k['eles/limiter'])
+
         # Interpolate the solution to the flux points
-        g1.add_all(k['eles/disu'])
+        g1.add_all(k['eles/disu'], deps=k['eles/limiter'])
 
         # Pack and send these interpolated solutions to our neighbours
         g1.add_all(k['mpiint/scal_fpts_pack'], deps=k['eles/disu'])
@@ -29,14 +32,14 @@ class BaseAdvectionSystem(BaseSystem):
         g1.add_all(k['bcint/comm_flux'], deps=k['eles/disu'])
 
         # Make a copy of the solution (if used by source terms)
-        g1.add_all(k['eles/copy_soln'])
+        g1.add_all(k['eles/copy_soln'], deps=k['eles/limiter'])
 
         # Interpolate the solution to the quadrature points
-        g1.add_all(k['eles/qptsu'])
+        g1.add_all(k['eles/qptsu'], deps=k['eles/limiter'])
 
         # Compute the transformed flux
         for l in k['eles/tdisf_curved'] + k['eles/tdisf_linear']:
-            g1.add(l, deps=deps(l, 'eles/qptsu'))
+            g1.add(l, deps=deps(l, 'eles/qptsu', 'eles/limiter'))
 
         # Compute the transformed divergence of the partially corrected flux
         for l in k['eles/tdivtpcorf']:

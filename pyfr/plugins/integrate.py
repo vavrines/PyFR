@@ -78,6 +78,9 @@ class IntegratePlugin(BasePlugin):
                 # Default to the quadrature rule of the solution points
                 r = get_quadrule(ename, rname, eles.nupts)
                 m0 = None
+            
+            # Gradient matrix
+            m4 = eles.basis.m4
 
             # Locations of each quadrature point
             ploc = eles.ploc_at_np(r.pts).swapaxes(0, 1)
@@ -92,7 +95,8 @@ class IntegratePlugin(BasePlugin):
             rcpdjacs = eles.rcpdjac_at_np(r.pts)[:, eset]
 
             # Save
-            eleinfo.append((ploc, r.wts[:, None] / rcpdjacs, m0, eset, emask))
+            eleinfo.append((ploc, r.wts[:, None] / rcpdjacs, m0, m4, eset, emask,
+                            eles.PSint, eles.u))
 
     def _prepare_esetmask(self, intg):
         region = self.cfg.get(self.cfgsect, 'region', '*')
@@ -135,41 +139,38 @@ class IntegratePlugin(BasePlugin):
 
         # Get the primitive variable names
         pnames = self.elementscls.privarmap[self.ndims]
+        
 
         # Iterate over each element type in the simulation
         for i, (soln, eleinfo) in enumerate(zip(intg.soln, self.eleinfo)):
-            plocs, wts, m0, eset, emask = eleinfo
+            plocs, wts, m0, m4, eset, emask, PSint, u = eleinfo
+
 
             # Subset and transpose the solution
             soln = soln[..., eset].swapaxes(0, 1)
+            soln = self.elementscls.con_to_pri(soln, self.cfg, PSint, u, self.ndims)
 
             # Interpolate the solution to the quadrature points
             if m0 is not None:
                 soln = m0 @ soln
 
-            # Convert from conservative to primitive variables
-            psolns = self.elementscls.con_to_pri(soln, self.cfg)
 
             # Prepare the substitutions dictionary
-            subs = dict(zip(pnames, psolns), t=intg.tcurr)
+            subs = dict(zip(pnames, soln), t=intg.tcurr)
             subs |= dict(zip('xyz', plocs))
 
             # Prepare any required gradients
             if self._gradpinfo:
                 # Compute the gradients
-                grad_soln = np.rollaxis(intg.grad_soln[i], 2)[..., eset]
+                grad_soln = m4 @ soln
 
                 # Interpolate the gradients to the quadrature points
                 if m0 is not None:
                     grad_soln = m0 @ grad_soln
 
-                # Transform from conservative to primitive gradients
-                pgrads = self.elementscls.grad_con_to_pri(soln, grad_soln,
-                                                          self.cfg)
-
                 # Add them to the substitutions dictionary
                 for pname, idx in self._gradpinfo:
-                    for dim, grad in zip('xyz', pgrads[idx]):
+                    for dim, grad in zip('xyz', grad_soln[idx]):
                         subs[f'grad_{pname}_{dim}'] = grad
 
             for j, v in enumerate(self.exprs):

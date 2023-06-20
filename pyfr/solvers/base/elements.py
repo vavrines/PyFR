@@ -31,9 +31,6 @@ class BaseElements:
         if ndims != basiscls.ndims or ndims not in self.privarmap:
             raise ValueError('Invalid element matrix dimensions')
 
-        # Determine the number of dynamical variables
-        self.nvars = len(self.privarmap[ndims])
-
         # Instantiate the basis class
         self.basis = basis = basiscls(nspts, cfg)
 
@@ -75,8 +72,7 @@ class BaseElements:
         self.scal_upts = np.empty((self.nupts, self.nvars, self.neles))
 
         # Convert from primitive to conservative form
-        for i, v in enumerate(self.pri_to_con(ics, self.cfg)):
-            self.scal_upts[:, i, :] = v
+        self.scal_upts = self.pri_to_con(ics, self.cfg)
 
     def set_ics_from_soln(self, solnmat, solncfg):
         # Recreate the existing solution basis
