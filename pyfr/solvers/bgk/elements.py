@@ -265,7 +265,7 @@ class BGKElements(BaseAdvectionElements):
         
         # (nupts, _, nelems) = np.shape(M)
 
-        niters = 5 if self.iterate_ICs else 0 # Large iteration count for ICs
+        niters = cfg.getint('solver', 'niters') if self.iterate_ICs else 0 # Large iteration count for ICs
         for uidx in range(self.nupts):
             for eidx in range(self.neles):
                 # Get local variables
